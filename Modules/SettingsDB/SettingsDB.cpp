@@ -5,9 +5,8 @@
 #include <cstring>
 #include <algorithm>
 
-#include "soul.h"
 #include "log.h"
-#include "settings.h"
+#include "bedug.h"
 
 
 extern StorageAT storage;
@@ -28,7 +27,6 @@ SettingsDB::SettingsStatus SettingsDB::load()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
 #endif
-        set_settings_save_status(true);
         return SETTINGS_ERROR;
     }
 
@@ -39,26 +37,13 @@ SettingsDB::SettingsStatus SettingsDB::load()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address=%lu", status, address);
 #endif
-        set_settings_save_status(true);
-        return SETTINGS_ERROR;
-    }
-
-    if (!settings_check(settings)) {
-    	settings_show();
-#if SETTINGS_BEDUG
-        printTagLog(SettingsDB::TAG, "error settings check");
-#endif
-        set_settings_save_status(true);
         return SETTINGS_ERROR;
     }
 
     memcpy(settings, tmpSettings.get(), this->size);
 
-    set_settings_save_status(false);
-
 #if SETTINGS_BEDUG
     printTagLog(SettingsDB::TAG, "settings loaded");
-	settings_show();
 #endif
 
     return SETTINGS_OK;
@@ -98,11 +83,8 @@ SettingsDB::SettingsStatus SettingsDB::save()
         return SETTINGS_ERROR;
     }
 
-    set_settings_save_status(true);
-
 #if SETTINGS_BEDUG
     printTagLog(SettingsDB::TAG, "settings saved (address=%lu)", address);
-    settings_show();
 #endif
 
     return this->load();
@@ -113,8 +95,5 @@ SettingsDB::SettingsStatus SettingsDB::reset()
 #if SETTINGS_BEDUG
     printTagLog(SettingsDB::TAG, "reset settings");
 #endif
-
-    settings_reset();
-
     return this->save();
 }

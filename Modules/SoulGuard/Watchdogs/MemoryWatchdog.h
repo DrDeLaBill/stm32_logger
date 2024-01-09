@@ -1,9 +1,9 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#include "soul.h"
-
-#include <stdbool.h>
+#pragma once
 
 
-soul_t soul = {
+struct MemoryWatchdog
+{
+	void check();
 };

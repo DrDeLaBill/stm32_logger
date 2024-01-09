@@ -38,12 +38,19 @@ typedef struct __attribute__((packed)) _settings_t  {
 	uint32_t record_period;
 	uint32_t send_period;
 	uint8_t  modbus1_status   [MODBUS_SENS_COUNT];
-	uint16_t modbus1_reg_value[MODBUS_SENS_COUNT];
-	uint16_t modbus1_reg_id   [MODBUS_SENS_COUNT];
+	uint16_t modbus1_value_reg[MODBUS_SENS_COUNT];
+	uint16_t modbus1_id_reg   [MODBUS_SENS_COUNT];
 } settings_t;
 
 
 extern settings_t settings;
+
+
+typedef struct _settings_info_t {
+	bool settings_initialized;
+	bool settings_saved;
+	bool settings_updated;
+} settings_info_t;
 
 
 /* copy settings to the target */
@@ -58,6 +65,14 @@ uint32_t settings_size();
 bool settings_check(uint8_t* other);
 
 void settings_show();
+
+bool is_settings_saved();
+bool is_settings_updated();
+bool is_settings_initialized();
+
+void set_settings_initialized();
+void set_settings_save_status(bool state);
+void set_settings_update_status(bool state);
 
 
 #ifdef __cplusplus

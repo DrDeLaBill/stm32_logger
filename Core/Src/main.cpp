@@ -30,6 +30,8 @@
 
 #include "w25qxx.h"
 
+#include "Watchdogs.h"
+#include "SoulGuard.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
 /* USER CODE END Includes */
@@ -63,9 +65,10 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+StorageDriver storageDriver;
 StorageAT storage(
     flash_w25qxx_get_pages_count(),
-    (new StorageDriver())
+	&storageDriver
 );
 /* USER CODE END 0 */
 
@@ -109,10 +112,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  SoulGuard<RestartWatchdog, MemoryWatchdog, SettingsWatchdog> soulGuard;
   while (1)
   {
+	  soulGuard.defend();
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -166,7 +170,7 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 int _write(int, uint8_t *ptr, int len) {
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, len, GENERAL_BUS_TIMEOUT_MS);
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_BUS_TIMEOUT_MS);
 #ifdef DEBUG
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
@@ -189,6 +193,7 @@ void Error_Handler(void)
 	__disable_irq();
 	while (1)
 	{
+		// TODO: check system (clock is 8MGz and etc.), delay 1 sec and reboot
 	}
   /* USER CODE END Error_Handler_Debug */
 }
@@ -207,7 +212,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 #ifdef DEBUG
-	b_assert((char*)file, line, "wrong parameters value");
+	b_assert((char*)file, line, "Wrong parameters value");
 #endif
   /* USER CODE END 6 */
 }
