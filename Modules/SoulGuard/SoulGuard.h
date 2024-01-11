@@ -36,4 +36,10 @@ public:
 	{
 		(this->check(Watchdogs{}), ...);
 	}
+
+	bool hasErrors()
+	{
+		// TODO: errors list
+		return false;
+	}
 };

@@ -37,3 +37,6 @@ Release*
 *language.settings.xml
 *Debug.launch
 *Release.launch
+*Backup*
+*.ld
+*.o

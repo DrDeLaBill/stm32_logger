@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "rtc.h"
 #include "spi.h"
 #include "usart.h"
 #include "usb_device.h"
@@ -30,10 +31,13 @@
 
 #include "w25qxx.h"
 
+#include "Record.h"
+#include "Measure.h"
 #include "Watchdogs.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
+#include "CodeStopwatch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,11 +69,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-StorageDriver storageDriver;
-StorageAT storage(
-    flash_w25qxx_get_pages_count(),
-	&storageDriver
-);
+
 /* USER CODE END 0 */
 
 /**
@@ -88,7 +88,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -106,18 +105,34 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART6_UART_Init();
   MX_USB_DEVICE_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SoulGuard<RestartWatchdog, MemoryWatchdog, SettingsWatchdog> soulGuard;
+  // TODO: RAM stack analyzer (https://habr.com/ru/articles/443030/) & crystal check & clock check
+  SoulGuard<
+  	  RestartWatchdog,
+	  MemoryWatchdog,
+	  SettingsWatchdog
+  > soulGuard;
   while (1)
   {
+#ifdef DEBUG
+	  utl::CodeStopwatch stopwatch("LOOP");
+#endif
+
 	  soulGuard.defend();
+
+	  if (soulGuard.hasErrors()) {
+		  continue;
+	  }
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
+
+	  Measure::proccess();
   }
   /* USER CODE END 3 */
 }
@@ -139,12 +154,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 25;
-  RCC_OscInitStruct.PLL.PLLN = 192;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 96;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)

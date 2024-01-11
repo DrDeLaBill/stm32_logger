@@ -1,4 +1,4 @@
-/* Copyright © 2023 Georgy E. All rights reserved. */
+/* Copyright © 2024 Georgy E. All rights reserved. */
 
 #include "RestartWatchdog.h"
 

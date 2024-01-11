@@ -15,7 +15,7 @@ private:
 	uint32_t size;
     uint8_t* settings;
 
-    static const char* SETTINGS_PREFIX;
+    static const char* PREFIX;
     static const char* TAG;
 
 public:

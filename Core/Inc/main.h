@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -61,8 +61,8 @@ int _write(int, uint8_t *ptr, int len);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define VBAT_Pin GPIO_PIN_2
-#define VBAT_GPIO_Port GPIOC
+#define VBAT_ADC_Pin GPIO_PIN_2
+#define VBAT_ADC_GPIO_Port GPIOC
 #define LORA_AUX_Pin GPIO_PIN_1
 #define LORA_AUX_GPIO_Port GPIOA
 #define LORA_TX_Pin GPIO_PIN_2
@@ -71,28 +71,32 @@ int _write(int, uint8_t *ptr, int len);
 #define LORA_RX_GPIO_Port GPIOA
 #define FLASH_SPI_CS_Pin GPIO_PIN_4
 #define FLASH_SPI_CS_GPIO_Port GPIOA
-#define RS485_TX_RX_Pin GPIO_PIN_15
-#define RS485_TX_RX_GPIO_Port GPIOB
+#define POWER_L4_Pin GPIO_PIN_4
+#define POWER_L4_GPIO_Port GPIOC
+#define USB_HOST_EN_Pin GPIO_PIN_0
+#define USB_HOST_EN_GPIO_Port GPIOB
+#define RS485_EN_Pin GPIO_PIN_15
+#define RS485_EN_GPIO_Port GPIOB
 #define RS485_TX_Pin GPIO_PIN_6
 #define RS485_TX_GPIO_Port GPIOC
 #define RS485_RX_Pin GPIO_PIN_7
 #define RS485_RX_GPIO_Port GPIOC
+#define POWER_L3_Pin GPIO_PIN_8
+#define POWER_L3_GPIO_Port GPIOC
 #define POWER_L2_Pin GPIO_PIN_9
 #define POWER_L2_GPIO_Port GPIOC
-#define POWER_L3_Pin GPIO_PIN_11
-#define POWER_L3_GPIO_Port GPIOC
-#define POWER_L4_Pin GPIO_PIN_12
-#define POWER_L4_GPIO_Port GPIOC
-#define MODBUS_RX_TX_Pin GPIO_PIN_5
-#define MODBUS_RX_TX_GPIO_Port GPIOB
+#define STEPUP_5V_ON_Pin GPIO_PIN_12
+#define STEPUP_5V_ON_GPIO_Port GPIOC
+#define MODBUS_EN_Pin GPIO_PIN_5
+#define MODBUS_EN_GPIO_Port GPIOB
 #define MODBUS_TX_Pin GPIO_PIN_6
 #define MODBUS_TX_GPIO_Port GPIOB
 #define MODBUS_RX_Pin GPIO_PIN_7
 #define MODBUS_RX_GPIO_Port GPIOB
-#define LED_PCB_Pin GPIO_PIN_8
-#define LED_PCB_GPIO_Port GPIOB
-#define STEPUP_5V_EN_Pin GPIO_PIN_9
-#define STEPUP_5V_EN_GPIO_Port GPIOB
+#define LED_Pin GPIO_PIN_8
+#define LED_GPIO_Port GPIOB
+#define STEPUP_VCC_ON_Pin GPIO_PIN_9
+#define STEPUP_VCC_ON_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

@@ -43,7 +43,7 @@ void settings_reset()
 
 uint32_t settings_size()
 {
-	return sizeof(settings);
+	return sizeof(settings_t);
 }
 
 bool settings_check(uint8_t* other)

@@ -509,6 +509,9 @@ do_block_protect:
 
 uint32_t flash_w25qxx_get_pages_count()
 {
+#if FLASH_TEST
+	return FLASH_TEST_PAGES_COUNT;
+#endif
     flash_status_t status = FLASH_OK;
     if (!flash_w25qxx_info.initialized) {
         status = flash_w25qxx_init();
@@ -524,6 +527,9 @@ uint32_t flash_w25qxx_get_pages_count()
 
 uint32_t flash_w25qxx_get_blocks_count()
 {
+#if FLASH_TEST
+	return 1;
+#endif
     flash_status_t status = FLASH_OK;
     if (!flash_w25qxx_info.initialized) {
         status = flash_w25qxx_init();
@@ -1046,5 +1052,8 @@ bool _flash_check_WEL()
 
 uint32_t _flash_get_storage_bytes_size()
 {
+#if FLASH_TEST
+	return flash_w25qxx_get_pages_count() * FLASH_W25_PAGE_SIZE;
+#endif
     return flash_w25qxx_info.blocks_count * flash_w25qxx_info.block_size;
 }

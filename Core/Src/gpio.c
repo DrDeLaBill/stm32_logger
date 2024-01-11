@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -54,10 +54,11 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(FLASH_SPI_CS_GPIO_Port, FLASH_SPI_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, RS485_TX_RX_Pin|MODBUS_RX_TX_Pin|LED_PCB_Pin|STEPUP_5V_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, POWER_L4_Pin|POWER_L3_Pin|POWER_L2_Pin|STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, POWER_L2_Pin|POWER_L3_Pin|POWER_L4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, USB_HOST_EN_Pin|RS485_EN_Pin|MODBUS_EN_Pin|LED_Pin
+                          |STEPUP_VCC_ON_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = LORA_AUX_Pin;
@@ -72,19 +73,21 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(FLASH_SPI_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PBPin PBPin PBPin PBPin */
-  GPIO_InitStruct.Pin = RS485_TX_RX_Pin|MODBUS_RX_TX_Pin|LED_PCB_Pin|STEPUP_5V_EN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PCPin PCPin PCPin */
-  GPIO_InitStruct.Pin = POWER_L2_Pin|POWER_L3_Pin|POWER_L4_Pin;
+  /*Configure GPIO pins : PCPin PCPin PCPin PCPin */
+  GPIO_InitStruct.Pin = POWER_L4_Pin|POWER_L3_Pin|POWER_L2_Pin|STEPUP_5V_ON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PBPin PBPin PBPin PBPin
+                           PBPin */
+  GPIO_InitStruct.Pin = USB_HOST_EN_Pin|RS485_EN_Pin|MODBUS_EN_Pin|LED_Pin
+                          |STEPUP_VCC_ON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

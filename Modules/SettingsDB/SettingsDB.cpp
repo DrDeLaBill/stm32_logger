@@ -1,4 +1,3 @@
-#include <StorageAT.h>
 #include "SettingsDB.h"
 
 #include <memory>
@@ -7,13 +6,13 @@
 
 #include "log.h"
 #include "bedug.h"
+#include "w25qxx.h"
+#include "StorageAT.h"
+#include "StorageDriver.h"
 
 
-extern StorageAT storage;
-
-
-const char* SettingsDB::SETTINGS_PREFIX = "STG";
-const char* SettingsDB::TAG = SettingsDB::SETTINGS_PREFIX;
+const char* SettingsDB::PREFIX = "STG";
+const char* SettingsDB::TAG = SettingsDB::PREFIX;
 
 
 SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(settings)
@@ -21,8 +20,15 @@ SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(s
 
 SettingsDB::SettingsStatus SettingsDB::load()
 {
-    uint32_t address = 0;
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, SETTINGS_PREFIX, 1);
+	StorageDriver storageDriver;
+	StorageAT storage(
+		flash_w25qxx_get_pages_count(),
+		&storageDriver
+	);
+	uint32_t address = 0;
+	StorageStatus status = STORAGE_OK;
+
+    status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
@@ -51,9 +57,16 @@ SettingsDB::SettingsStatus SettingsDB::load()
 
 SettingsDB::SettingsStatus SettingsDB::save()
 {
-    uint32_t address = 0;
+	StorageDriver storageDriver;
+	StorageAT storage(
+		flash_w25qxx_get_pages_count(),
+		&storageDriver
+	);
+	uint32_t address = 0;
+	StorageStatus status = STORAGE_OK;
+
     StorageFindMode mode = FIND_MODE_EQUAL;
-    StorageStatus status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
+    status = storage.find(mode, &address, PREFIX, 1);
     if (status == STORAGE_NOT_FOUND) {
     	mode = FIND_MODE_EMPTY;
         status = storage.find(mode, &address);
@@ -75,7 +88,7 @@ SettingsDB::SettingsStatus SettingsDB::save()
         return SETTINGS_ERROR;
     }
 
-	status = storage.rewrite(address, SETTINGS_PREFIX, 1, this->settings, this->size);
+	status = storage.rewrite(address, PREFIX, 1, this->settings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);

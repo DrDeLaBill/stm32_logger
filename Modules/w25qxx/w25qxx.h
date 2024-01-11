@@ -15,15 +15,18 @@ extern "C" {
 
 #define FLASH_BEDUG               (true)
 
+#define FLASH_TEST                (true)
+#define FLASH_TEST_PAGES_COUNT    ((uint32_t)10)
+
 #define FLASH_W25_PAGE_SIZE       ((uint32_t)0x100)
 #define FLASH_W25_SECTOR_SIZE     ((uint32_t)0x1000)
 #define FLASH_W25_SETORS_IN_BLOCK ((uint32_t)0x10)
 
 
 typedef enum _flash_status_t {
-    FLASH_OK    = ((uint8_t)0x00),
-    FLASH_ERROR = ((uint8_t)0x01),
-    FLASH_BUSY  = ((uint8_t)0x02),
+    FLASH_OK    = ((uint8_t)0x00),  // OK
+    FLASH_ERROR = ((uint8_t)0x01),  // Internal error
+    FLASH_BUSY  = ((uint8_t)0x02),  // Memory or bus is busy
     FLASH_OOM   = ((uint8_t)0x03)   // Out Of Memory
 } flash_status_t;
 

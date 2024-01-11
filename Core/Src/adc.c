@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -90,10 +90,10 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     /**ADC1 GPIO Configuration
     PC2     ------> ADC1_IN12
     */
-    GPIO_InitStruct.Pin = VBAT_Pin;
+    GPIO_InitStruct.Pin = VBAT_ADC_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(VBAT_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(VBAT_ADC_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN ADC1_MspInit 1 */
 
@@ -115,7 +115,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     /**ADC1 GPIO Configuration
     PC2     ------> ADC1_IN12
     */
-    HAL_GPIO_DeInit(VBAT_GPIO_Port, VBAT_Pin);
+    HAL_GPIO_DeInit(VBAT_ADC_GPIO_Port, VBAT_ADC_Pin);
 
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
