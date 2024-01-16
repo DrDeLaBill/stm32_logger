@@ -12,11 +12,11 @@
 class SettingsDB
 {
 private:
-	uint32_t size;
+	const uint32_t size;
     uint8_t* settings;
 
-    static const char* PREFIX;
-    static const char* TAG;
+    static constexpr char PREFIX[] = "STG";
+    static constexpr char TAG[] = "STDB";
 
 public:
     typedef enum _SettingsStatus {
@@ -28,7 +28,6 @@ public:
 
     SettingsStatus load();
     SettingsStatus save();
-    SettingsStatus reset();
 };
 
 

@@ -1,6 +1,5 @@
 #include "SettingsDB.h"
 
-#include <memory>
 #include <cstring>
 #include <algorithm>
 
@@ -9,10 +8,6 @@
 #include "w25qxx.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
-
-
-const char* SettingsDB::PREFIX = "STG";
-const char* SettingsDB::TAG = SettingsDB::PREFIX;
 
 
 SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(settings)
@@ -36,9 +31,8 @@ SettingsDB::SettingsStatus SettingsDB::load()
         return SETTINGS_ERROR;
     }
 
-
-    std::unique_ptr<uint8_t[]> tmpSettings = std::make_unique<uint8_t[]>(this->size);
-    status = storage.load(address, reinterpret_cast<uint8_t*>(tmpSettings.get()), this->size);
+    uint8_t tmpSettings[this->size] = {};
+    status = storage.load(address, tmpSettings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address=%lu", status, address);
@@ -46,7 +40,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
         return SETTINGS_ERROR;
     }
 
-    memcpy(settings, tmpSettings.get(), this->size);
+    memcpy(settings, tmpSettings, this->size);
 
 #if SETTINGS_BEDUG
     printTagLog(SettingsDB::TAG, "settings loaded");
@@ -65,20 +59,14 @@ SettingsDB::SettingsStatus SettingsDB::save()
 	uint32_t address = 0;
 	StorageStatus status = STORAGE_OK;
 
-    StorageFindMode mode = FIND_MODE_EQUAL;
-    status = storage.find(mode, &address, PREFIX, 1);
+    status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
     if (status == STORAGE_NOT_FOUND) {
-    	mode = FIND_MODE_EMPTY;
-        status = storage.find(mode, &address);
+        status = storage.find(FIND_MODE_EMPTY, &address);
     }
 
-    while (status == STORAGE_NOT_FOUND) {
+    if (status == STORAGE_NOT_FOUND) {
         // Search for any address
-        mode = FIND_MODE_NEXT;
-    	status = storage.find(mode, &address, "", 1);
-    	if (status != STORAGE_OK) {
-    		continue;
-    	}
+    	status = storage.find(FIND_MODE_NEXT, &address, "", 1);
     }
 
     if (status != STORAGE_OK) {
@@ -96,17 +84,12 @@ SettingsDB::SettingsStatus SettingsDB::save()
         return SETTINGS_ERROR;
     }
 
+    if (this->load() == SETTINGS_OK) {
 #if SETTINGS_BEDUG
-    printTagLog(SettingsDB::TAG, "settings saved (address=%lu)", address);
+    	printTagLog(SettingsDB::TAG, "settings saved (address=%lu)", address);
 #endif
+    	return SETTINGS_OK;
+    }
 
-    return this->load();
-}
-
-SettingsDB::SettingsStatus SettingsDB::reset()
-{
-#if SETTINGS_BEDUG
-    printTagLog(SettingsDB::TAG, "reset settings");
-#endif
-    return this->save();
+    return SETTINGS_ERROR;
 }

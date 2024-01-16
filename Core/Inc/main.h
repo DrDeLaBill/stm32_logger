@@ -101,15 +101,23 @@ int _write(int, uint8_t *ptr, int len);
 /* USER CODE BEGIN Private defines */
 
 // General settings
-
 #define GENERAL_BUS_TIMEOUT_MS ((uint32_t)100)
 
 // SD card
 extern SPI_HandleTypeDef       hspi1;
 #define FLASH_SPI              (hspi1)
 
-// MODBUS 1
+// MODBUS
+#define MODBUS_TIMEOUS_MS      ((uint32_t)50)
 #define MODBUS_SENS_COUNT      ((uint8_t)127)
+
+// MODBUS 1
+extern UART_HandleTypeDef      huart1;
+#define MODBUS1_UART           (huart1)
+
+// MODBUS 2
+extern UART_HandleTypeDef      huart6;
+#define MODBUS2_UART           (huart6)
 
 // Bedug UART
 extern UART_HandleTypeDef      huart2;

@@ -15,8 +15,8 @@ extern "C" {
 
 #define FLASH_BEDUG               (true)
 
-#define FLASH_TEST                (true)
-#define FLASH_TEST_PAGES_COUNT    ((uint32_t)10)
+#define FLASH_TEST                (false)
+#define FLASH_TEST_PAGES_COUNT    ((uint32_t)64)
 
 #define FLASH_W25_PAGE_SIZE       ((uint32_t)0x100)
 #define FLASH_W25_SECTOR_SIZE     ((uint32_t)0x1000)
@@ -60,6 +60,9 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
  *  @return Result status.
  */
 flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len);
+
+// TODO: docs
+flash_status_t flash_w25qxx_erase_data(uint32_t addr, uint32_t len);
 
 /**
  *  @return FLASH memory pages count.

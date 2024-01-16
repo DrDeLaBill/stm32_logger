@@ -4,4 +4,5 @@
 
 #include "RestartWatchdog.h"
 #include "MemoryWatchdog.h"
+#include "StackWatchdog.h"
 #include "SettingsWatchdog.h"

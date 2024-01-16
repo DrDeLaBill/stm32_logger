@@ -63,7 +63,6 @@ flash_status_t _flash_erase_sector(uint32_t addr);
 flash_status_t _flash_set_protect_block(uint8_t value);
 
 flash_status_t _flash_data_cmp(uint32_t addr, uint8_t* data, uint32_t len, bool* cmp_res);
-flash_status_t _flash_erase_data(uint32_t addr, uint32_t len);
 
 flash_status_t _flash_send_data(uint8_t* data, uint16_t len);
 flash_status_t _flash_recieve_data(uint8_t* data, uint16_t len);
@@ -77,7 +76,7 @@ uint32_t       _flash_get_storage_bytes_size();
 
 
 #ifdef DEBUG
-const char* FLASH_TAG = "FLS";
+const char FLASH_TAG[] = "FLSH";
 #endif
 
 
@@ -353,7 +352,7 @@ flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len)
 
 
 	/* Erase data BEGIN */
-	status = _flash_erase_data(addr, len);
+	status = flash_w25qxx_erase_data(addr, len);
 	if (status != FLASH_OK) {
 #if FLASH_BEDUG
 		printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (erase old data)", addr, len, status);
@@ -589,7 +588,7 @@ flash_status_t _flash_data_cmp(uint32_t addr, uint8_t* data, uint32_t len, bool*
 	return FLASH_OK;
 }
 
-flash_status_t _flash_erase_data(uint32_t addr, uint32_t len)
+flash_status_t flash_w25qxx_erase_data(uint32_t addr, uint32_t len)
 {
 	uint32_t end_sector_idx = ((addr + len) / FLASH_W25_SECTOR_SIZE) + 1;
 
@@ -683,6 +682,9 @@ flash_status_t _flash_erase_data(uint32_t addr, uint32_t len)
 			write_len += FLASH_W25_PAGE_SIZE;
 		}
 		/* Return old data END */
+
+		addr = sector_addr + FLASH_W25_SECTOR_SIZE;
+		len -= erase_len;
 	}
 
 	return FLASH_OK;
@@ -699,6 +701,7 @@ flash_status_t _flash_read_jdec_id(uint32_t* jdec_id)
         _flash_spi_cs_set();
     }
 
+    flash_status_t status = FLASH_BUSY;
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "get JEDEC ID error (FLASH busy)");
@@ -707,7 +710,7 @@ flash_status_t _flash_read_jdec_id(uint32_t* jdec_id)
     }
 
     uint8_t spi_cmd[] = { FLASH_W25_CMD_JEDEC_ID };
-    flash_status_t status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
+    status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "get JDEC ID error=%u (send command)", status);
@@ -904,27 +907,6 @@ do_spi_stop:
     _flash_spi_cs_reset();
 
     if (status != FLASH_OK) {
-        goto do_block_protect;
-    }
-
-    uint8_t cmpr_buf[FLASH_W25_SECTOR_SIZE] = { 0 };
-    uint8_t read_buf[FLASH_W25_SECTOR_SIZE] = { 0 };
-    memset(cmpr_buf, 0xFF, sizeof(cmpr_buf));
-    memset(read_buf, 0xFF, sizeof(read_buf));
-
-    status = flash_w25qxx_read(addr, read_buf, flash_w25qxx_info.sector_size);
-    if (status != FLASH_OK) {
-#if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (check target sector)", addr, status);
-#endif
-        goto do_block_protect;
-    }
-
-    if (memcmp(cmpr_buf, read_buf, flash_w25qxx_info.sector_size)) {
-#if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error - sector is not erased", addr);
-#endif
-        status = FLASH_ERROR;
         goto do_block_protect;
     }
 

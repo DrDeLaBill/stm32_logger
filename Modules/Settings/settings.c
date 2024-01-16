@@ -7,38 +7,43 @@
 
 #include "log.h"
 #include "utils.h"
+#include "hal_defs.h"
 
+
+static const char SETTINGS_TAG[] = "STNG";
 
 settings_t settings = {};
 
 settings_info_t stngs_info = {
 	.settings_initialized = false,
-	.settings_saved       = true,
+	.settings_saved       = false,
 	.settings_updated     = false
 };
 
 
-uint8_t* settings_get()
+settings_t* settings_get()
 {
-	return (uint8_t*)&settings;
+	return &settings;
 }
 
-void settings_set(uint8_t* other)
+void settings_set(settings_t* other)
 {
-	memcpy((uint8_t*)&settings, other, sizeof(settings));
+	memcpy((uint8_t*)&settings, (uint8_t*)other, sizeof(settings));
 }
 
-void settings_reset()
+void settings_reset(settings_t* other)
 {
-	settings.dv_id = DEVICE_TYPE;
-	settings.sw_id = SW_VERSION;
-	settings.fw_id = FW_VERSION;
-	settings.cf_id = CF_VERSION;
-	settings.record_period = 0;
-	settings.send_period = 0;
-	memset(settings.modbus1_status, SETTINGS_SENSOR_EMPTY, sizeof(settings.modbus1_status));
-	memset(settings.modbus1_value_reg, 0, sizeof(settings.modbus1_value_reg));
-	memset(settings.modbus1_id_reg, 0, sizeof(settings.modbus1_id_reg));
+	printTagLog(SETTINGS_TAG, "Reset settings");
+	other->dv_type = DEVICE_TYPE;
+	other->sw_id = SW_VERSION;
+	other->fw_id = FW_VERSION;
+	other->cf_id = CF_VERSION;
+	other->record_period = DAY_MS;
+	other->send_period = DAY_MS;
+	other->record_id = 0;
+	memset(other->modbus1_status, SETTINGS_SENSOR_EMPTY, sizeof(other->modbus1_status));
+	memset(other->modbus1_value_reg, 0, sizeof(other->modbus1_value_reg));
+	memset(other->modbus1_id_reg, 0, sizeof(other->modbus1_id_reg));
 }
 
 uint32_t settings_size()
@@ -46,16 +51,15 @@ uint32_t settings_size()
 	return sizeof(settings_t);
 }
 
-bool settings_check(uint8_t* other)
+bool settings_check(settings_t* other)
 {
-	settings_t* tmp_settings = (settings_t*)other;
-	if (tmp_settings->dv_id != DEVICE_TYPE) {
+	if (other->dv_type != DEVICE_TYPE) {
 		return false;
 	}
-	if (tmp_settings->sw_id != SW_VERSION) {
+	if (other->sw_id != SW_VERSION) {
 		return false;
 	}
-	if (tmp_settings->fw_id != FW_VERSION) {
+	if (other->fw_id != FW_VERSION) {
 		return false;
 	}
 
@@ -64,49 +68,48 @@ bool settings_check(uint8_t* other)
 
 void settings_show()
 {
-    printLog(
-		"\n\n####################SETTINGS####################\n"
-		"Device ID: %u\n"
-		"Software v%u\n"
-		"Firmware v%u\n"
-		"Configuration ID: %lu\n"
-		"Record period: %lu sec\n"
-		"Send period: %lu sec\n"
-		"\n",
-		settings.dv_id,
-		settings.sw_id,
-		settings.fw_id,
-		settings.cf_id,
-		settings.record_period,
-		settings.send_period
-    );
-    printLog("ID\tSTATUS\tVALREG\tIDREG\n");
+	printPretty("\n");
+	printPretty("####################SETTINGS####################\n");
+	printPretty("Device ID: %u\n", settings.dv_type);
+	printPretty("Software v%u\n", settings.sw_id);
+	printPretty("Firmware v%u\n", settings.fw_id);
+	printPretty("Configuration ID: %lu\n", settings.cf_id);
+	printPretty("Record period: %lu msec\n", settings.record_period);
+	printPretty("Send period: %lu msec\n", settings.send_period);
+	printPretty("Record id: %lu\n", settings.record_id);
+	printPretty("\n");
+    printPretty("ID\tSTATUS\tVALREG\tIDREG\n");
+    unsigned counter = 0;
     for (unsigned i = 0; i < __arr_len(settings.modbus1_id_reg); i++) {
-    	printLog("%03u\t", i);
+    	if (settings.modbus1_status[i] == SETTINGS_SENSOR_EMPTY) {
+    		continue;
+    	}
+    	printPretty("%03u\t", i + 1);
     	switch(settings.modbus1_status[i]) {
-    	case SETTINGS_SENSOR_EMPTY:
-        	printLog("%s\t", "EMPTY");
-        	break;
     	case SETTINGS_SENSOR_THERMAL:
-        	printLog("%s\t", "THERMAL");
+        	print("%s\t", "THERMAL");
         	break;
     	case SETTINGS_SENSOR_HUMIDITY:
-        	printLog("%s\t", "HUMIDTY");
+    		print("%s\t", "HUMIDTY");
         	break;
     	case SETTINGS_SENSOR_ANOTHER:
-        	printLog("%s\t", "ANOTHER");
+    		print("%s\t", "ANOTHER");
         	break;
     	case SETTINGS_SENSOR_ERROR:
-        	printLog("%s\t", "ERROR");
+    		print("%s\t", "ERROR");
         	break;
     	default:
-        	printLog("%s\t", "UNKNWN");
+        	printPretty("%s\t", "UNKNWN");
         	break;
     	};
-    	printLog("%03u\t", settings.modbus1_value_reg[i]);
-    	printLog("%03u\n", settings.modbus1_id_reg[i]);
+    	print("%03u\t", settings.modbus1_value_reg[i]);
+    	print("%03u\n", settings.modbus1_id_reg[i]);
+    	counter++;
     }
-    printLog("####################SETTINGS####################\n\n");
+    if (!counter) {
+    	printPretty("------------EMPTY------------\n");
+    }
+    printPretty("####################SETTINGS####################\n\n");
 }
 
 bool is_settings_saved()

@@ -5,6 +5,9 @@
 
 #include <variant>
 
+#include "settings.h"
+
+#include "Watchdogs.h"
 #include "TypeListBuilder.h"
 
 
@@ -39,6 +42,9 @@ public:
 
 	bool hasErrors()
 	{
+		if (!is_settings_initialized()) {
+			return true;
+		}
 		// TODO: errors list
 		return false;
 	}

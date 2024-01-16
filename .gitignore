@@ -38,5 +38,4 @@ Release*
 *Debug.launch
 *Release.launch
 *Backup*
-*.ld
 *.o

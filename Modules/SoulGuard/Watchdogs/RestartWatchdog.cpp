@@ -5,5 +5,6 @@
 
 void RestartWatchdog::check()
 {
-	// TODO: IWDG and other restarts detect and reset
+	// TODO: IWDG, NVIC_SysReset and other restarts detect and reset
+//	BEDUG_ASSERT(false, "INTERNAL ERROR HAS BEEN OCCURRED (HARD FAULT)");
 }

@@ -29,10 +29,14 @@
 /* USER CODE BEGIN Includes */
 #include "bedug.h"
 
+#include "log.h"
 #include "w25qxx.h"
+#include "hal_defs.h"
 
+#include "Timer.h"
 #include "Record.h"
-#include "Measure.h"
+#include "settings.h"
+#include "Measurer.h"
 #include "Watchdogs.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
@@ -47,7 +51,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -79,7 +82,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+//	STACK_WATCHDOG_FILL_RAM();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -107,22 +110,28 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+
+  flash_w25qxx_init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  // TODO: RAM stack analyzer (https://habr.com/ru/articles/443030/) & crystal check & clock check
+
+  utl::Timer tim(SECOND_MS);
+  // TODO: RAM analyzer (https://habr.com/ru/articles/443030/) & crystal check & clock check & modbus check
   SoulGuard<
   	  RestartWatchdog,
 	  MemoryWatchdog,
+	  StackWatchdog,
 	  SettingsWatchdog
   > soulGuard;
+  Measurer measurer(
+	  MINUTE_MS
+//	  settings.record_period
+  );
   while (1)
   {
-#ifdef DEBUG
-	  utl::CodeStopwatch stopwatch("LOOP");
-#endif
-
 	  soulGuard.defend();
 
 	  if (soulGuard.hasErrors()) {
@@ -131,8 +140,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  measurer.process();
 
-	  Measure::proccess();
+	  if (!tim.wait()) { // TODO: remove blink
+		  tim.start();
+		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -154,9 +167,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;

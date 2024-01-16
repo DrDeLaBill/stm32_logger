@@ -4,46 +4,104 @@
 
 #include <cstring>
 
+#include "log.h"
 #include "settings.h"
 #include "SettingsDB.h"
 
 
+fsm::FiniteStateMachine<SettingsWatchdog::fsm_table> SettingsWatchdog::fsm;
+
+
+SettingsWatchdog::SettingsWatchdog() { }
+
 void SettingsWatchdog::check()
 {
-	settings_t tmpSettings;
-	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&tmpSettings), settings_size());
-	SettingsDB::SettingsStatus status = SettingsDB::SETTINGS_OK;
+	fsm.proccess();
+}
 
-	memcpy(settings_get(), reinterpret_cast<uint8_t*>(&tmpSettings), settings_size());
-	if (is_settings_saved()) {
-		status = settingsDB.load();
-		set_settings_save_status(status != SettingsDB::SETTINGS_OK);
-	} else if (is_settings_updated()) {
-		memcpy(reinterpret_cast<uint8_t*>(&tmpSettings), settings_get(), settings_size());
-		status = settingsDB.save();
-		set_settings_update_status(status != SettingsDB::SETTINGS_OK);
-	}
-
-    if (!settings_check(reinterpret_cast<uint8_t*>(&tmpSettings))) {
-		settings_reset();
-		memcpy(reinterpret_cast<uint8_t*>(&tmpSettings), settings_get(), settings_size());
-		status = settingsDB.save();
-    }
-
-	if (status != SettingsDB::SETTINGS_OK) {
+void SettingsWatchdog::state_init::operator ()() const
+{
+	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
+	SettingsDB::SettingsStatus status = settingsDB.load();
+	if (status == SettingsDB::SETTINGS_OK) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_init: event_loaded\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
+	    set_settings_initialized();
+		settings_show();
 		return;
 	}
 
-	if (memcmp(reinterpret_cast<uint8_t*>(&tmpSettings), settings_get(), settings_size())) {
-		settings_set(reinterpret_cast<uint8_t*>(&tmpSettings));
+	settings_reset(&settings);
+	status = settingsDB.save();
+	if (status == SettingsDB::SETTINGS_OK) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_init: event_saved\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
+	    set_settings_initialized();
 		settings_show();
 	}
+}
 
-	if (is_settings_initialized()) {
-		return;
+void SettingsWatchdog::state_idle::operator ()() const
+{
+	if (is_settings_updated()) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_idle: event_updated\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_updated{});
+	} else if (is_settings_saved()) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_idle: event_saved\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 	}
+}
 
-	if (settingsDB.load() == SettingsDB::SETTINGS_OK) {
-	    set_settings_initialized();
+void SettingsWatchdog::state_save::operator ()() const
+{
+	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
+	SettingsDB::SettingsStatus status = settingsDB.save();
+	if (status == SettingsDB::SETTINGS_OK) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_save: event_saved\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
+		set_settings_update_status(false);
 	}
+}
+
+void SettingsWatchdog::state_load::operator ()() const
+{
+	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
+	SettingsDB::SettingsStatus status = settingsDB.load();
+	if (status == SettingsDB::SETTINGS_OK) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("state_load: event_loaded\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
+		set_settings_save_status(false);
+		settings_show();
+	}
+}
+
+void SettingsWatchdog::action_check::operator ()() const
+{
+	if (!settings_check(&settings)) {
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("action_check: event_not_valid\n");
+#endif
+		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_not_valid{});
+	}
+}
+
+void SettingsWatchdog::action_reset::operator ()() const
+{
+#if SETTINGS_WATCHDOG_BEDUG
+		printPretty("action_reset: reset\n");
+#endif
+	settings_reset(&settings);
+	set_settings_update_status(true);
 }
