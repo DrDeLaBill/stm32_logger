@@ -34,7 +34,7 @@ extern sensor_info_t sensor_info;
 void sensors_init(void (*response_packet_handler) (modbus_response_t*));
 uint8_t sensors_count();
 void sensor_timeout();
-void sensor_request_value(uint8_t index);
+void sensor_request_value(uint8_t id);
 void sensor_send_new_id(uint8_t old_id, uint8_t new_id);
 
 

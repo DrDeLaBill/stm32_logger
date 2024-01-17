@@ -15,92 +15,205 @@
 
 #include "Record.h"
 
+
+uint32_t Measurer::delay      = 0;
+uint32_t Measurer::sensIndex  = 0;
+uint8_t Measurer::errorsCount = 0;
+
+fsm::FiniteStateMachine<Measurer::fsm_table> Measurer::fsm;
 Record Measurer::m_record(0);
-uint8_t Measurer::m_sensIdx = 0;
-Measurer::ResponseStatus Measurer::m_status = RESPONSE_IDLE;
 
 
-Measurer::Measurer(uint32_t delay):
-	m_measureTimer(delay), m_sensorTimer(MODBUS_TIMEOUS_MS)
+Measurer::Measurer(uint32_t delay)
 {
+#if MEASURER_BEDUG
+	BEDUG_ASSERT(delay, "Measure delay should be longer");
+#endif
 	sensors_init(response_packet_handler);
-	m_status = RESPONSE_IDLE;
-	m_record = Record(0);
-	m_sensIdx = 0;
+	this->delay = delay;
 }
 
 void Measurer::process()
 {
-	if (isStatus(RESPONSE_WAIT_SENS) && m_sensorTimer.wait()) {
+	fsm.proccess();
+}
+
+void Measurer::_init_s::operator ()()
+{
+	if (is_settings_initialized()) {
+		fsm.push_event(Measurer::ready_e{});
+	}
+}
+
+utl::Timer Measurer::_idle_s::timer(HOUR_MS);
+void Measurer::_idle_s::operator ()()
+{
+	if (!_idle_s::timer.wait()) {
+		Measurer::m_record = Record(0, sensors_count());
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_idle_s: event-timeout_e");
+#endif
+		fsm.push_event(Measurer::timeout_e{});
+	}
+}
+
+void Measurer::_request_s::operator ()()
+{
+	if (settings.modbus1_status[Measurer::sensIndex] != SETTINGS_SENSOR_EMPTY) {
+		sensor_request_value(Measurer::sensIndex);
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_request_s: event-sended_e");
+#endif
+		fsm.push_event(Measurer::sended_e{});
+	} else {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_request_s: event-skip_e");
+#endif
+		fsm.push_event(Measurer::skip_e{});
+	}
+}
+
+utl::Timer Measurer::_wait_s::timer(MODBUS_TIMEOUS_MS);
+void Measurer::_wait_s::operator ()()
+{
+	if (Measurer::errorsCount >= ERRORS_MAX) {
+		// TODO: send sensor error to stng_info
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_wait_s: event-error_e");
+#endif
+		fsm.push_event(Measurer::error_e{});
 		return;
 	}
 
-	if (isStatus(RESPONSE_WAIT_SENS) && !m_sensorTimer.wait()) {
-	    m_record.set(m_sensIdx, SENSOR_ERROR_VALUE);
-		setStatus(RESPONSE_ERROR);
+	if (!_wait_s::timer.wait()) {
+	    m_record.set(sensIndex + 1, SENSOR_ERROR_VALUE);
 		sensor_timeout();
-		// TODO: errors counter for each sensor
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_wait_s: event-timeout_e");
+#endif
+		fsm.push_event(Measurer::timeout_e{});
 	}
+}
 
-	if (m_measureTimer.wait()) {
-		m_record = Record(0, sensors_count());
+utl::Timer Measurer::_save_s::timer(GENERAL_BUS_TIMEOUT_MS);
+void Measurer::_save_s::operator ()()
+{
+	if (Measurer::errorsCount >= ERRORS_MAX) {
+		// TODO: send save error to errors list
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_save_s: event-error_e");
+#endif
+		fsm.push_event(Measurer::error_e{});
 		return;
 	}
 
-	if (!is_settings_initialized()) {
-		return;
+	if (!_save_s::timer.wait()) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_save_s: event-timeout_e");
+#endif
+		fsm.push_event(Measurer::timeout_e{});
+	}
+}
+
+void Measurer::reset_sens_a::operator ()()
+{
+	fsm.clear_events();
+	Measurer::sensIndex = 0;
+	Measurer::errorsCount = 0;
+	m_record = Record(0, sensors_count());
+	if (!sensors_count()) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-reset_sens_a: event-no_sens_e");
+#endif
+		fsm.push_event(Measurer::no_sens_e{});
+	}
+}
+
+void Measurer::wait_start_a::operator ()()
+{
+	fsm.clear_events();
+	_wait_s::timer.start();
+}
+
+void Measurer::save_start_a::operator ()()
+{
+	fsm.clear_events();
+#if MEASURER_BEDUG
+	printTagLog(TAG, "Save new record begin");
+#endif
+	if (m_record.save() == RECORD_OK) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-save_start_a: event-saved_e");
+#endif
+		fsm.push_event(Measurer::saved_e{});
+	} else {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-save_start_a: event-error_e");
+#endif
+		fsm.push_event(Measurer::timeout_e{});
 	}
 
-	if (m_sensIdx == __arr_len(settings.modbus1_status)) {
-		printTagLog(TAG, "Write new record log");
+	Measurer::errorsCount = 0;
+	_save_s::timer.start();
+}
 
-		m_record.save();
+void Measurer::idle_start_a::operator ()()
+{
+	fsm.clear_events();
+	_idle_s::timer = utl::Timer(Measurer::delay);
+	_idle_s::timer.start();
+}
 
-		setStatus(RESPONSE_IDLE);
-		m_measureTimer.start();
-		// TODO: don't start timer if the record as not saved
-		m_sensIdx = 0;
-		return;
+void Measurer::iterate_sens_a::operator ()()
+{
+	fsm.clear_events();
+	if (++Measurer::sensIndex >= __arr_len(settings.modbus1_status)) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
+#endif
+		fsm.push_event(Measurer::sens_end_e{});
 	}
-
-	if (settings.modbus1_status[m_sensIdx] != SETTINGS_SENSOR_EMPTY) {
-		sensor_request_value(m_sensIdx);
-		setStatus(RESPONSE_WAIT_SENS);
-		m_sensorTimer.start();
+	if (!sensors_count()) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-iterate_sens_a: event-no_sens_e");
+#endif
+		fsm.push_event(Measurer::no_sens_e{});
 	}
+}
 
-	m_sensIdx++;
+void Measurer::count_error_a::operator ()()
+{
+	fsm.clear_events();
+	Measurer::errorsCount++;
+}
+
+void Measurer::register_error_a::operator ()()
+{
+	// TODO: send measure error to errors list
+	fsm.clear_events();
 }
 
 void Measurer::response_packet_handler(modbus_response_t* packet)
 {
+#if MEASURER_BEDUG
 	BEDUG_ASSERT(packet, "Incorrect MODBUS response data");
+#endif
 	if (!packet) {
 		return;
 	}
 
     if (packet->status != MODBUS_NO_ERROR) {
-#ifdef SENSOR_BEDUG
+#if MEASURER_BEDUG
         printTagLog(TAG, "ERROR: %02x", packet->status);
 #endif
-        setStatus(RESPONSE_ERROR);
+        fsm.push_event(error_e{});
         return;
     }
 
-    m_record.set(m_sensIdx + 1, packet->response[0]);
-    setStatus(RESPONSE_SUCCESS);
+    m_record.set(sensIndex + 1, packet->response[0]);
+    fsm.push_event(response_e{});
 
-#ifdef SENSOR_BEDUG
+#if MEASURER_BEDUG
     printTagLog(TAG, "SUCCESS");
 #endif
-}
-
-bool Measurer::isStatus(ResponseStatus responseStatus)
-{
-	return responseStatus == m_status;
-}
-
-void Measurer::setStatus(ResponseStatus responseStatus)
-{
-	m_status = responseStatus;
 }

@@ -63,6 +63,7 @@ typedef struct _settings_info_t {
 	bool settings_initialized;
 	bool settings_saved;
 	bool settings_updated;
+	uint16_t modbus1_status[MODBUS_SENS_COUNT];
 } settings_info_t;
 
 

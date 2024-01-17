@@ -17,7 +17,8 @@ settings_t settings = {};
 settings_info_t stngs_info = {
 	.settings_initialized = false,
 	.settings_saved       = false,
-	.settings_updated     = false
+	.settings_updated     = false,
+	.modbus1_status       = { 0 }
 };
 
 

@@ -31,19 +31,22 @@ public:
 	FSM_CREATE_EVENT(event_not_valid, 1);
 
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s, event_loaded, idle_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<init_s, event_saved, idle_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s, event_loaded,    idle_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s, event_saved,     idle_s, action_check, fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<idle_s, event_saved, load_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s, event_updated, save_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s, event_saved,     load_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s, event_updated,   save_s, action_check, fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s, event_not_valid, save_s, action_reset, fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<load_s, event_loaded, idle_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<save_s, event_saved, idle_s, action_check, fsm::Guard::NO_GUARD>
+		fsm::Transition<load_s, event_loaded,    idle_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<save_s, event_saved,     idle_s, action_check, fsm::Guard::NO_GUARD>
 	>;
 
 protected:
 	static fsm::FiniteStateMachine<fsm_table> fsm;
+
+private:
+	static constexpr char TAG[] = "STWD";
 
 public:
 	SettingsWatchdog();

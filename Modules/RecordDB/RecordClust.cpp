@@ -32,7 +32,7 @@ RecordStatus RecordClust::load(bool validateSize)
     bool statusFlag = this->findExist(validateSize);
     if (statusFlag) {
 #if RECORD_BEDUG
-        printTagLog(TAG, "Cluster loaded from address=%08X", (unsigned int)m_address);
+        printTagLog(TAG, "Cluster loaded from address=0x%08X", (unsigned int)m_address);
 #endif
     } else {
 #if RECORD_BEDUG
@@ -157,7 +157,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 #if RECORD_BEDUG
     BEDUG_ASSERT((recordStatus == RECORD_OK), "Error loading the saved record");
     if (recordStatus == RECORD_OK) {
-        printTagLog(TAG, "Record cluster saved (address=%lu, id=%lu, record_size=%lu)", m_address, newId, m_recordSize);
+        printTagLog(TAG, "Record cluster saved (address=0x%08X, id=%lu, record_size=%lu)", (unsigned)m_address, newId, m_recordSize);
     }
 #endif
 
@@ -254,7 +254,7 @@ bool RecordClust::createNew()
     if (findMode == FIND_MODE_MIN) {
         storageStatus = storage.deleteData(address);
     }
-#if RECORD_BEDUG
+#if RECORD_BEDUG // TODO: up
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
 #endif
     if (storageStatus != STORAGE_OK) {

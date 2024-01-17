@@ -109,7 +109,7 @@ RecordStatus Record::save()
 		return RECORD_ERROR;
 	}
 
-    RecordClust clust(0);
+    RecordClust clust(0, this->size());
     RecordStatus recordStatus = RECORD_OK;
 
     record.time = clock_get_timestamp();
@@ -133,7 +133,7 @@ void Record::show()
     printPretty("##########RECORD##########\n");
     printPretty("Record ID: %lu\n", record.id);
     printPretty("Record time: %lu\n", record.time);
-    printPretty("№\tID\tVALUE\n");
+    printPretty("INDEX\tID\tVALUE\n");
     for (uint8_t i = 0; i < this->count(); i++) {
         printPretty("%03u\t%03u\t%u\n", i, record.sens[i].ID, record.sens[i].value);
     }
@@ -156,7 +156,8 @@ void Record::set(uint8_t ID, uint16_t value)
 	BEDUG_ASSERT(ID && ID <= MODBUS_SENS_COUNT, "Sensor index is out of range");
 
 	record.sens[m_counter].ID = ID;
-	record.sens[m_counter++].value = value;
+	record.sens[m_counter].value = value;
+	m_counter++;
 
 //#if RECORD_BEDUG // TODO
 //	printTagLog(TAG, "Sensor with ID=%u not found (target value=%u)", ID, value);
