@@ -5,15 +5,33 @@
 #include "log.h"
 #include "main.h"
 #include "soul.h"
+#include "main.h"
 #include "utils.h"
 #include "bmacro.h"
+
+#include "CodeStopwatch.h"
+
+
+#define STACK_CANARY_WORD (0xBEDAC0DE)
 
 
 unsigned StackWatchdog::lastFree = 0;
 
 
+void STACK_WATCHDOG_FILL_RAM(void) {
+	extern unsigned _ebss;
+	volatile unsigned *top, *start;
+	__asm__ volatile ("mov %[top], sp" : [top] "=r" (top) : : );
+	start = &_ebss;
+	while (start < top) {
+		*(start++) = STACK_CANARY_WORD;
+	}
+}
+
+
 void StackWatchdog::check()
 {
+	utl::CodeStopwatch stopwatch("STCK", GENERAL_TIMEOUT_MS);
 	extern unsigned _ebss;
 	unsigned *start, *end;
 	__asm__ volatile ("mov %[end], sp" : [end] "=r" (end) : : );

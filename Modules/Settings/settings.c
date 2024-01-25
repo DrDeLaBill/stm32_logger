@@ -71,7 +71,7 @@ void settings_show()
 {
 	printPretty("\n");
 	printPretty("####################SETTINGS####################\n");
-	printPretty("Device ID: %u\n", settings.dv_type);
+	printPretty("Device type: %u\n", settings.dv_type);
 	printPretty("Software v%u\n", settings.sw_id);
 	printPretty("Firmware v%u\n", settings.fw_id);
 	printPretty("Configuration ID: %lu\n", settings.cf_id);

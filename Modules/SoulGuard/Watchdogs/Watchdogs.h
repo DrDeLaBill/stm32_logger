@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "RTCWatchdog.h"
 #include "RestartWatchdog.h"
 #include "MemoryWatchdog.h"
 #include "StackWatchdog.h"

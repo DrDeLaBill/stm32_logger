@@ -5,9 +5,12 @@
 
 #include <variant>
 
+#include "main.h"
+#include "soul.h"
 #include "settings.h"
 
 #include "Watchdogs.h"
+#include "CodeStopwatch.h"
 #include "TypeListBuilder.h"
 
 
@@ -42,10 +45,12 @@ public:
 
 	bool hasErrors()
 	{
-		if (!is_settings_initialized()) {
-			return true;
+		utl::CodeStopwatch stopwatch("GRD", GENERAL_TIMEOUT_MS);
+		for (unsigned i = 0; i < END_ERRORS; i++) {
+			if (is_error(static_cast<FATAL_ERROR>(i + 1))) {
+				return true;
+			}
 		}
-		// TODO: errors list
 		return false;
 	}
 };

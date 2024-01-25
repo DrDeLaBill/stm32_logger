@@ -10,6 +10,7 @@
 #include "sensor.h"
 #include "bmacro.h"
 #include "sensor.h"
+#include "hal_defs.h"
 #include "settings.h"
 #include "modbus_rtu_master.h"
 
@@ -29,7 +30,7 @@ Measurer::Measurer(uint32_t delay)
 #if MEASURER_BEDUG
 	BEDUG_ASSERT(delay, "Measure delay should be longer");
 #endif
-	sensors_init(response_packet_handler);
+	sensors_init(&response_packet_handler);
 	this->delay = delay;
 }
 
@@ -95,7 +96,7 @@ void Measurer::_wait_s::operator ()()
 	}
 }
 
-utl::Timer Measurer::_save_s::timer(GENERAL_BUS_TIMEOUT_MS);
+utl::Timer Measurer::_save_s::timer(GENERAL_TIMEOUT_MS);
 void Measurer::_save_s::operator ()()
 {
 	if (Measurer::errorsCount >= ERRORS_MAX) {
@@ -115,12 +116,13 @@ void Measurer::_save_s::operator ()()
 	}
 }
 
-void Measurer::reset_sens_a::operator ()()
+void Measurer::init_sens_a::operator ()()
 {
 	fsm.clear_events();
 	Measurer::sensIndex = 0;
 	Measurer::errorsCount = 0;
 	m_record = Record(0, sensors_count());
+	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-reset_sens_a: event-no_sens_e");
@@ -160,6 +162,7 @@ void Measurer::save_start_a::operator ()()
 void Measurer::idle_start_a::operator ()()
 {
 	fsm.clear_events();
+	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
 	_idle_s::timer = utl::Timer(Measurer::delay);
 	_idle_s::timer.start();
 }
@@ -167,6 +170,7 @@ void Measurer::idle_start_a::operator ()()
 void Measurer::iterate_sens_a::operator ()()
 {
 	fsm.clear_events();
+	Measurer::errorsCount = 0;
 	if (++Measurer::sensIndex >= __arr_len(settings.modbus1_status)) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
@@ -184,13 +188,15 @@ void Measurer::iterate_sens_a::operator ()()
 void Measurer::count_error_a::operator ()()
 {
 	fsm.clear_events();
-	Measurer::errorsCount++;
+	Measurer::errorsCount++; // TODO: add new save try after error
 }
 
 void Measurer::register_error_a::operator ()()
 {
 	// TODO: send measure error to errors list
 	fsm.clear_events();
+	_idle_s::timer = utl::Timer(Measurer::delay);
+	_idle_s::timer.start();
 }
 
 void Measurer::response_packet_handler(modbus_response_t* packet)

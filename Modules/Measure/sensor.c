@@ -10,8 +10,10 @@
 #include "utils.h"
 #include "gtime.h"
 #include "bmacro.h"
+#include "hal_defs.h"
 #include "settings.h"
 #include "modbus_rtu_master.h"
+#include "modbus_rtu_slave.h"
 
 
 void _request_data_sender(uint8_t* data, uint32_t len);
@@ -34,11 +36,11 @@ uint8_t modbus2_char = 0;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart == &MODBUS1_UART) {
         modbus_master_recieve_data_byte(modbus1_char);
-        HAL_UART_Receive_IT(&MODBUS1_UART, (uint8_t*) &modbus1_char, 1);
+        HAL_UART_Receive_IT(&MODBUS1_UART, &modbus1_char, 1);
     }
     if (huart == &MODBUS2_UART) {
     	// TODO: fast sensors
-        HAL_UART_Receive_IT(&MODBUS2_UART, (uint8_t*) &modbus2_char, 1);
+        HAL_UART_Receive_IT(&MODBUS2_UART, &modbus2_char, 1);
     }
 }
 
@@ -51,8 +53,8 @@ void sensors_init(void (*response_packet_handler) (modbus_response_t*))
     modbus_master_set_response_packet_handler(response_packet_handler);
     modbus_master_set_internal_error_handler(_master_internal_error_handler);
 
-    HAL_UART_Receive_IT(&MODBUS1_UART, (uint8_t*) &modbus1_char, 1);
-    HAL_UART_Receive_IT(&MODBUS2_UART, (uint8_t*) &modbus2_char, 1);
+    HAL_UART_Receive_IT(&MODBUS1_UART, &modbus1_char, 1);
+    HAL_UART_Receive_IT(&MODBUS2_UART, &modbus2_char, 1);
 }
 
 uint8_t sensors_count()
@@ -116,7 +118,9 @@ void _request_data_sender(uint8_t* data, uint32_t len)
     }
     print("\n");
 #endif
-    HAL_UART_Transmit(&MODBUS1_UART, data, (uint16_t)len, GENERAL_BUS_TIMEOUT_MS);
+	HAL_GPIO_WritePin(MODBUS_EN_GPIO_Port, MODBUS_EN_Pin, GPIO_PIN_SET);
+    HAL_UART_Transmit(&MODBUS1_UART, data, (uint16_t)len, GENERAL_TIMEOUT_MS);
+	HAL_GPIO_WritePin(MODBUS_EN_GPIO_Port, MODBUS_EN_Pin, GPIO_PIN_RESET);
 }
 
 void _master_internal_error_handler(void)

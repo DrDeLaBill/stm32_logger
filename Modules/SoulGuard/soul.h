@@ -9,21 +9,35 @@ extern "C" {
 #endif
 
 
+#include <stdint.h>
 #include <stdbool.h>
 
+#include "utils.h"
+#include "hal_defs.h"
 
-#define STACK_CANARY_WORD (0xBEDAC0DE)
+
+typedef enum _FATAL_ERROR {
+	INTERNAL_ERROR = 1,
+	STACK_ERROR,
+	RAM_ERROR,
+	MODBUS_ERROR,
+	MEMORY_ERROR,
+//	RTC_ERROR, // TODO: this is not fatal
+	SETTINGS_ERROR,
+
+	/* Paste errors to the top */
+	END_ERRORS
+} FATAL_ERROR;
 
 
 typedef struct _soul_t {
+	uint8_t errors[__div_up(END_ERRORS-1, BITS_IN_BYTE)];
 } soul_t;
 
 
-extern soul_t soul;
-
-/* Filling an empty area of RAM with the STACK_CANARY_WORD value */
-/* For calculating the RAM fill factor  */
-extern void STACK_WATCHDOG_FILL_RAM(void);
+bool is_error(FATAL_ERROR error);
+void set_error(FATAL_ERROR error);
+void reset_error(FATAL_ERROR error);
 
 
 #ifdef __cplusplus

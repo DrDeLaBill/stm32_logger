@@ -43,8 +43,8 @@ typedef struct _flash_w25qxx_info_t {
 
 
 #define FLASH_W25_JEDEC_ID_SIZE       (sizeof(uint32_t))
-#define FLASH_W25_SR1_BUSY            ((uint8_t)0b00000001)
-#define FLASH_W25_SR1_WEL             ((uint8_t)0b00000010)
+#define FLASH_W25_SR1_BUSY            ((uint8_t)0x01)
+#define FLASH_W25_SR1_WEL             ((uint8_t)0x02)
 #define FLASH_W25_24BIT_ADDR_SIZE     ((uint16_t)512)
 #define FLASH_W25_SR1_UNBLOCK_VALUE   ((uint8_t)0x00)
 #define FLASH_W25_SR1_BLOCK_VALUE     ((uint8_t)0x0F)

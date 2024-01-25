@@ -45,7 +45,7 @@ private:
 	FSM_CREATE_STATE(save_s, _save_s);
 
 	// Actions:
-	struct reset_sens_a     {void operator()(void);};
+	struct init_sens_a      {void operator()(void);};
 	struct wait_start_a     {void operator()(void);};
 	struct save_start_a     {void operator()(void);};
 	struct idle_start_a     {void operator()(void);};
@@ -55,9 +55,9 @@ private:
 
 	// FSM table:
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,    ready_e,    request_s, reset_sens_a,     fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s,    ready_e,    request_s, init_sens_a,     fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<idle_s,    timeout_e,  request_s, reset_sens_a,     fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,    timeout_e,  request_s, init_sens_a,     fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<request_s, sended_e,   wait_s,    wait_start_a,     fsm::Guard::NO_GUARD>,
 		fsm::Transition<request_s, sens_end_e, save_s,    save_start_a,     fsm::Guard::NO_GUARD>,
@@ -65,7 +65,7 @@ private:
 		fsm::Transition<request_s, skip_e,     request_s, iterate_sens_a,   fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<wait_s,    response_e, request_s, iterate_sens_a,   fsm::Guard::NO_GUARD>,
-		fsm::Transition<wait_s,    timeout_e,  wait_s,    count_error_a,    fsm::Guard::NO_GUARD>,
+		fsm::Transition<wait_s,    timeout_e,  request_s, count_error_a,    fsm::Guard::NO_GUARD>,
 		fsm::Transition<wait_s,    error_e,    request_s, iterate_sens_a,   fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<save_s,    saved_e,    idle_s,    idle_start_a,     fsm::Guard::NO_GUARD>,

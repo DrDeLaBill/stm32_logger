@@ -22,7 +22,9 @@ Record::Record(uint32_t recordId, uint16_t sensCount):
 
 sensor_t& Record::operator[](const unsigned i)
 {
-	BEDUG_ASSERT(i < this->count(), "Sensor index is out of range"); // TODO: is check right?
+#if RECORD_BEDUG
+	BEDUG_ASSERT((i < this->count()), "Record sensors index is out of range"); // TODO: is check right?
+#endif
     return this->record.sens[i];
 }
 
@@ -37,7 +39,7 @@ RecordStatus Record::load()
 
     bool recordFound = false;
     unsigned id;
-    for (unsigned i = 0; i < clust.count(); i++) {
+    for (unsigned i = 0; i < clust.records_count(); i++) {
         if (clust[i].id == this->m_recordId) {
             recordFound = true;
             id = i;
@@ -73,7 +75,7 @@ RecordStatus Record::loadNext()
     bool recordFound = false;
     unsigned idx;
     uint32_t curId = 0xFFFFFFFF;
-    for (unsigned i = 0; i < clust.count(); i++) {
+    for (unsigned i = 0; i < clust.records_count(); i++) {
         if (clust[i].id > m_recordId && curId > clust[i].id) {
             curId = clust[i].id;
             recordFound = true;
@@ -116,10 +118,11 @@ RecordStatus Record::save()
     recordStatus = clust.save(&record, this->size());
 
 #ifdef RECORD_BEDUG
-    if (recordStatus != RECORD_OK) {
-        printTagLog(TAG, "New record was not saved");
-    } else {
+    if (recordStatus == RECORD_OK) {
+    	clust.show();
         this->show();
+    } else {
+        printTagLog(TAG, "New record was not saved");
     }
 #endif
 
@@ -129,13 +132,15 @@ RecordStatus Record::save()
 void Record::show()
 {
 #if RECORD_BEDUG
-	print("\n");
     printPretty("##########RECORD##########\n");
     printPretty("Record ID: %lu\n", record.id);
     printPretty("Record time: %lu\n", record.time);
     printPretty("INDEX\tID\tVALUE\n");
     for (uint8_t i = 0; i < this->count(); i++) {
         printPretty("%03u\t%03u\t%u\n", i, record.sens[i].ID, record.sens[i].value);
+    }
+    if (!this->count()) {
+        printPretty("----------EMPTY-----------\n");
     }
     printPretty("##########RECORD##########\n");
 #endif
@@ -154,6 +159,13 @@ unsigned Record::count()
 void Record::set(uint8_t ID, uint16_t value)
 {
 	BEDUG_ASSERT(ID && ID <= MODBUS_SENS_COUNT, "Sensor index is out of range");
+
+	for (uint8_t i = 0; i < this->count(); i++) {
+		if (record.sens[i].ID == ID) {
+			record.sens[i].value = value;
+			return;
+		}
+	}
 
 	record.sens[m_counter].ID = ID;
 	record.sens[m_counter].value = value;
@@ -178,4 +190,16 @@ uint16_t Record::get(uint8_t ID)
 	printTagLog(TAG, "Sensor with ID=%u not found", ID);
 #endif
 	return 0;
+}
+
+uint32_t Record::getSensorsCountBySize(uint32_t recordSize)
+{
+
+#if RECORD_BEDUG
+    BEDUG_ASSERT((recordSize > RECORD_META_SIZE), "Record size must be large than RECORD_META_SIZE");
+#endif
+    if (recordSize == 0) {
+        return 0;
+    }
+    return (recordSize - RECORD_META_SIZE) / sizeof(sensor_t);
 }

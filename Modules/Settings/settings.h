@@ -16,7 +16,7 @@ extern "C" {
 
 
 #define DEVICE_TYPE ((uint16_t)0x0001)
-#define SW_VERSION  ((uint8_t)0x03)
+#define SW_VERSION  ((uint8_t)0x04)
 #define FW_VERSION  ((uint8_t)0x01)
 #define CF_VERSION  ((uint8_t)0x01)
 

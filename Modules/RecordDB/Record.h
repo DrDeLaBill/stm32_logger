@@ -30,6 +30,8 @@ public:
     void set(uint8_t ID, uint16_t value);
     uint16_t get(uint8_t ID);
 
+    static uint32_t getSensorsCountBySize(uint32_t recordSize);
+
 private:
     static constexpr char TAG[] = "RCR";
     static constexpr char PREFIX[] = "RCR";

@@ -82,7 +82,6 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	STACK_WATCHDOG_FILL_RAM();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -119,12 +118,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   utl::Timer tim(SECOND_MS);
-  // TODO: RAM analyzer (https://habr.com/ru/articles/443030/) & crystal check & clock check & modbus check
+  utl::Timer err_tim(SECOND_MS / 10);
+  // TODO: RAM analyzer & crystal check & clock check & modbus check
   SoulGuard<
   	  RestartWatchdog,
 	  MemoryWatchdog,
 	  StackWatchdog,
-	  SettingsWatchdog
+	  SettingsWatchdog,
+	  RTCWatchdog
   > soulGuard;
   Measurer measurer(
 	  MINUTE_MS
@@ -135,6 +136,10 @@ int main(void)
 	  soulGuard.defend();
 
 	  if (soulGuard.hasErrors()) {
+		  if (!err_tim.wait()) { // TODO: remove blink
+			  err_tim.start();
+			  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		  }
 		  continue;
 	  }
     /* USER CODE END WHILE */
@@ -199,7 +204,7 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 int _write(int, uint8_t *ptr, int len) {
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_BUS_TIMEOUT_MS);
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_TIMEOUT_MS);
 #ifdef DEBUG
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);

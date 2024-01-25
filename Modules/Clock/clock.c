@@ -86,7 +86,7 @@ void clock_save_time(RTC_TimeTypeDef* time)
     }
     if (status != HAL_OK)
     {
-        printTagLog(CLOCK_TAG, "date was not saved");
+		BEDUG_ASSERT(false, "Unable to set current time");
     }
 }
 
@@ -100,7 +100,7 @@ void clock_save_date(RTC_DateTypeDef* date)
     }
     if (status != HAL_OK)
     {
-        printTagLog(CLOCK_TAG, "date was not saved");
+		BEDUG_ASSERT(false, "Unable to set current date");
     }
 }
 
@@ -172,6 +172,8 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 			break;
 		case DECEMBER:
 			days += 31;
+			break;
+		default:
 			break;
 		};
 	}

@@ -2,18 +2,34 @@
 
 #include "soul.h"
 
+#include <stdint.h>
 #include <stdbool.h>
 
 
-soul_t soul = {
+static soul_t soul = {
+	.errors = { 0 }
 };
 
-void STACK_WATCHDOG_FILL_RAM(void) {
-	extern unsigned _ebss;
-	volatile unsigned *top, *start;
-	__asm__ volatile ("mov %[top], sp" : [top] "=r" (top) : : );
-	start = &_ebss;
-	while (start < top) {
-		*(start++) = STACK_CANARY_WORD;
-	}
+
+bool is_error(FATAL_ERROR error)
+{
+	uint8_t err_num = (uint8_t)(error) - 1;
+	return (bool)(
+		(
+			soul.errors[err_num / BITS_IN_BYTE] >>
+			(err_num % BITS_IN_BYTE)
+		) & 0x01
+	);
+}
+
+void set_error(FATAL_ERROR error)
+{
+	uint8_t err_num = (uint8_t)(error) - 1;
+	soul.errors[err_num / BITS_IN_BYTE] |= (0x01 << (err_num % BITS_IN_BYTE));
+}
+
+void reset_error(FATAL_ERROR error)
+{
+	uint8_t err_num = (uint8_t)(error) - 1;
+	soul.errors[err_num / BITS_IN_BYTE] &= ~(0x01 << (err_num % BITS_IN_BYTE));
 }
