@@ -10,7 +10,7 @@
 #include "hal_defs.h"
 
 
-const char* CLOCK_TAG = "CLK";
+static const char CLOCK_TAG[] = "CLK";
 
 
 extern RTC_HandleTypeDef hrtc;
@@ -19,7 +19,7 @@ extern RTC_HandleTypeDef hrtc;
 uint8_t clock_get_year()
 {
     RTC_DateTypeDef date;
-    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -29,7 +29,7 @@ uint8_t clock_get_year()
 uint8_t clock_get_month()
 {
     RTC_DateTypeDef date;
-    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -39,7 +39,7 @@ uint8_t clock_get_month()
 uint8_t clock_get_date()
 {
     RTC_DateTypeDef date;
-    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -49,7 +49,7 @@ uint8_t clock_get_date()
 uint8_t clock_get_hour()
 {
     RTC_TimeTypeDef time;
-    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -59,7 +59,7 @@ uint8_t clock_get_hour()
 uint8_t clock_get_minute()
 {
     RTC_TimeTypeDef time;
-    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -69,7 +69,7 @@ uint8_t clock_get_minute()
 uint8_t clock_get_second()
 {
     RTC_TimeTypeDef time;
-    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD) != HAL_OK)
+    if (HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN) != HAL_OK)
     {
         return 0;
     }
@@ -82,7 +82,7 @@ void clock_save_time(RTC_TimeTypeDef* time)
     if (time->Seconds > 59 || time->Hours > 23 || time->Minutes > 59) {
         return;
     } else {
-        status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BCD);
+        status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
     }
     if (status != HAL_OK)
     {
@@ -96,7 +96,7 @@ void clock_save_date(RTC_DateTypeDef* date)
     if (date->Date > 31 || date->Month > 12) {
         return;
     } else {
-        status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BCD);
+        status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
     }
     if (status != HAL_OK)
     {
@@ -106,12 +106,12 @@ void clock_save_date(RTC_DateTypeDef* date)
 
 bool clock_get_rtc_time(RTC_TimeTypeDef* time)
 {
-	return HAL_OK == HAL_RTC_GetTime(&hrtc, time, RTC_FORMAT_BCD);
+	return HAL_OK == HAL_RTC_GetTime(&hrtc, time, RTC_FORMAT_BIN);
 }
 
 bool clock_get_rtc_date(RTC_DateTypeDef* date)
 {
-	return HAL_OK == HAL_RTC_GetDate(&hrtc, date, RTC_FORMAT_BCD);
+	return HAL_OK == HAL_RTC_GetDate(&hrtc, date, RTC_FORMAT_BIN);
 }
 
 enum Months {

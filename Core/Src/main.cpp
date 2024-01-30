@@ -33,6 +33,8 @@
 #include "w25qxx.h"
 #include "hal_defs.h"
 
+#include "usbd_customhid.h" // TODO: remove test
+
 #include "Timer.h"
 #include "Record.h"
 #include "settings.h"
@@ -110,48 +112,79 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
-  flash_w25qxx_init();
+    flash_w25qxx_init();
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  utl::Timer tim(SECOND_MS);
-  utl::Timer err_tim(SECOND_MS / 10);
-  // TODO: RAM analyzer & crystal check & clock check & modbus check
-  SoulGuard<
-  	  RestartWatchdog,
-	  MemoryWatchdog,
-	  StackWatchdog,
-	  SettingsWatchdog,
-	  RTCWatchdog
-  > soulGuard;
-  Measurer measurer(
-	  MINUTE_MS
-//	  settings.record_period
-  );
-  while (1)
-  {
-	  soulGuard.defend();
+	utl::Timer tim(SECOND_MS);
+	utl::Timer err_tim(SECOND_MS / 10);
+	// TODO: RAM analyzer & crystal check & clock check & modbus check
+	SoulGuard<
+		RestartWatchdog,
+		MemoryWatchdog,
+		StackWatchdog,
+		SettingsWatchdog,
+		RTCWatchdog
+	> soulGuard;
+	Measurer measurer(
+		MINUTE_MS
+	//	  settings.record_period
+	);
 
-	  if (soulGuard.hasErrors()) {
-		  if (!err_tim.wait()) { // TODO: remove blink
-			  err_tim.start();
-			  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		  }
-		  continue;
-	  }
+	extern USBD_HandleTypeDef hUsbDeviceFS;
+	uint8_t counter = 0;
+	uint8_t data[10] = {};
+	uint8_t dataToSend[10] = {};
+	uint8_t cnt=0;
+	while (1)
+	{
+		soulGuard.defend();
+
+		if (soulGuard.hasErrors()) {
+		if (!err_tim.wait()) { // TODO: remove blink
+			err_tim.start();
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		}
+			continue;
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  measurer.process();
+		measurer.process();
 
-	  if (!tim.wait()) { // TODO: remove blink
-		  tim.start();
-		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-	  }
-  }
+		if (!tim.wait()) { // TODO: remove blink
+			tim.start();
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+
+//			data[0] = 0xB2;
+//			data[1] = counter++;
+//			data[7] = 'L';
+//			data[8] = 'O';
+//			data[9] = 'G';
+//			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, data, sizeof(data));
+
+
+//			if(cnt==0) {dataToSend[0]=6;dataToSend[1]=1;}
+//			else if(cnt==1) {dataToSend[0]=6;dataToSend[1]=0;}
+//			else if(cnt==2) {dataToSend[0]=5;dataToSend[1]=1;}
+//			else if(cnt==3) {dataToSend[0]=5;dataToSend[1]=0;}
+//			dataToSend[2]='H';
+//			dataToSend[3]='I';
+//			dataToSend[4]='D';
+//			dataToSend[5]='H';
+//			dataToSend[6]='I';
+//			dataToSend[7]='D';
+//			dataToSend[8]='H';
+//			dataToSend[9]='I';
+//			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS,dataToSend,sizeof(dataToSend));
+//			cnt++;
+//			if(cnt>3) cnt=0;
+		}
+	}
   /* USER CODE END 3 */
 }
 

@@ -11,25 +11,74 @@ static soul_t soul = {
 };
 
 
-bool is_error(FATAL_ERROR error)
+bool _is_status(SOUL_STATUS status);
+void _set_status(SOUL_STATUS status);
+void _reset_status(SOUL_STATUS status);
+
+
+bool is_error(SOUL_STATUS error)
 {
-	uint8_t err_num = (uint8_t)(error) - 1;
+	if (error > ERRORS_START && error < ERRORS_END) {
+		return _is_status(error);
+	}
+	return false;
+}
+
+void set_error(SOUL_STATUS error)
+{
+	if (error > ERRORS_START && error < ERRORS_END) {
+		_set_status(error);
+	}
+}
+
+void reset_error(SOUL_STATUS error)
+{
+	if (error > ERRORS_START && error < ERRORS_END) {
+		_reset_status(error);
+	}
+}
+
+bool is_status(SOUL_STATUS status)
+{
+	if (status > STATUSES_START && status < STATUSES_END) {
+		return _is_status(status);
+	}
+	return false;
+}
+
+void set_status(SOUL_STATUS status)
+{
+	if (status > STATUSES_START && status < STATUSES_END) {
+		_set_status(status);
+	}
+}
+
+void reset_status(SOUL_STATUS status)
+{
+	if (status > STATUSES_START && status < STATUSES_END) {
+		_reset_status(status);
+	}
+}
+
+bool _is_status(SOUL_STATUS status)
+{
+	uint8_t status_num = (uint8_t)(status) - 1;
 	return (bool)(
 		(
-			soul.errors[err_num / BITS_IN_BYTE] >>
-			(err_num % BITS_IN_BYTE)
+			soul.errors[status_num / BITS_IN_BYTE] >>
+			(status_num % BITS_IN_BYTE)
 		) & 0x01
 	);
 }
 
-void set_error(FATAL_ERROR error)
+void _set_status(SOUL_STATUS status)
 {
-	uint8_t err_num = (uint8_t)(error) - 1;
-	soul.errors[err_num / BITS_IN_BYTE] |= (0x01 << (err_num % BITS_IN_BYTE));
+	uint8_t status_num = (uint8_t)(status) - 1;
+	soul.errors[status_num / BITS_IN_BYTE] |= (0x01 << (status_num % BITS_IN_BYTE));
 }
 
-void reset_error(FATAL_ERROR error)
+void _reset_status(SOUL_STATUS status)
 {
-	uint8_t err_num = (uint8_t)(error) - 1;
-	soul.errors[err_num / BITS_IN_BYTE] &= ~(0x01 << (err_num % BITS_IN_BYTE));
+	uint8_t status_num = (uint8_t)(status) - 1;
+	soul.errors[status_num / BITS_IN_BYTE] &= ~(0x01 << (status_num % BITS_IN_BYTE));
 }

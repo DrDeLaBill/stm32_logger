@@ -56,7 +56,19 @@ void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
-  return;
+
+  RTC_TimeTypeDef dumpTime = {0};
+  RTC_DateTypeDef dumpDate = {0};
+
+  if (HAL_RTC_GetTime(&hrtc, &dumpTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_RTC_GetDate(&hrtc, &dumpDate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   /* USER CODE END Check_RTC_BKUP */
 
   /** Initialize RTC and set the Time and Date
@@ -80,6 +92,15 @@ void MX_RTC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
+
+  if (HAL_RTC_SetTime(&hrtc, &dumpTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_RTC_SetDate(&hrtc, &dumpDate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /* USER CODE END RTC_Init 2 */
 

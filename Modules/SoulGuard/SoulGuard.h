@@ -46,8 +46,8 @@ public:
 	bool hasErrors()
 	{
 		utl::CodeStopwatch stopwatch("GRD", GENERAL_TIMEOUT_MS);
-		for (unsigned i = 0; i < END_ERRORS; i++) {
-			if (is_error(static_cast<FATAL_ERROR>(i + 1))) {
+		for (unsigned i = ERRORS_START + 1; i < ERRORS_END; i++) {
+			if (is_error(static_cast<SOUL_STATUS>(i + 1))) {
 				return true;
 			}
 		}

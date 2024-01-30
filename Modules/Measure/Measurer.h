@@ -55,9 +55,9 @@ private:
 
 	// FSM table:
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,    ready_e,    request_s, init_sens_a,     fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s,    ready_e,    request_s, init_sens_a,      fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<idle_s,    timeout_e,  request_s, init_sens_a,     fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,    timeout_e,  request_s, init_sens_a,      fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<request_s, sended_e,   wait_s,    wait_start_a,     fsm::Guard::NO_GUARD>,
 		fsm::Transition<request_s, sens_end_e, save_s,    save_start_a,     fsm::Guard::NO_GUARD>,

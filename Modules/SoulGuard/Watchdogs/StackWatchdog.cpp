@@ -66,7 +66,7 @@ void StackWatchdog::check()
 	}
 
 	BEDUG_ASSERT(
-		lastFree && !__abs_dif(lastFree, stack_end - heap_end),
+		heap_end && stack_end && lastFree && heap_end < stack_end,
 		"STACK OVERFLOW IS POSSIBLE or you didn't use the function STACK_WATCHDOG_FILL_RAM on startup"
 	);
 }

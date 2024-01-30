@@ -22,7 +22,7 @@
 #include "usbd_custom_hid_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "USB_HID_Table.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -91,7 +91,27 @@
 __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DESC_SIZE] __ALIGN_END =
 {
   /* USER CODE BEGIN 0 */
-  0x00,
+	0x06, 0x00, 0xff,            // USAGE_PAGE (Generic Desktop)
+	0x09, 0x01,                  // USAGE (Vendor Usage 1)
+	0xa1, 0x01,                  // COLLECTION (Application)
+		// Report B1
+		0x85, INPUT_REPORT_ID,   // REPORT_ID (B1)
+		0x09, 0x01,              // USAGE (Vendor Usage 1)
+		0x15, 0x00,              // LOGICAL_MINIMUM (0)
+		0x25, 0xFF,              // LOGICAL_MAXIMUM (255)
+		0x75, 0x08,              // REPORT_SIZE (8)
+		0x95, 0x04,              // REPORT_COUNT (5)
+		0xb1, 0x82,              // FEATURE (Data,Var,Abs,Vol)
+		0x85, INPUT_REPORT_ID,   // REPORT_ID (B1)
+		0x09, 0x01,              // USAGE (Vendor Usage 1)
+		0x91, 0x82,              // OUTPUT (Data,Var,Abs,Vol)
+
+		// Report B2
+		0x85, OUTPUT_REPORT_ID,  // REPORT_ID (B2)
+		0x09, 0x02,              // USAGE (Vendor Usage 2)
+		0x75, 0x08,              // REPORT_SIZE (8)
+		0x95, 0x09,              // REPORT_COUNT (9)
+		0x81, 0x82,              // INPUT (Data,Var,Abs,Vol)
   /* USER CODE END 0 */
   0xC0    /*     END_COLLECTION	             */
 };

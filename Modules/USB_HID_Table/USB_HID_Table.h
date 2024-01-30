@@ -12,6 +12,10 @@ extern "C" {
 #include <stdint.h>
 
 
+#define INPUT_REPORT_ID  ((uint8_t)0xB1)
+#define OUTPUT_REPORT_ID ((uint8_t)0xB2)
+
+
 typedef struct _DESCRIPTOR_UNIT {
 	uint8_t* ptr;
 	uint8_t  size;
