@@ -44,6 +44,8 @@
 #include "StorageAT.h"
 #include "StorageDriver.h"
 #include "CodeStopwatch.h"
+
+#include "USBController.h" // TODO: remove test
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -130,15 +132,14 @@ int main(void)
 		RTCWatchdog
 	> soulGuard;
 	Measurer measurer(
-		MINUTE_MS
+		HOUR_MS
 	//	  settings.record_period
 	);
 
 	extern USBD_HandleTypeDef hUsbDeviceFS;
 	uint8_t counter = 0;
 	uint8_t data[10] = {};
-	uint8_t dataToSend[10] = {};
-	uint8_t cnt=0;
+	USBController cntrlr; // TODO: remove test
 	while (1)
 	{
 		soulGuard.defend();
@@ -160,29 +161,12 @@ int main(void)
 			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 
 
-//			data[0] = 0xB2;
-//			data[1] = counter++;
-//			data[7] = 'L';
-//			data[8] = 'O';
-//			data[9] = 'G';
-//			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, data, sizeof(data));
-
-
-//			if(cnt==0) {dataToSend[0]=6;dataToSend[1]=1;}
-//			else if(cnt==1) {dataToSend[0]=6;dataToSend[1]=0;}
-//			else if(cnt==2) {dataToSend[0]=5;dataToSend[1]=1;}
-//			else if(cnt==3) {dataToSend[0]=5;dataToSend[1]=0;}
-//			dataToSend[2]='H';
-//			dataToSend[3]='I';
-//			dataToSend[4]='D';
-//			dataToSend[5]='H';
-//			dataToSend[6]='I';
-//			dataToSend[7]='D';
-//			dataToSend[8]='H';
-//			dataToSend[9]='I';
-//			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS,dataToSend,sizeof(dataToSend));
-//			cnt++;
-//			if(cnt>3) cnt=0;
+			data[0] = 0xB2;
+			data[1] = counter++;
+			data[7] = 'L';
+			data[8] = 'O';
+			data[9] = 'G';
+			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, data, sizeof(data));
 		}
 	}
   /* USER CODE END 3 */

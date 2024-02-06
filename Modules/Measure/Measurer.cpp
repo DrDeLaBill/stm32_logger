@@ -22,7 +22,7 @@ uint32_t Measurer::sensIndex  = 0;
 uint8_t Measurer::errorsCount = 0;
 
 fsm::FiniteStateMachine<Measurer::fsm_table> Measurer::fsm;
-Record Measurer::m_record(0);
+Record Measurer::record(0);
 
 
 Measurer::Measurer(uint32_t delay)
@@ -50,7 +50,7 @@ utl::Timer Measurer::_idle_s::timer(HOUR_MS);
 void Measurer::_idle_s::operator ()()
 {
 	if (!_idle_s::timer.wait()) {
-		Measurer::m_record = Record(0, sensors_count());
+		Measurer::record = Record(0, sensors_count());
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_idle_s: event-timeout_e");
 #endif
@@ -87,7 +87,7 @@ void Measurer::_wait_s::operator ()()
 	}
 
 	if (!_wait_s::timer.wait()) {
-	    m_record.set(sensIndex + 1, SENSOR_ERROR_VALUE);
+	    record.set(sensIndex + 1, SENSOR_ERROR_VALUE);
 		sensor_timeout();
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_wait_s: event-timeout_e");
@@ -121,7 +121,7 @@ void Measurer::init_sens_a::operator ()()
 	fsm.clear_events();
 	Measurer::sensIndex = 0;
 	Measurer::errorsCount = 0;
-	m_record = Record(0, sensors_count());
+	record = Record(0, sensors_count());
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
@@ -143,7 +143,7 @@ void Measurer::save_start_a::operator ()()
 #if MEASURER_BEDUG
 	printTagLog(TAG, "Save new record begin");
 #endif
-	if (m_record.save() == RECORD_OK) {
+	if (record.save() == RECORD_OK) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-save_start_a: event-saved_e");
 #endif
@@ -216,7 +216,7 @@ void Measurer::response_packet_handler(modbus_response_t* packet)
         return;
     }
 
-    m_record.set(sensIndex + 1, packet->response[0]);
+    record.set(sensIndex + 1, packet->response[0]);
     fsm.push_event(response_e{});
 
 #if MEASURER_BEDUG

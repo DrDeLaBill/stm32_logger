@@ -79,7 +79,6 @@ protected:
 	static uint32_t delay;
 	static uint32_t sensIndex;
 	static uint8_t  errorsCount;
-	static Record m_record;
 
 	static constexpr char TAG[] = "MSR";
 	static constexpr uint8_t ERRORS_MAX = 10;
@@ -87,6 +86,8 @@ protected:
 	static fsm::FiniteStateMachine<fsm_table> fsm;
 
 public:
+	static Record record;
+
 	Measurer(uint32_t delay);
 	void process();
 
