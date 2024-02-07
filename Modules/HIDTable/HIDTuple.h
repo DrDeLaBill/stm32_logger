@@ -20,29 +20,46 @@ struct HIDTuple : HIDTupleBase
     type_t* target(unsigned index = 0)
     {
         type_t* value = getter_f{}();
-        BEDUG_ASSERT(value, "Value must not be null");
         if (!value) {
+#ifdef USE_HAL_DRIVER
+            BEDUG_ASSERT(false, "Value must not be null");
         	return nullptr;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
         }
         return value + index;
     }
 
     type_t deserialize(const uint8_t* src)
     {
-        BEDUG_ASSERT(src, "Source must not be null");
         if (!src) {
+#ifdef USE_HAL_DRIVER
+            BEDUG_ASSERT(false, "Source must not be null");
         	return 0;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
         }
         return utl::deserialize<type_t>(src)[0];
     }
 
     std::shared_ptr<uint8_t[]> serialize(unsigned index = 0)
     {
-        BEDUG_ASSERT(target(), "Target must not be null");
         if (!target()) {
+#ifdef USE_HAL_DRIVER
+            BEDUG_ASSERT(false, "Target must not be null");
         	return nullptr;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
         }
         return utl::serialize<type_t>(target(index));
+    }
+
+    constexpr unsigned size()
+    {
+    	return sizeof(type_t);
     }
 };
 

@@ -10,9 +10,6 @@
 #include "hal_defs.h"
 
 
-static const char CLOCK_TAG[] = "CLK";
-
-
 extern RTC_HandleTypeDef hrtc;
 
 

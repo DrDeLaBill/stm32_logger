@@ -32,6 +32,12 @@ private:
     >;
 
     HIDController<hid_table_t> hid_controller;
+
+    void clear();
+
+public:
+    void proccess();
+
 };
 
 

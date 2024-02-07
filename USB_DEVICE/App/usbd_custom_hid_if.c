@@ -22,6 +22,7 @@
 #include "usbd_custom_hid_if.h"
 
 /* USER CODE BEGIN INCLUDE */
+#include "utils.h"
 #include "hid_defs.h"
 /* USER CODE END INCLUDE */
 
@@ -31,7 +32,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+uint8_t receive_buf[HID_REPORT_SIZE + 1] = {};
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -198,6 +199,12 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
   /* USER CODE BEGIN 6 */
   UNUSED(event_idx);
   UNUSED(state);
+
+  USBD_CUSTOM_HID_HandleTypeDef* hhid = (USBD_CUSTOM_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+
+  for (unsigned i = 0; i < __arr_len(receive_buf); i++) {
+	  receive_buf[i] = hhid->Report_buf[i];
+  }
 
   /* Start next USB packet transfer once data processing is completed */
   if (USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS) != (uint8_t)USBD_OK)

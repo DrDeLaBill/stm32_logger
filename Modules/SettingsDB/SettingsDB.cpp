@@ -31,7 +31,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
         return SETTINGS_ERROR;
     }
 
-    uint8_t tmpSettings[this->size] = { };
+    uint8_t tmpSettings[this->size] = {}; // TODO: warn
     status = storage.load(address, tmpSettings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG

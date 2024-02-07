@@ -2,6 +2,8 @@
 
 #include "StackWatchdog.h"
 
+#include <cstring>
+
 #include "log.h"
 #include "main.h"
 #include "soul.h"
@@ -39,34 +41,40 @@ void StackWatchdog::check()
 
 	unsigned heap_end = 0;
 	unsigned stack_end = 0;
+	unsigned last_counter = 0;
+	unsigned cur_counter = 0;
 	for (;start < end; start++) {
-		if (!heap_end && (*start) == STACK_CANARY_WORD) {
-			heap_end = (unsigned)start;
+		if ((*start) == STACK_CANARY_WORD) {
+			cur_counter++;
 		}
-		if (!heap_end) {
-			continue;
-		}
-		if (*start == STACK_CANARY_WORD) {
-			stack_end = (unsigned)start;
+		if (cur_counter && (*start) != STACK_CANARY_WORD) {
+			if (last_counter < cur_counter) {
+				last_counter = cur_counter;
+				heap_end     = (unsigned)start - cur_counter;
+				stack_end    = (unsigned)start;
+			}
+
+			cur_counter = 0;
 		}
 	}
 
-
-	if (!heap_end || !stack_end) {
+	if (!last_counter) {
 		// TODO: an error is possible
-	} else if (__abs_dif(lastFree, stack_end - heap_end)) {
+	} else if (__abs_dif(lastFree, last_counter)) {
+		extern unsigned _sdata;
 		extern unsigned _estack;
-		printTagLog(TAG, "RAM heap  MAX:[0x%08X->0x%08X] %u bytes", (unsigned)&_ebss, heap_end, __abs_dif((unsigned)&_ebss, heap_end) * sizeof(unsigned));
-		printTagLog(TAG, "RAM stack MAX:[0x%08X->0x%08X] %u bytes", stack_end, (unsigned)end, __abs_dif(stack_end, (unsigned)&_estack) * sizeof(unsigned));
-		printTagLog(TAG, "RAM free  MIN: %u bytes", (stack_end - heap_end));
+		printTagLog(TAG, "-----ATTENTION! INDIRECT DATA BEGIN:-----");
+		printTagLog(TAG, "RAM occupied MAX: %u bytes", __abs_dif((unsigned)&_sdata, (unsigned)&_estack) - last_counter);
+		printTagLog(TAG, "RAM free  MIN:    %u bytes", last_counter);
+		printTagLog(TAG, "------ATTENTION! INDIRECT DATA END-------");
 	}
 
-	if (heap_end && stack_end) {
-		lastFree = stack_end - heap_end;
+	if (last_counter) {
+		lastFree = last_counter;
 	}
 
 	BEDUG_ASSERT(
-		heap_end && stack_end && lastFree && heap_end < stack_end,
+		last_counter && lastFree && heap_end < stack_end,
 		"STACK OVERFLOW IS POSSIBLE or you didn't use the function STACK_WATCHDOG_FILL_RAM on startup"
 	);
 }

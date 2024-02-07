@@ -33,8 +33,6 @@
 #include "w25qxx.h"
 #include "hal_defs.h"
 
-#include "usbd_customhid.h" // TODO: remove test
-
 #include "Timer.h"
 #include "Record.h"
 #include "settings.h"
@@ -44,8 +42,7 @@
 #include "StorageAT.h"
 #include "StorageDriver.h"
 #include "CodeStopwatch.h"
-
-#include "USBController.h" // TODO: remove test
+#include "USBController.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -135,38 +132,30 @@ int main(void)
 		HOUR_MS
 	//	  settings.record_period
 	);
+	USBController usbc;
 
-	extern USBD_HandleTypeDef hUsbDeviceFS;
 	uint8_t counter = 0;
 	uint8_t data[10] = {};
-	USBController cntrlr; // TODO: remove test
 	while (1)
 	{
 		soulGuard.defend();
 
 		if (soulGuard.hasErrors()) {
-		if (!err_tim.wait()) { // TODO: remove blink
-			err_tim.start();
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		}
+			if (!err_tim.wait()) { // TODO: remove blink
+				err_tim.start();
+				HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			}
 			continue;
 		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 		measurer.process();
+		usbc.proccess();
 
 		if (!tim.wait()) { // TODO: remove blink
 			tim.start();
 			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-
-
-			data[0] = 0xB2;
-			data[1] = counter++;
-			data[7] = 'L';
-			data[8] = 'O';
-			data[9] = 'G';
-			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, data, sizeof(data));
 		}
 	}
   /* USER CODE END 3 */

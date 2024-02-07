@@ -4,14 +4,12 @@
 #define HIDCONTROLLER_H
 
 
+#include <cstring>
 #include <unordered_map>
 
 #include "hid_defs.h"
 #include "HIDTable.h"
 #include "HIDTuple.h"
-
-
-static const char REPORT_PREFIX[] = "LOG";
 
 
 template<class Table>
@@ -67,12 +65,35 @@ public:
     {
         auto it = characteristics.find(key);
         if (it == characteristics.end()) {
+#ifdef USE_HAL_DRIVER
         	BEDUG_ASSERT(false, "HID table not found error");
         	return;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
         }
 
         auto lambda = [&] (auto& tuple) {
             tuple.target()[index] = tuple.deserialize(value);
+        };
+
+        std::visit(lambda, it->second);
+    }
+
+    void getValue(const uint16_t key, uint8_t* dst, const uint8_t index = 0)
+    {
+    	auto it = characteristics.find(key);
+        if (it == characteristics.end()) {
+#ifdef USE_HAL_DRIVER
+        	BEDUG_ASSERT(false, "HID table not found error");
+        	return;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
+        }
+
+        auto lambda = [&] (auto& tuple) {
+        	memcpy(dst, tuple.serialize(index).get(), tuple.size());
         };
 
         std::visit(lambda, it->second);
