@@ -88,23 +88,23 @@ void settings_show()
     	printPretty("%03u\t", i + 1);
     	switch(settings.modbus1_status[i]) {
     	case SETTINGS_SENSOR_THERMAL:
-        	print("%s\t", "THERMAL");
+        	gprint("%s\t", "THERMAL");
         	break;
     	case SETTINGS_SENSOR_HUMIDITY:
-    		print("%s\t", "HUMIDTY");
+    		gprint("%s\t", "HUMIDTY");
         	break;
     	case SETTINGS_SENSOR_ANOTHER:
-    		print("%s\t", "ANOTHER");
+    		gprint("%s\t", "ANOTHER");
         	break;
     	case SETTINGS_SENSOR_ERROR:
-    		print("%s\t", "ERROR");
+    		gprint("%s\t", "ERROR");
         	break;
     	default:
         	printPretty("%s\t", "UNKNWN");
         	break;
     	};
-    	print("%03u\t", settings.modbus1_value_reg[i]);
-    	print("%03u\n", settings.modbus1_id_reg[i]);
+    	gprint("%03u\t", settings.modbus1_value_reg[i]);
+    	gprint("%03u\n", settings.modbus1_id_reg[i]);
     	counter++;
     }
     if (!counter) {

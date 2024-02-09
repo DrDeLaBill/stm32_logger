@@ -4,18 +4,26 @@
 #define HIDCONTROLLER_H
 
 
+#include <variant>
 #include <cstring>
 #include <unordered_map>
 
 #include "hid_defs.h"
 #include "HIDTable.h"
 #include "HIDTuple.h"
+#ifdef USE_HAL_DRIVER
+#include "bmacro.h"
+#else
+#include "app_exception.h"
+#endif
 
 
 template<class Table>
 struct HIDController
 {
 private:
+    uint16_t max_key;
+
     static_assert(std::is_base_of<HIDTableBase, Table>::value, "Template class must be HIDTable");
 
     using tuple_p = typename Table::tuple_p;
@@ -30,6 +38,7 @@ private:
     void set_table(utl::simple_list_t<TuplePacks...>)
     {
         (set_tuple(utl::getType<TuplePacks>{}), ...);
+        max_key--;
     }
 
     template<class TuplePack>
@@ -37,27 +46,24 @@ private:
     {
         using tuple_t = typename decltype(tuplePack)::TYPE;
 
-        static uint16_t key = FIRST_KEY;
-
-        characteristics.insert({key++, tuple_t{}});
+        characteristics.insert({max_key++, tuple_t{}});
     }
 
-    void read()
-    {
-        uint16_t key = FIRST_KEY;
-        auto it = characteristics.begin();
-        while((it = characteristics.find(key++)) != characteristics.end()) {
-            // TODO: read characteristics from USB
-        }
-    }
+//    void read() // TODO: remove
+//    {
+//        uint16_t key = HID_FIRST_KEY;
+//        auto it = characteristics.begin();
+//        while((it = characteristics.find(key++)) != characteristics.end()) {
+//            // TODO: read characteristics from USB
+//        }
+//    }
 
 public:
-    static constexpr uint16_t FIRST_KEY = 1;
-
     tuple_t characteristics;
 
     HIDController()
     {
+        max_key = HID_FIRST_KEY;
         set_table(tuple_p{});
     }
 
@@ -97,6 +103,30 @@ public:
         };
 
         std::visit(lambda, it->second);
+    }
+
+    constexpr unsigned maxKey()
+    {
+        return max_key;
+    }
+
+    constexpr unsigned characteristicLength(uint16_t characteristic_id)
+    {
+        auto it = characteristics.find(characteristic_id);
+        if (it == characteristics.end()) {
+#ifdef USE_HAL_DRIVER
+            BEDUG_ASSERT(false, "HID table not found error");
+            return 0;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
+        }
+
+        auto lambda = [] (const auto& tuple) {
+            return tuple.length();
+        };
+
+        return std::visit(lambda, it->second);
     }
 
 };

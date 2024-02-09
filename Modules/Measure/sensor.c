@@ -111,12 +111,12 @@ void _request_data_sender(uint8_t* data, uint32_t len)
 	}
 
 #if SENSOR_BEDUG
-	print("%08lu->%s:\t", getMillis(), SENSOR_TAG);
-	print("SENDED  : ");
+	gprint("%08lu->%s:\t", getMillis(), SENSOR_TAG);
+	gprint("SENDED  : ");
     for (uint32_t i = 0; i < len; i++) {
-    	print("%02X ", data[i]);
+    	gprint("%02X ", data[i]);
     }
-    print("\n");
+    gprint("\n");
 #endif
 	HAL_GPIO_WritePin(MODBUS_EN_GPIO_Port, MODBUS_EN_Pin, GPIO_PIN_SET);
     HAL_UART_Transmit(&MODBUS1_UART, data, (uint16_t)len, GENERAL_TIMEOUT_MS);

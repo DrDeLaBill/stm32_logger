@@ -6,13 +6,19 @@
 
 #include <memory>
 
-#include "bmacro.h"
+#ifdef USE_HAL_DRIVER
+#   include "bmacro.h"
+#else
+#   include "app_exception.h"
+#endif
+
 #include "variables.h"
+
 
 
 struct HIDTupleBase {};
 
-template<class type_t, class getter_f = void>
+template<class type_t, class getter_f = void, unsigned LENGTH = 1>
 struct HIDTuple : HIDTupleBase
 {
     static_assert(!std::is_same<getter_f, void>::value, "Tuple getter functor must be non void");
@@ -20,7 +26,7 @@ struct HIDTuple : HIDTupleBase
     type_t* target(unsigned index = 0)
     {
         type_t* value = getter_f{}();
-        if (!value) {
+        if (!value || index >= length()) {
 #ifdef USE_HAL_DRIVER
             BEDUG_ASSERT(false, "Value must not be null");
         	return nullptr;
@@ -46,7 +52,7 @@ struct HIDTuple : HIDTupleBase
 
     std::shared_ptr<uint8_t[]> serialize(unsigned index = 0)
     {
-        if (!target()) {
+        if (!target() || index >= length()) {
 #ifdef USE_HAL_DRIVER
             BEDUG_ASSERT(false, "Target must not be null");
         	return nullptr;
@@ -57,9 +63,14 @@ struct HIDTuple : HIDTupleBase
         return utl::serialize<type_t>(target(index));
     }
 
-    constexpr unsigned size()
+    constexpr unsigned size() const // TODO: find references
     {
-    	return sizeof(type_t);
+        return sizeof(type_t) * length();
+    }
+
+    constexpr unsigned length() const
+    {
+        return LENGTH;
     }
 };
 

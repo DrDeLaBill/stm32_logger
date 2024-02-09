@@ -32,7 +32,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-uint8_t receive_buf[HID_REPORT_SIZE + 1] = {};
+uint8_t receive_buf[sizeof(report_pack_t) + 1] = {}; // TODO: size is 11 (not 13)
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -202,7 +202,7 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
 
   USBD_CUSTOM_HID_HandleTypeDef* hhid = (USBD_CUSTOM_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
 
-  for (unsigned i = 0; i < __arr_len(receive_buf); i++) {
+  for (unsigned i = 0; i < USBD_CUSTOMHID_OUTREPORT_BUF_SIZE; i++) {
 	  receive_buf[i] = hhid->Report_buf[i];
   }
 

@@ -11,7 +11,7 @@
 void USBController::proccess()
 {
 	uint8_t counter = 0;
-	hid_report_t request = {};
+	report_pack_t request = {};
 	request.report_id = receive_buf[counter++];
 
 	if (request.report_id != HID_INPUT_REPORT_ID) {
@@ -36,11 +36,11 @@ void USBController::proccess()
 		return;
 	}
 
-	hid_report_t response = {};
+	report_pack_t response = {};
 	response.report_id         = HID_OUTPUT_REPORT_ID;
 	response.characteristic_id = 0;
 	response.index             = request.index;
-	memcpy(response.data, REPORT_PREFIX, sizeof(response.data));
+	memcpy(response.tag, REPORT_PREFIX, sizeof(response.tag));
 
 	if (request.characteristic_id == HID_GETTER_ID) {
 		response.characteristic_id = utl::deserialize<uint16_t>(request.data)[0];

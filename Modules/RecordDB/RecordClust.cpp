@@ -200,7 +200,7 @@ void RecordClust::show()
 	    for (uint8_t j = 0; j < Record::getSensorsCountBySize(m_clust.rcrd_size); j++) {
 	    	sensor_t* sensPtr = reinterpret_cast<sensor_t*>((*this)[i].sens);
 	    	if (j == 0) {
-	    		print("%03u      %u\n", sensPtr[j].ID, sensPtr[j].value);
+	    		gprint("%03u      %u\n", sensPtr[j].ID, sensPtr[j].value);
 	    	} else {
 	    		printPretty("                           %03u      %u\n", sensPtr[j].ID, sensPtr[j].value);
 	    	}
