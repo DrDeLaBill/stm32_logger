@@ -34,6 +34,13 @@ private:
         tuple_v
     >;
 
+    void details(const uint16_t key, const uint8_t index)
+    {
+#ifdef USE_HAL_DRIVER
+        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, maxKey());
+#endif
+    }
+
     template<class... TuplePacks>
     void set_table(utl::simple_list_t<TuplePacks...>)
     {
@@ -48,15 +55,6 @@ private:
 
         characteristics.insert({max_key++, tuple_t{}});
     }
-
-//    void read() // TODO: remove
-//    {
-//        uint16_t key = HID_FIRST_KEY;
-//        auto it = characteristics.begin();
-//        while((it = characteristics.find(key++)) != characteristics.end()) {
-//            // TODO: read characteristics from USB
-//        }
-//    }
 
 public:
     tuple_t characteristics;
@@ -73,6 +71,7 @@ public:
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
         	BEDUG_ASSERT(false, "HID table not found error");
+        	details(key, index);
         	return;
 #else
             throw new exceptions::TemplateErrorException();
@@ -92,6 +91,7 @@ public:
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
         	BEDUG_ASSERT(false, "HID table not found error");
+        	details(key, index);
         	return;
 #else
             throw new exceptions::TemplateErrorException();
@@ -116,17 +116,21 @@ public:
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
             BEDUG_ASSERT(false, "HID table not found error");
+        	details(characteristic_id, 0);
             return 0;
 #else
             throw new exceptions::TemplateErrorException();
 #endif
         }
 
-        auto lambda = [] (const auto& tuple) {
-            return tuple.length();
+        unsigned result = 0;
+        auto lambda = [&] (const auto& tuple) {
+            result = tuple.length();
         };
 
-        return std::visit(lambda, it->second);
+        std::visit(lambda, it->second);
+
+        return result;
     }
 
 };

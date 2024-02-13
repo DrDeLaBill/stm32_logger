@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -32,7 +33,7 @@ extern "C" {
 
 #define HID_FIRST_KEY        ((uint16_t)1)
 
-#define HID_DELAY_MS         (1000)
+#define HID_DELAY_MS         (25)
 
 
 static const char REPORT_PREFIX[] = { 'L', 'O', 'G' };

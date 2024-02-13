@@ -5,6 +5,7 @@
 
 
 #include <memory>
+#include <cstdint>
 
 #ifdef USE_HAL_DRIVER
 #   include "bmacro.h"
@@ -15,26 +16,54 @@
 #include "variables.h"
 
 
-
 struct HIDTupleBase {};
 
 template<class type_t, class getter_f = void, unsigned LENGTH = 1>
 struct HIDTuple : HIDTupleBase
 {
     static_assert(!std::is_same<getter_f, void>::value, "Tuple getter functor must be non void");
+    static_assert(LENGTH > 0, "Length must not be 0");
+
+
+    constexpr unsigned size() const // TODO: find references
+    {
+        return sizeof(type_t);
+    }
+
+    constexpr unsigned length() const
+    {
+        return LENGTH;
+    }
+
+    void details(unsigned index = 0)
+    {
+#ifdef USE_HAL_DRIVER
+        gprint("Details: target pointer = %u; index = %u; size = %d; length = %u\n", reinterpret_cast<unsigned>(target()), index, sizeof(type_t), length());
+#endif
+    }
 
     type_t* target(unsigned index = 0)
     {
-        type_t* value = getter_f{}();
-        if (!value || index >= length()) {
+        if (index >= length()) {
 #ifdef USE_HAL_DRIVER
-            BEDUG_ASSERT(false, "Value must not be null");
+            BEDUG_ASSERT(false, "The value index is large than the value length");
+            details(index);
         	return nullptr;
 #else
             throw new exceptions::TemplateErrorException();
 #endif
         }
-        return value + index;
+        type_t* value = getter_f{}();
+        if (!value) {
+#ifdef USE_HAL_DRIVER
+            BEDUG_ASSERT(false, "Value must not be null");
+            details(index);
+        	return nullptr;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
+        }
+        return value + index; // * sizeof(type_t);
     }
 
     type_t deserialize(const uint8_t* src)
@@ -52,25 +81,17 @@ struct HIDTuple : HIDTupleBase
 
     std::shared_ptr<uint8_t[]> serialize(unsigned index = 0)
     {
-        if (!target() || index >= length()) {
+    	type_t* value = target(index);
+        if (!value || index >= length()) {
 #ifdef USE_HAL_DRIVER
             BEDUG_ASSERT(false, "Target must not be null");
+            details(index);
         	return nullptr;
 #else
             throw new exceptions::TemplateErrorException();
 #endif
         }
-        return utl::serialize<type_t>(target(index));
-    }
-
-    constexpr unsigned size() const // TODO: find references
-    {
-        return sizeof(type_t) * length();
-    }
-
-    constexpr unsigned length() const
-    {
-        return LENGTH;
+        return utl::serialize<type_t>(value);
     }
 };
 

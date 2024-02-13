@@ -129,13 +129,10 @@ int main(void)
 		RTCWatchdog
 	> soulGuard;
 	Measurer measurer(
-		HOUR_MS
-	//	  settings.record_period
+		settings.record_period
 	);
 	USBController usbc;
 
-	uint8_t counter = 0;
-	uint8_t data[10] = {};
 	while (1)
 	{
 		soulGuard.defend();
