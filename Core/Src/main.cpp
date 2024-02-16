@@ -62,7 +62,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-//static const char* TAG = "MAIN";
+
+static constexpr char MAIN_TAG[] = "MAIN";
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

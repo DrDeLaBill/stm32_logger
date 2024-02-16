@@ -6,16 +6,20 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "bmacro.h"
 #include "w25qxx.h"
+#include "bmacro.h"
 #include "settings.h"
 
 #include "Record.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
+#include "CodeStopwatch.h"
 
 
-RecordClust::RecordClust(uint32_t recordId, uint32_t recordSize):
+extern StorageAT storage;
+
+
+RecordClust::RecordClust(uint32_t recordId, uint16_t recordSize):
  	m_recordId(recordId), m_recordSize(recordSize), m_address(0)
 {
     memset(reinterpret_cast<void*>(&m_clust), 0, sizeof(m_clust));
@@ -134,10 +138,9 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
     {
         StorageDriver storageDriver;
         StorageAT storage(
-            flash_w25qxx_get_pages_count(),
-            &storageDriver
+        	flash_w25qxx_get_pages_count(),
+        	&storageDriver
         );
-
         storageStatus = storage.rewrite(m_address, PREFIX, newId, reinterpret_cast<uint8_t*>(&m_clust), m_clust.size());
 #if RECORD_BEDUG
         BEDUG_ASSERT((storageStatus == STORAGE_OK), "Storage save record error");
@@ -154,7 +157,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 #if RECORD_BEDUG
     BEDUG_ASSERT((recordStatus == RECORD_OK), "Error loading the saved record");
     if (recordStatus == RECORD_OK) {
-        printTagLog(TAG, "Record cluster saved (address=%lu, id=%lu, record_size=%lu)", m_address, newId, m_recordSize);
+        printTagLog(TAG, "Record cluster saved (address=%lu, id=%lu, record_size=%u)", m_address, newId, m_recordSize);
     }
 #endif
 
@@ -217,8 +220,8 @@ bool RecordClust::loadExist(bool validateSize)
 {
     StorageDriver storageDriver;
     StorageAT storage(
-        flash_w25qxx_get_pages_count(),
-        &storageDriver
+    	flash_w25qxx_get_pages_count(),
+    	&storageDriver
     );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
@@ -266,7 +269,7 @@ bool RecordClust::loadExist(bool validateSize)
 #if RECORD_BEDUG
         printTagLog(TAG, "Validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
 #endif
-        BEDUG_ASSERT(storage.deleteData(address) == STORAGE_OK, "Delete record error");
+        BEDUG_ASSERT(storage.clearAddress(address) == STORAGE_OK, "Delete record error");
         return false;
     }
 
@@ -291,8 +294,8 @@ bool RecordClust::createNew()
 {
     StorageDriver storageDriver;
     StorageAT storage(
-        flash_w25qxx_get_pages_count(),
-        &storageDriver
+    	flash_w25qxx_get_pages_count(),
+    	&storageDriver
     );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
@@ -312,7 +315,7 @@ bool RecordClust::createNew()
     }
 
     if (findMode == FIND_MODE_MIN) {
-        storageStatus = storage.deleteData(address);
+        storageStatus = storage.clearAddress(address);
     }
 #if RECORD_BEDUG // TODO: up
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
@@ -333,10 +336,12 @@ bool RecordClust::createNew()
 
 RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
     StorageDriver storageDriver;
     StorageAT storage(
-        flash_w25qxx_get_pages_count(),
-        &storageDriver
+    	flash_w25qxx_get_pages_count(),
+    	&storageDriver
     );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
@@ -376,7 +381,7 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 #if RECORD_BEDUG
         printTagLog(TAG, "Validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
 #endif
-        BEDUG_ASSERT(storage.deleteData(address) == STORAGE_OK, "Delete record error");
+        BEDUG_ASSERT(storage.clearAddress(address) == STORAGE_OK, "Delete record error");
         return RECORD_ERROR;
     }
 
@@ -431,6 +436,6 @@ uint32_t RecordClust::records_count()
 }
 
 uint32_t RecordClust::structure_size()
-{\
+{
 	return this->m_clust.size();
 }

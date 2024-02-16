@@ -27,8 +27,8 @@ void SettingsWatchdog::check()
 void SettingsWatchdog::state_init::operator ()() const
 {
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
-	SettingsDB::SettingsStatus status = settingsDB.load();
-	if (status == SettingsDB::SETTINGS_OK) {
+	SettingsStatus status = settingsDB.load();
+	if (status == SETTINGS_OK) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_init: event_loaded");
 #endif
@@ -41,7 +41,7 @@ void SettingsWatchdog::state_init::operator ()() const
 
 	settings_reset(&settings);
 	status = settingsDB.save();
-	if (status == SettingsDB::SETTINGS_OK) {
+	if (status == SETTINGS_OK) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_init: event_saved");
 #endif
@@ -73,8 +73,8 @@ void SettingsWatchdog::state_idle::operator ()() const
 void SettingsWatchdog::state_save::operator ()() const
 {
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
-	SettingsDB::SettingsStatus status = settingsDB.save();
-	if (status == SettingsDB::SETTINGS_OK) {
+	SettingsStatus status = settingsDB.save();
+	if (status == SETTINGS_OK) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_save: event_saved");
 #endif
@@ -87,8 +87,8 @@ void SettingsWatchdog::state_save::operator ()() const
 void SettingsWatchdog::state_load::operator ()() const
 {
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
-	SettingsDB::SettingsStatus status = settingsDB.load();
-	if (status == SettingsDB::SETTINGS_OK) {
+	SettingsStatus status = settingsDB.load();
+	if (status == SETTINGS_OK) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_load: event_loaded");
 #endif

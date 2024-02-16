@@ -21,6 +21,12 @@ extern "C" {
 #define CF_VERSION  ((uint8_t)0x01)
 
 
+typedef enum _SettingsStatus {
+    SETTINGS_OK = 0,
+    SETTINGS__ERROR
+} SettingsStatus;
+
+
 typedef enum _sensor_status_t {
 	SETTINGS_SENSOR_EMPTY    = (uint16_t)0x0000,
 	SETTINGS_SENSOR_THERMAL  = (uint16_t)0x0001,

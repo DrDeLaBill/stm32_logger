@@ -2,8 +2,10 @@
 #define SETTINGS_DB_H
 
 
+#include <cstdint>
+
 #include "main.h"
-#include "StoragePage.h"
+#include "settings.h"
 
 
 #define SETTINGS_BEDUG (true)
@@ -16,14 +18,9 @@ private:
     uint8_t* settings;
 
     static constexpr char PREFIX[] = "STG";
-    static constexpr char TAG[] = "STDB";
+    static constexpr char TAG[] = "STG";
 
 public:
-    typedef enum _SettingsStatus {
-        SETTINGS_OK = 0,
-        SETTINGS_ERROR
-    } SettingsStatus;
-
     SettingsDB(uint8_t* settings, uint32_t size);
 
     SettingsStatus load();

@@ -35,7 +35,7 @@ protected:
     static constexpr char PREFIX[] = "RDC";
 
     uint32_t m_recordId;
-    uint32_t m_recordSize;
+    uint16_t m_recordSize;
     uint32_t m_address;
     record_clust_t m_clust;
 
@@ -46,7 +46,7 @@ protected:
     static uint32_t getCountByRecordSize(uint32_t recordSize);
 
 public:
-    RecordClust(uint32_t recordId = 0, uint32_t recordSize = 0);
+    RecordClust(uint32_t recordId = 0, uint16_t recordSize = 0);
 
     record_t& operator[](unsigned i);
 
@@ -57,4 +57,8 @@ public:
     uint32_t records_count();
     uint32_t structure_size();
     void show();
+
+private:
+    RecordStatus deleteClust(uint32_t address);
+
 };
