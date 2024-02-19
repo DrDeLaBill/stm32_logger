@@ -22,13 +22,14 @@ uint32_t Measurer::sensIndex  = 0;
 uint8_t Measurer::errorsCount = 0;
 
 fsm::FiniteStateMachine<Measurer::fsm_table> Measurer::fsm;
+utl::Timer Measurer::timer(GENERAL_TIMEOUT_MS);
 Record Measurer::record(0);
 
 
 Measurer::Measurer(uint32_t delay)
 {
 #if MEASURER_BEDUG
-	BEDUG_ASSERT(delay, "Measure delay should be longer");
+	BEDUG_ASSERT(delay, "Measure delay should be larger than 0");
 #endif
 	sensors_init(&response_packet_handler);
 	this->delay = delay;
@@ -36,7 +37,20 @@ Measurer::Measurer(uint32_t delay)
 
 void Measurer::process()
 {
+	if (!this->delay) {
+		return;
+	}
 	fsm.proccess();
+}
+
+uint32_t Measurer::getDelay()
+{
+	return delay;
+}
+
+void Measurer::setDelay(uint32_t delay)
+{
+	this->delay = delay;
 }
 
 void Measurer::_init_s::operator ()()
@@ -46,13 +60,22 @@ void Measurer::_init_s::operator ()()
 	}
 }
 
-utl::Timer Measurer::_idle_s::timer(HOUR_MS);
 void Measurer::_idle_s::operator ()()
 {
-	if (!_idle_s::timer.wait()) {
+	if (!timer.wait()) {
 		Measurer::record = Record(0, sensors_count());
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_idle_s: event-timeout_e");
+#endif
+		fsm.push_event(Measurer::timeout_e{});
+	}
+}
+
+void Measurer::_delay_s::operator ()()
+{
+	if (!timer.wait()) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_delay_s: event-timeout_e");
 #endif
 		fsm.push_event(Measurer::timeout_e{});
 	}
@@ -74,7 +97,6 @@ void Measurer::_request_s::operator ()()
 	}
 }
 
-utl::Timer Measurer::_wait_s::timer(MODBUS_TIMEOUS_MS);
 void Measurer::_wait_s::operator ()()
 {
 	if (Measurer::errorsCount >= ERRORS_MAX) {
@@ -86,7 +108,7 @@ void Measurer::_wait_s::operator ()()
 		return;
 	}
 
-	if (!_wait_s::timer.wait()) {
+	if (!timer.wait()) {
 	    record.set(sensIndex + 1, SENSOR_ERROR_VALUE);
 		sensor_timeout();
 #if MEASURER_BEDUG
@@ -96,7 +118,6 @@ void Measurer::_wait_s::operator ()()
 	}
 }
 
-utl::Timer Measurer::_save_s::timer(GENERAL_TIMEOUT_MS);
 void Measurer::_save_s::operator ()()
 {
 	if (Measurer::errorsCount >= ERRORS_MAX) {
@@ -108,13 +129,15 @@ void Measurer::_save_s::operator ()()
 		return;
 	}
 
-	if (!_save_s::timer.wait()) {
+	if (!timer.wait()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_save_s: event-timeout_e");
 #endif
 		fsm.push_event(Measurer::timeout_e{});
 	}
 }
+
+void Measurer::none_a::operator ()() { }
 
 void Measurer::init_sens_a::operator ()()
 {
@@ -129,12 +152,15 @@ void Measurer::init_sens_a::operator ()()
 #endif
 		fsm.push_event(Measurer::no_sens_e{});
 	}
+	timer.changeDelay(_delay_s::TIMEOUT_MS);
+	timer.start();
 }
 
 void Measurer::wait_start_a::operator ()()
 {
 	fsm.clear_events();
-	_wait_s::timer.start();
+	timer.changeDelay(GENERAL_TIMEOUT_MS);
+	timer.start();
 }
 
 void Measurer::save_start_a::operator ()()
@@ -156,15 +182,16 @@ void Measurer::save_start_a::operator ()()
 	}
 
 	Measurer::errorsCount = 0;
-	_save_s::timer.start();
+	timer.changeDelay(GENERAL_TIMEOUT_MS);
+	timer.start();
 }
 
 void Measurer::idle_start_a::operator ()()
 {
 	fsm.clear_events();
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
-	_idle_s::timer = utl::Timer(Measurer::delay);
-	_idle_s::timer.start();
+	timer.changeDelay(Measurer::delay);
+	timer.start();
 }
 
 void Measurer::iterate_sens_a::operator ()()
@@ -195,13 +222,13 @@ void Measurer::register_error_a::operator ()()
 {
 	// TODO: send measure error to errors list
 	fsm.clear_events();
-	_idle_s::timer = utl::Timer(Measurer::delay);
-	_idle_s::timer.start();
+	timer.changeDelay(Measurer::delay);
+	timer.start();
 }
 
 void Measurer::response_packet_handler(modbus_response_t* packet)
 {
-#if MEASURER_BEDUG
+#if SENSOR_BEDUG
 	BEDUG_ASSERT(packet, "Incorrect MODBUS response data");
 #endif
 	if (!packet) {
@@ -209,17 +236,25 @@ void Measurer::response_packet_handler(modbus_response_t* packet)
 	}
 
     if (packet->status != MODBUS_NO_ERROR) {
-#if MEASURER_BEDUG
+#if SENSOR_BEDUG
         printTagLog(TAG, "ERROR: %02x", packet->status);
 #endif
         fsm.push_event(error_e{});
         return;
     }
 
+#if SENSOR_BEDUG
+    printTagLog(TAG, "Response has been received successfully");
+    printPretty("Status: %u\n", packet->status);
+    printPretty("Slave ID: %u\n", packet->slave_id);
+    printPretty("Command: %u\n", packet->command);
+    printPretty("Data: ");
+    for (unsigned  i = 0; i < __arr_len(packet->response); i++) {
+    	gprint("%04X ", packet->response[i]);
+    }
+    gprint("\n");
+#endif
+
     record.set(sensIndex + 1, packet->response[0]);
     fsm.push_event(response_e{});
-
-#if MEASURER_BEDUG
-    printTagLog(TAG, "SUCCESS");
-#endif
 }

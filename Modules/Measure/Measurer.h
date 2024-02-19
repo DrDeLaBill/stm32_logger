@@ -13,7 +13,7 @@
 #include "FiniteStateMachine.h"
 
 
-#define MEASURER_BEDUG (true)
+#define MEASURER_BEDUG (false)
 
 
 class Measurer
@@ -32,32 +32,37 @@ protected:
 
 private:
 	// States:
-	struct _init_s    {void operator()(void);};
-	struct _idle_s    {void operator()(void); static utl::Timer timer;};
-	struct _request_s {void operator()(void);};
-	struct _wait_s    {void operator()(void); static utl::Timer timer;};
-	struct _save_s    {void operator()(void); static utl::Timer timer;};
+	struct _init_s    { void operator()(void); };
+	struct _idle_s    { void operator()(void); };
+	struct _delay_s   { void operator()(void); static constexpr uint32_t TIMEOUT_MS = 1000; };
+	struct _request_s { void operator()(void); };
+	struct _wait_s    { void operator()(void); };
+	struct _save_s    { void operator()(void); };
 
 	FSM_CREATE_STATE(init_s, _init_s);
 	FSM_CREATE_STATE(idle_s, _idle_s);
+	FSM_CREATE_STATE(delay_s, _delay_s);
 	FSM_CREATE_STATE(request_s, _request_s);
 	FSM_CREATE_STATE(wait_s, _wait_s);
 	FSM_CREATE_STATE(save_s, _save_s);
 
 	// Actions:
-	struct init_sens_a      {void operator()(void);};
-	struct wait_start_a     {void operator()(void);};
-	struct save_start_a     {void operator()(void);};
-	struct idle_start_a     {void operator()(void);};
-	struct iterate_sens_a   {void operator()(void);};
-	struct count_error_a    {void operator()(void);};
-	struct register_error_a {void operator()(void);};
+	struct none_a           { void operator()(void); };
+	struct init_sens_a      { void operator()(void); };
+	struct wait_start_a     { void operator()(void); };
+	struct save_start_a     { void operator()(void); };
+	struct idle_start_a     { void operator()(void); };
+	struct iterate_sens_a   { void operator()(void); };
+	struct count_error_a    { void operator()(void); };
+	struct register_error_a { void operator()(void); };
 
 	// FSM table:
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,    ready_e,    request_s, init_sens_a,      fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s,    ready_e,    delay_s,   init_sens_a,      fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<idle_s,    timeout_e,  request_s, init_sens_a,      fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,    timeout_e,  delay_s,   init_sens_a,      fsm::Guard::NO_GUARD>,
+
+		fsm::Transition<delay_s,   timeout_e,  request_s, none_a,           fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<request_s, sended_e,   wait_s,    wait_start_a,     fsm::Guard::NO_GUARD>,
 		fsm::Transition<request_s, sens_end_e, save_s,    save_start_a,     fsm::Guard::NO_GUARD>,
@@ -84,11 +89,15 @@ protected:
 	static constexpr uint8_t ERRORS_MAX = 10;
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
+	static utl::Timer timer;
 
 public:
 	static Record record;
 
 	Measurer(uint32_t delay);
 	void process();
+
+	uint32_t getDelay();
+	void setDelay(uint32_t delay);
 
 };

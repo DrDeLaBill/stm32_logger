@@ -113,6 +113,7 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
+    printTagLog(MAIN_TAG, "\n\nThe device is loading");
     flash_w25qxx_init();
 
   /* USER CODE END 2 */
@@ -130,10 +131,10 @@ int main(void)
 		SettingsWatchdog,
 		RTCWatchdog
 	> soulGuard;
-	Measurer measurer(
-		settings.record_period
-	);
+	Measurer measurer(DAY_MS);
 	USBController usbc;
+
+    printTagLog(MAIN_TAG, "The device has been loaded");
 
 	while (1)
 	{
@@ -149,7 +150,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		if (settings.record_period != measurer.getDelay()) {
+			measurer.setDelay(settings.record_period);
+		}
 		measurer.process();
+
 		usbc.proccess();
 
 		if (!tim.wait()) { // TODO: remove blink

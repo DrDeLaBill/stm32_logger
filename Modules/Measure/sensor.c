@@ -20,7 +20,7 @@ void _request_data_sender(uint8_t* data, uint32_t len);
 void _master_internal_error_handler(void);
 
 
-const char SENSOR_TAG[] = "SNR";
+const char SENSOR_TAG[] = "SNS";
 
 
 sensor_info_t sensor_info = {
