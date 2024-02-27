@@ -4,8 +4,15 @@
 
 #include "usbd_customhid.h"
 
+#include "log.h"
 #include "hid_defs.h"
 #include "variables.h"
+
+#include "CodeStopwatch.h"
+
+
+utl::Timer USBController::timer(GENERAL_TIMEOUT_MS);
+bool USBController::updated = false;
 
 
 void USBController::proccess()
@@ -14,9 +21,16 @@ void USBController::proccess()
 	report_pack_t request = {};
 	request.report_id = receive_buf[counter++];
 
+	if (updated && !timer.wait()) {
+		set_settings_update_status(true);
+		updated = false;
+	}
+
 	if (request.report_id != HID_INPUT_REPORT_ID) {
 		return;
 	}
+
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
 	extern USBD_HandleTypeDef hUsbDeviceFS;
 
@@ -49,9 +63,17 @@ void USBController::proccess()
 		response.characteristic_id = request.characteristic_id;
 		hid_controller.setValue(request.characteristic_id, request.data, request.index);
 		hid_controller.getValue(response.characteristic_id, response.data, response.index);
+		updated = true;
+		timer.start();
 	}
 
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, reinterpret_cast<uint8_t*>(&response), sizeof(response));
+#if USB_CONTROLLER_BEDUG
+	printTagLog(TAG, "USB host request:");
+	hid_report_show(&request);
+	printTagLog(TAG, "USB device response:");
+	hid_report_show(&response);
+#endif
 	clear();
 }
 

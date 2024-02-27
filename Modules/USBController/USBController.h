@@ -6,14 +6,25 @@
 
 #include <cstdint>
 
+#include "utils.h"
+
+#include "Timer.h"
 #include "HIDController.h"
 #include "RecordInterface.h"
 #include "SettingsInterface.h"
 
 
+#define USB_CONTROLLER_BEDUG (true)
+
+
 struct USBController
 {
 private:
+	static constexpr char TAG[] = "USBc";
+
+	static utl::Timer timer;
+	static bool updated;
+
     using hid_table_t = HIDTable<
         HIDTuple<uint16_t, SettingsInterface::dv_type>,
         HIDTuple<uint8_t,  SettingsInterface::sw_id>,

@@ -8,7 +8,9 @@
 #include <cstring>
 #include <unordered_map>
 
+#include "log.h"
 #include "hid_defs.h"
+
 #include "HIDTable.h"
 #include "HIDTuple.h"
 #ifdef USE_HAL_DRIVER
@@ -37,7 +39,7 @@ private:
     void details(const uint16_t key, const uint8_t index)
     {
 #ifdef USE_HAL_DRIVER
-        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, maxKey());
+        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, static_cast<long unsigned>(maxKey()));
 #endif
     }
 

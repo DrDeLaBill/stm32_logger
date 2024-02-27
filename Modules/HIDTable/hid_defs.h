@@ -9,13 +9,7 @@ extern "C" {
 #endif
 
 
-#include <stdio.h>
 #include <stdint.h>
-#include <string.h>
-
-#include "log.h"
-#include "utils.h"
-#include "bmacro.h"
 
 
 #define HID_VENDOR_ID        (0x0483)
@@ -45,23 +39,12 @@ typedef struct __attribute__((packed)) _report_pack_t {
     uint8_t  index;
     uint8_t  data[sizeof(uint32_t)];
     uint8_t  tag[sizeof(REPORT_PREFIX)];
-
-#ifndef USE_HAL_DRIVER
-    void show()
-    {
-        printPretty("report_id: %u\n", report_id);
-        printPretty("characteristic_id: %u\n", characteristic_id);
-        printPretty("index: %u\n", index);
-        printPretty("data: %u %u %u %u\n", data[0], data[1], data[2], data[3]);
-    }
-
-    void setData(const uint8_t* src_data, const unsigned size)
-    {
-        BEDUG_ASSERT(src_data, "Data must not be null"); // TODO: app and device (throw)
-        memcpy(data, src_data, __min(sizeof(data), size));
-    }
-#endif
 } report_pack_t;
+
+
+void hid_report_show(const report_pack_t* report);
+void hid_report_set_data(report_pack_t* report, const uint8_t* src_data, const unsigned size);
+
 
 
 extern uint8_t receive_buf[sizeof(report_pack_t) + 1];

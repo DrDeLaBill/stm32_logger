@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "RestartWatchdog.h"
+#include "Watchdogs.h"
 
 #include "log.h"
 #include "main.h"

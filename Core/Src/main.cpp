@@ -113,14 +113,6 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
-    printTagLog(MAIN_TAG, "\n\nThe device is loading");
-    flash_w25qxx_init();
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-
 	utl::Timer tim(SECOND_MS);
 	utl::Timer err_tim(SECOND_MS / 10);
 	// TODO: RAM analyzer & crystal check & clock check & modbus check
@@ -134,13 +126,31 @@ int main(void)
 	Measurer measurer(DAY_MS);
 	USBController usbc;
 
+	set_status(WAIT_LOAD);
+
+	HAL_Delay(100);
+
+	gprint("\n\n\n");
+	printTagLog(MAIN_TAG, "The device is loading");
+
+    flash_w25qxx_init();
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+
+	while (is_status(WAIT_LOAD)) soulGuard.defend();
+
     printTagLog(MAIN_TAG, "The device has been loaded");
 
 	while (1)
 	{
+		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
+
 		soulGuard.defend();
 
-		if (soulGuard.hasErrors()) {
+		if (has_errors()) {
 			if (!err_tim.wait()) { // TODO: remove blink
 				err_tim.start();
 				HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
@@ -214,8 +224,8 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 int _write(int, uint8_t *ptr, int len) {
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_TIMEOUT_MS);
 #ifdef DEBUG
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_TIMEOUT_MS);
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
