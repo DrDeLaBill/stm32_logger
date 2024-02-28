@@ -81,3 +81,8 @@ void USBController::clear()
 {
 	memset(receive_buf, 0, sizeof(receive_buf));
 }
+
+bool USBController::connected()
+{
+	return HAL_GPIO_ReadPin(WKUP_GPIO_Port, WKUP_Pin);
+}

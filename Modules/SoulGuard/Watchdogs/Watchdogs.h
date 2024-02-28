@@ -3,6 +3,7 @@
 #pragma once
 
 
+#include "Timer.h"
 #include "FiniteStateMachine.h"
 
 
@@ -32,7 +33,9 @@ public:
 	// TODO: check IWDG or another reboot
 	void check();
 
+#ifdef EEPROM_I2C
 	static void reset_i2c_errata();
+#endif
 
 private:
 	static constexpr char TAG[] = "RSTw";
@@ -109,5 +112,22 @@ public:
 
 struct MemoryWatchdog
 {
+	void check();
+};
+
+struct StandbyWatchdog
+{
+private:
+	static utl::Timer timer;
+	static bool alarmEnabled;
+	static bool deviceLoaded;
+
+	bool needStandby();
+
+public:
+	static constexpr char TAG[] = "SNDw";
+
+	static void enableRTCAlarm();
+
 	void check();
 };

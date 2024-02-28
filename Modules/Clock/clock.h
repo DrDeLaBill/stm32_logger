@@ -27,6 +27,7 @@ bool     clock_get_rtc_time(RTC_TimeTypeDef* time);
 bool     clock_get_rtc_date(RTC_DateTypeDef* date);
 uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
 uint32_t clock_get_timestamp();
+void     clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
 
 
 #ifdef __cplusplus

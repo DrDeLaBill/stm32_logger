@@ -146,7 +146,7 @@ SettingsStatus SettingsDB::save()
 
     if (this->load() == SETTINGS_OK) {
 #if SETTINGS_BEDUG
-    	printTagLog(SettingsDB::TAG, "settings saved successfully", address);
+    	printTagLog(SettingsDB::TAG, "settings saved successfully (address=%lu)", address);
 #endif
 
     	return SETTINGS_OK;

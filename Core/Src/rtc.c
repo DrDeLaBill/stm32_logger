@@ -36,6 +36,7 @@ void MX_RTC_Init(void)
 
   RTC_TimeTypeDef sTime = {0};
   RTC_DateTypeDef sDate = {0};
+  RTC_AlarmTypeDef sAlarm = {0};
 
   /* USER CODE BEGIN RTC_Init 1 */
 
@@ -47,7 +48,7 @@ void MX_RTC_Init(void)
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
   hrtc.Init.AsynchPrediv = 127;
   hrtc.Init.SynchPrediv = 255;
-  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPut = RTC_OUTPUT_ALARMA;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
@@ -57,17 +58,7 @@ void MX_RTC_Init(void)
 
   /* USER CODE BEGIN Check_RTC_BKUP */
 
-  RTC_TimeTypeDef dumpTime = {0};
-  RTC_DateTypeDef dumpDate = {0};
-
-  if (HAL_RTC_GetTime(&hrtc, &dumpTime, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_RTC_GetDate(&hrtc, &dumpDate, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  return;
 
   /* USER CODE END Check_RTC_BKUP */
 
@@ -91,16 +82,25 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN RTC_Init 2 */
 
-  if (HAL_RTC_SetTime(&hrtc, &dumpTime, RTC_FORMAT_BIN) != HAL_OK)
+  /** Enable the Alarm A
+  */
+  sAlarm.AlarmTime.Hours = 0;
+  sAlarm.AlarmTime.Minutes = 0;
+  sAlarm.AlarmTime.Seconds = 0;
+  sAlarm.AlarmTime.SubSeconds = 0;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  sAlarm.AlarmDateWeekDay = 1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_RTC_SetDate(&hrtc, &dumpDate, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  /* USER CODE BEGIN RTC_Init 2 */
 
   /* USER CODE END RTC_Init 2 */
 
@@ -127,6 +127,10 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
 
     /* RTC clock enable */
     __HAL_RCC_RTC_ENABLE();
+
+    /* RTC interrupt Init */
+    HAL_NVIC_SetPriority(RTC_Alarm_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(RTC_Alarm_IRQn);
   /* USER CODE BEGIN RTC_MspInit 1 */
 
   /* USER CODE END RTC_MspInit 1 */
@@ -143,6 +147,9 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
   /* USER CODE END RTC_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_RTC_DISABLE();
+
+    /* RTC interrupt Deinit */
+    HAL_NVIC_DisableIRQ(RTC_Alarm_IRQn);
   /* USER CODE BEGIN RTC_MspDeInit 1 */
 
   /* USER CODE END RTC_MspDeInit 1 */

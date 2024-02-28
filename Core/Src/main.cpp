@@ -32,11 +32,11 @@
 #include "log.h"
 #include "w25qxx.h"
 #include "hal_defs.h"
+#include "settings.h"
 
 #include "Timer.h"
 #include "Record.h"
-#include "settings.h"
-#include "Measurer.h"
+#include "Measure.h"
 #include "Watchdogs.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
@@ -113,18 +113,18 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
-	utl::Timer tim(SECOND_MS);
-	utl::Timer err_tim(SECOND_MS / 10);
+	utl::Timer tim(SECOND_MS / 10);
 	// TODO: RAM analyzer & crystal check & clock check & modbus check
 	SoulGuard<
 		RestartWatchdog,
 		MemoryWatchdog,
 		StackWatchdog,
 		SettingsWatchdog,
-		RTCWatchdog
+		RTCWatchdog,
+		StandbyWatchdog
 	> soulGuard;
-	Measurer measurer(DAY_MS);
 	USBController usbc;
+	Measure measure;
 
 	set_status(WAIT_LOAD);
 
@@ -150,27 +150,23 @@ int main(void)
 
 		soulGuard.defend();
 
+		if (!tim.wait()) { // TODO: remove blink
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			tim.start();
+		}
+
 		if (has_errors()) {
-			if (!err_tim.wait()) { // TODO: remove blink
-				err_tim.start();
-				HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-			}
+			tim.changeDelay(SECOND_MS / 50);
 			continue;
 		}
+
+		tim.changeDelay(SECOND_MS / 10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		if (settings.record_period != measurer.getDelay()) {
-			measurer.setDelay(settings.record_period);
-		}
-		measurer.process();
+		measure.process();
 
 		usbc.proccess();
-
-		if (!tim.wait()) { // TODO: remove blink
-			tim.start();
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		}
 	}
   /* USER CODE END 3 */
 }
@@ -224,13 +220,16 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 int _write(int, uint8_t *ptr, int len) {
+	(void)ptr;
+	(void)len;
 #ifdef DEBUG
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t*) ptr, (uint16_t) len, GENERAL_TIMEOUT_MS);
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
-#endif
     return len;
+#endif
+    return 0;
 }
 
 /* USER CODE END 4 */

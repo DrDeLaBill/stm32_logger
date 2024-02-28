@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "log.h"
+#include "clock.h"
 #include "utils.h"
 #include "hal_defs.h"
 
@@ -69,7 +70,11 @@ bool settings_check(settings_t* other)
 
 void settings_show()
 {
+	RTC_TimeTypeDef time = {};
+	clock_get_rtc_time(&time);
+
 	printPretty("\n");
+	printPretty("                    %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
 	printPretty("####################SETTINGS####################\n");
 	printPretty("Device type: %u\n", settings.dv_type);
 	printPretty("Software v%u\n", settings.sw_id);

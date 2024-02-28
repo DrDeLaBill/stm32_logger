@@ -61,8 +61,12 @@ int _write(int, uint8_t *ptr, int len);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define WKUP_RTC_Pin GPIO_PIN_13
+#define WKUP_RTC_GPIO_Port GPIOC
 #define VBAT_ADC_Pin GPIO_PIN_2
 #define VBAT_ADC_GPIO_Port GPIOC
+#define WKUP_Pin GPIO_PIN_0
+#define WKUP_GPIO_Port GPIOA
 #define LORA_AUX_Pin GPIO_PIN_1
 #define LORA_AUX_GPIO_Port GPIOA
 #define LORA_TX_Pin GPIO_PIN_2

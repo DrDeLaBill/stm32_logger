@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "Measurer.h"
+#include "Measure.h"
 
 #include <cstring>
 
@@ -17,94 +17,61 @@
 #include "Record.h"
 
 
-uint32_t Measurer::delay      = 0;
-uint32_t Measurer::sensIndex  = 0;
-uint8_t Measurer::errorsCount = 0;
+uint32_t Measure::sensIndex  = 0;
+uint8_t Measure::errorsCount = 0;
 
-fsm::FiniteStateMachine<Measurer::fsm_table> Measurer::fsm;
-utl::Timer Measurer::timer(GENERAL_TIMEOUT_MS);
-Record Measurer::record(0);
+fsm::FiniteStateMachine<Measure::fsm_table> Measure::fsm;
+utl::Timer Measure::timer(GENERAL_TIMEOUT_MS);
+bool Measure::measureNeeded = false;
+Record Measure::record(0);
 
 
-Measurer::Measurer(uint32_t delay)
+Measure::Measure()
 {
 #if MEASURER_BEDUG
 	BEDUG_ASSERT(delay, "Measure delay should be larger than 0");
 #endif
 	sensors_init(&response_packet_handler);
-	this->delay = delay;
 }
 
-void Measurer::process()
+void Measure::process()
 {
-	if (!this->delay) {
-		return;
-	}
 	fsm.proccess();
 }
 
-uint32_t Measurer::getDelay()
-{
-	return delay;
-}
-
-void Measurer::setDelay(uint32_t delay)
-{
-	this->delay = delay;
-}
-
-void Measurer::_init_s::operator ()()
+void Measure::_init_s::operator ()()
 {
 	if (is_settings_initialized()) {
-		fsm.push_event(Measurer::ready_e{});
+		fsm.push_event(Measure::ready_e{});
 	}
 }
 
-void Measurer::_idle_s::operator ()()
-{
-	if (!timer.wait()) {
-		Measurer::record = Record(0, sensors_count());
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_idle_s: event-timeout_e");
-#endif
-		fsm.push_event(Measurer::timeout_e{});
-	}
-}
+void Measure::_idle_s::operator ()() {}
 
-void Measurer::_delay_s::operator ()()
+void Measure::_request_s::operator ()()
 {
-	if (!timer.wait()) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_delay_s: event-timeout_e");
-#endif
-		fsm.push_event(Measurer::timeout_e{});
-	}
-}
-
-void Measurer::_request_s::operator ()()
-{
-	if (settings.modbus1_status[Measurer::sensIndex] != SETTINGS_SENSOR_EMPTY) {
-		sensor_request_value(Measurer::sensIndex);
+	if (settings.modbus1_status[Measure::sensIndex] != SETTINGS_SENSOR_EMPTY) {
+		sensor_request_value(Measure::sensIndex);
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_request_s: event-sended_e");
 #endif
-		fsm.push_event(Measurer::sended_e{});
+		fsm.push_event(Measure::sended_e{});
 	} else {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_request_s: event-skip_e");
 #endif
-		fsm.push_event(Measurer::skip_e{});
+		fsm.push_event(Measure::skip_e{});
 	}
 }
 
-void Measurer::_wait_s::operator ()()
+void Measure::_wait_s::operator ()()
 {
-	if (Measurer::errorsCount >= ERRORS_MAX) {
+	if (Measure::errorsCount >= ERRORS_MAX) {
 		// TODO: send sensor error to stng_info
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_wait_s: event-error_e");
 #endif
-		fsm.push_event(Measurer::error_e{});
+		fsm.push_event(Measure::error_e{});
 		return;
 	}
 
@@ -114,18 +81,18 @@ void Measurer::_wait_s::operator ()()
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_wait_s: event-timeout_e");
 #endif
-		fsm.push_event(Measurer::timeout_e{});
+		fsm.push_event(Measure::timeout_e{});
 	}
 }
 
-void Measurer::_save_s::operator ()()
+void Measure::_save_s::operator ()()
 {
-	if (Measurer::errorsCount >= ERRORS_MAX) {
+	if (Measure::errorsCount >= ERRORS_MAX) {
 		// TODO: send save error to errors list
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_save_s: event-error_e");
 #endif
-		fsm.push_event(Measurer::error_e{});
+		fsm.push_event(Measure::error_e{});
 		return;
 	}
 
@@ -133,37 +100,35 @@ void Measurer::_save_s::operator ()()
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_save_s: event-timeout_e");
 #endif
-		fsm.push_event(Measurer::timeout_e{});
+		fsm.push_event(Measure::timeout_e{});
 	}
 }
 
-void Measurer::none_a::operator ()() { }
+void Measure::none_a::operator ()() { }
 
-void Measurer::init_sens_a::operator ()()
+void Measure::init_sens_a::operator ()()
 {
 	fsm.clear_events();
-	Measurer::sensIndex = 0;
-	Measurer::errorsCount = 0;
+	Measure::sensIndex = 0;
+	Measure::errorsCount = 0;
 	record = Record(0, sensors_count());
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-reset_sens_a: event-no_sens_e");
 #endif
-		fsm.push_event(Measurer::no_sens_e{});
+		fsm.push_event(Measure::no_sens_e{});
 	}
-	timer.changeDelay(_delay_s::TIMEOUT_MS);
-	timer.start();
 }
 
-void Measurer::wait_start_a::operator ()()
+void Measure::wait_start_a::operator ()()
 {
 	fsm.clear_events();
 	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
 }
 
-void Measurer::save_start_a::operator ()()
+void Measure::save_start_a::operator ()()
 {
 	fsm.clear_events();
 #if MEASURER_BEDUG
@@ -173,60 +138,60 @@ void Measurer::save_start_a::operator ()()
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-save_start_a: event-saved_e");
 #endif
-		fsm.push_event(Measurer::saved_e{});
+		fsm.push_event(Measure::saved_e{});
 	} else {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-save_start_a: event-error_e");
 #endif
-		fsm.push_event(Measurer::timeout_e{});
+		fsm.push_event(Measure::timeout_e{});
 	}
 
-	Measurer::errorsCount = 0;
+	Measure::errorsCount = 0;
 	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
 }
 
-void Measurer::idle_start_a::operator ()()
+void Measure::idle_start_a::operator ()()
 {
 	fsm.clear_events();
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
-	timer.changeDelay(Measurer::delay);
-	timer.start();
+
+	measureNeeded = false;
 }
 
-void Measurer::iterate_sens_a::operator ()()
+void Measure::iterate_sens_a::operator ()()
 {
 	fsm.clear_events();
-	Measurer::errorsCount = 0;
-	if (++Measurer::sensIndex >= __arr_len(settings.modbus1_status)) {
+	Measure::errorsCount = 0;
+	if (++Measure::sensIndex >= __arr_len(settings.modbus1_status)) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
 #endif
-		fsm.push_event(Measurer::sens_end_e{});
+		fsm.push_event(Measure::sens_end_e{});
 	}
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-no_sens_e");
 #endif
-		fsm.push_event(Measurer::no_sens_e{});
+		fsm.push_event(Measure::no_sens_e{});
 	}
 }
 
-void Measurer::count_error_a::operator ()()
+void Measure::count_error_a::operator ()()
 {
 	fsm.clear_events();
-	Measurer::errorsCount++; // TODO: add new save try after error
+	Measure::errorsCount++; // TODO: add new save try after error
 }
 
-void Measurer::register_error_a::operator ()()
+void Measure::register_error_a::operator ()()
 {
 	// TODO: send measure error to errors list
 	fsm.clear_events();
-	timer.changeDelay(Measurer::delay);
-	timer.start();
+
+	measureNeeded = false;
 }
 
-void Measurer::response_packet_handler(modbus_response_t* packet)
+void Measure::response_packet_handler(modbus_response_t* packet)
 {
 #if SENSOR_BEDUG
 	BEDUG_ASSERT(packet, "Incorrect MODBUS response data");
@@ -257,4 +222,15 @@ void Measurer::response_packet_handler(modbus_response_t* packet)
 
     record.set(sensIndex + 1, packet->response[0]);
     fsm.push_event(response_e{});
+}
+
+void Measure::setNeeded()
+{
+	fsm.push_event(need_measure_e{});
+	measureNeeded = true;
+}
+
+bool Measure::needed()
+{
+	return measureNeeded;
 }

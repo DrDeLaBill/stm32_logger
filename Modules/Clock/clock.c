@@ -13,6 +13,25 @@
 extern RTC_HandleTypeDef hrtc;
 
 
+typedef enum _Months {
+	JANUARY = 0,
+	FEBRUARY,
+	MARCH,
+	APRIL,
+	MAY,
+	JUNE,
+	JULY,
+	AUGUST,
+	SEPTEMBER,
+	OCTOBER,
+	NOVEMBER,
+	DECEMBER
+} Months;
+
+
+uint8_t _get_days_in_month(uint8_t year, Months month);
+
+
 uint8_t clock_get_year()
 {
     RTC_DateTypeDef date;
@@ -111,21 +130,6 @@ bool clock_get_rtc_date(RTC_DateTypeDef* date)
 	return HAL_OK == HAL_RTC_GetDate(&hrtc, date, RTC_FORMAT_BIN);
 }
 
-enum Months {
-	JANUARY = 0,
-	FEBRUARY,
-	MARCH,
-	APRIL,
-	MAY,
-	JUNE,
-	JULY,
-	AUGUST,
-	SEPTEMBER,
-	OCTOBER,
-	NOVEMBER,
-	DECEMBER
-};
-
 uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
 	uint32_t days = date->Year * 365;
@@ -133,46 +137,7 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 		days += (date->Year / 4) + 1;
 	}
 	for (unsigned i = 0; i < (unsigned)(date->Month > 0 ? date->Month - 1 : 0); i++) {
-		switch (i) {
-		case JANUARY:
-			days += 31;
-			break;
-		case FEBRUARY:
-			days += ((date->Year % 4 == 0) ? 29 : 28);
-			break;
-		case MARCH:
-			days += 31;
-			break;
-		case APRIL:
-			days += 30;
-			break;
-		case MAY:
-			days += 31;
-			break;
-		case JUNE:
-			days += 30;
-			break;
-		case JULY:
-			days += 31;
-			break;
-		case AUGUST:
-			days += 31;
-			break;
-		case SEPTEMBER:
-			days += 30;
-			break;
-		case OCTOBER:
-			days += 31;
-			break;
-		case NOVEMBER:
-			days += 30;
-			break;
-		case DECEMBER:
-			days += 31;
-			break;
-		default:
-			break;
-		};
+		days += _get_days_in_month(date->Year, i);
 	}
 	if (date->Date > 0) {
 		days += (date->Date - 1);
@@ -199,4 +164,78 @@ uint32_t clock_get_timestamp()
 	}
 
 	return clock_datetime_to_seconds(&date, &time);
+}
+
+void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
+{
+	memset(date, 0, sizeof(RTC_DateTypeDef));
+	memset(time, 0, sizeof(RTC_TimeTypeDef));
+
+	time->Seconds = (uint8_t)(seconds % 60);
+	uint32_t minutes = seconds / 60;
+
+	time->Minutes = (uint8_t)(minutes % 60);
+	uint32_t hours = (uint8_t)minutes / 60;
+
+	time->Hours = (uint8_t)(hours % 24);
+	uint32_t days = (uint8_t)hours / 24;
+
+	uint8_t year  = 0;
+	uint8_t month = 1;
+	uint8_t day   = 1;
+	while (days) {
+		uint16_t days_in_year = (year % 4 > 0) ? 365 : 366;
+		if (days > days_in_year) {
+			days -= days_in_year;
+			year++;
+			continue;
+		}
+
+		uint8_t days_in_month = _get_days_in_month(year, month - 1);
+		if (days > days_in_month) {
+			days -= days_in_month;
+			month++;
+			continue;
+		}
+
+		day += days;
+		days = 0;
+	}
+
+	date->Year  = year;
+	date->Month = month;
+	date->Date  = day;
+}
+
+uint8_t _get_days_in_month(uint8_t year, Months month)
+{
+	switch (month) {
+	case JANUARY:
+		return 31;
+	case FEBRUARY:
+		return ((year % 4 == 0) ? 29 : 28);
+	case MARCH:
+		return 31;
+	case APRIL:
+		return 30;
+	case MAY:
+		return 31;
+	case JUNE:
+		return 30;
+	case JULY:
+		return 31;
+	case AUGUST:
+		return 31;
+	case SEPTEMBER:
+		return 30;
+	case OCTOBER:
+		return 31;
+	case NOVEMBER:
+		return 30;
+	case DECEMBER:
+		return 31;
+	default:
+		break;
+	};
+	return 0;
 }
