@@ -75,7 +75,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+StorageDriver storageDriver;
+StorageAT* storage;
 /* USER CODE END 0 */
 
 /**
@@ -134,6 +135,10 @@ int main(void)
 	printTagLog(MAIN_TAG, "The device is loading");
 
     flash_w25qxx_init();
+    storage = new StorageAT(
+		flash_w25qxx_get_pages_count(),
+		&storageDriver
+	);
 
   /* USER CODE END 2 */
 

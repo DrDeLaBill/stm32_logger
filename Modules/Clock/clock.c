@@ -95,7 +95,10 @@ uint8_t clock_get_second()
 void clock_save_time(RTC_TimeTypeDef* time)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
-    if (time->Seconds > 59 || time->Hours > 23 || time->Minutes > 59) {
+    if (time->Seconds >= SECONDS_PER_MINUTE ||
+		time->Minutes >= MINUTES_PER_HOUR ||
+		time->Hours   >= HOURS_PER_DAY
+	) {
         return;
     } else {
         status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
@@ -109,7 +112,7 @@ void clock_save_time(RTC_TimeTypeDef* time)
 void clock_save_date(RTC_DateTypeDef* date)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
-    if (date->Date > 31 || date->Month > 12) {
+    if (date->Date > DAYS_PER_MONTH_MAX || date->Month > MONTHS_PER_YEAR) {
         return;
     } else {
         status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
@@ -132,9 +135,9 @@ bool clock_get_rtc_date(RTC_DateTypeDef* date)
 
 uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
-	uint32_t days = date->Year * 365;
+	uint32_t days = date->Year * DAYS_PER_YEAR;
 	if (date->Year > 0) {
-		days += (date->Year / 4) + 1;
+		days += (date->Year / LEAP_YEAR_PERIOD) + 1;
 	}
 	for (unsigned i = 0; i < (unsigned)(date->Month > 0 ? date->Month - 1 : 0); i++) {
 		days += _get_days_in_month(date->Year, i);
@@ -142,9 +145,9 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 	if (date->Date > 0) {
 		days += (date->Date - 1);
 	}
-	uint32_t hours = days * 24 + time->Hours;
-	uint32_t minutes = hours * 60 + time->Minutes;
-	uint32_t seconds = minutes * 60 + time->Seconds;
+	uint32_t hours = days * HOURS_PER_DAY + time->Hours;
+	uint32_t minutes = hours * MINUTES_PER_HOUR + time->Minutes;
+	uint32_t seconds = minutes * SECONDS_PER_MINUTE + time->Seconds;
 	return seconds;
 }
 
@@ -171,20 +174,20 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	memset(date, 0, sizeof(RTC_DateTypeDef));
 	memset(time, 0, sizeof(RTC_TimeTypeDef));
 
-	time->Seconds = (uint8_t)(seconds % 60);
-	uint32_t minutes = seconds / 60;
+	time->Seconds = (uint8_t)(seconds % SECONDS_PER_MINUTE);
+	uint32_t minutes = seconds / SECONDS_PER_MINUTE;
 
-	time->Minutes = (uint8_t)(minutes % 60);
-	uint32_t hours = (uint8_t)minutes / 60;
+	time->Minutes = (uint8_t)(minutes % MINUTES_PER_HOUR);
+	uint32_t hours = (uint8_t)minutes / MINUTES_PER_HOUR;
 
-	time->Hours = (uint8_t)(hours % 24);
-	uint32_t days = (uint8_t)hours / 24;
+	time->Hours = (uint8_t)(hours % HOURS_PER_DAY);
+	uint32_t days = (uint8_t)hours / HOURS_PER_DAY;
 
 	uint8_t year  = 0;
 	uint8_t month = 1;
 	uint8_t day   = 1;
 	while (days) {
-		uint16_t days_in_year = (year % 4 > 0) ? 365 : 366;
+		uint16_t days_in_year = (year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
 		if (days > days_in_year) {
 			days -= days_in_year;
 			year++;

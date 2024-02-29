@@ -58,6 +58,8 @@ public:
     uint32_t structure_size();
     void show();
 
+    RecordStatus getLastTime(uint32_t* time);
+
 private:
     RecordStatus deleteClust(uint32_t address);
 

@@ -122,12 +122,21 @@ private:
 	static bool alarmEnabled;
 	static bool deviceLoaded;
 
+	void init();
+	void clearPWRFlags();
+	bool hasWokenUp();
 	bool needStandby();
+	bool checkAlarm();
+	void reloadAlarm();
+	void enterStandby();
+	void alarmFirstInit();
+
+	static uint32_t sleepTimeSec();
+
+	static void enableRTCAlarm(uint32_t seconds = sleepTimeSec());
 
 public:
-	static constexpr char TAG[] = "SNDw";
-
-	static void enableRTCAlarm();
+	static constexpr char TAG[] = "STBY";
 
 	void check();
 };

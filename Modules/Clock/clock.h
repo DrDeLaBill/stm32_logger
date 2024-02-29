@@ -15,6 +15,17 @@ extern "C" {
 #include "hal_defs.h"
 
 
+#define SECONDS_PER_MINUTE (60)
+#define MINUTES_PER_HOUR   (60)
+#define HOURS_PER_DAY      (24)
+#define DAYS_PER_WEEK      (7)
+#define DAYS_PER_MONTH_MAX (31)
+#define MONTHS_PER_YEAR    (12)
+#define DAYS_PER_YEAR      (365)
+#define DAYS_PER_LEAP_YEAR (366)
+#define LEAP_YEAR_PERIOD   (4)
+
+
 uint8_t  clock_get_year();
 uint8_t  clock_get_month();
 uint8_t  clock_get_date();

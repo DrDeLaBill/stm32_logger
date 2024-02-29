@@ -15,7 +15,7 @@ extern "C" {
 #include "modbus_rtu_master.h"
 
 
-#define SENSOR_BEDUG       (true)
+#define SENSOR_BEDUG       (false)
 
 #define SENSOR_ERROR_VALUE ((uint16_t)0xFFFF)
 

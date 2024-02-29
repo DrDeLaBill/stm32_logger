@@ -23,6 +23,8 @@ public:
     RecordStatus load();
     RecordStatus loadNext();
 
+    static RecordStatus getLastTime(uint32_t* time);
+
     void show();
     unsigned size();
     unsigned count();

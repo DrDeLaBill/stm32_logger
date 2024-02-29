@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "clock.h"
 #include "w25qxx.h"
 #include "bmacro.h"
 #include "settings.h"
@@ -16,7 +17,7 @@
 #include "CodeStopwatch.h"
 
 
-extern StorageAT storage;
+extern StorageAT* storage;
 
 
 RecordClust::RecordClust(uint32_t recordId, uint16_t recordSize):
@@ -136,12 +137,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
     // 5. save cluster
     StorageStatus storageStatus = STORAGE_OK;
     {
-        StorageDriver storageDriver;
-        StorageAT storage(
-        	flash_w25qxx_get_pages_count(),
-        	&storageDriver
-        );
-        storageStatus = storage.rewrite(m_address, PREFIX, newId, reinterpret_cast<uint8_t*>(&m_clust), m_clust.size());
+        storageStatus = storage->rewrite(m_address, PREFIX, newId, reinterpret_cast<uint8_t*>(&m_clust), m_clust.size());
 #if RECORD_BEDUG
         BEDUG_ASSERT((storageStatus == STORAGE_OK), "Storage save record error");
 #endif
@@ -162,6 +158,59 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 #endif
 
     return recordStatus;
+}
+
+RecordStatus RecordClust::getLastTime(uint32_t* time)
+{
+	uint32_t address = 0;
+	StorageStatus status = storage->find(FIND_MODE_MAX, &address, PREFIX);
+    if (status != STORAGE_OK) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Get last time error: unable to find a cluster with error=%u", status);
+#endif
+        return RECORD_ERROR;
+    }
+
+    record_clust_t tmpClust = {}; // TODO: load function for structure
+    status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
+	if (status != STORAGE_OK) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Get last time error: load record cluster meta error=%u", status);
+#endif
+		return RECORD_ERROR;
+	}
+	status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
+	if (status != STORAGE_OK) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Get last time error: load record cluster error=%u", status);
+#endif
+		return RECORD_ERROR;
+	}
+    if (!this->validate(&tmpClust)) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Get last time error: validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
+#endif
+        BEDUG_ASSERT(storage->clearAddress(address) == STORAGE_OK, "Delete record error");
+        return RECORD_ERROR;
+    }
+
+    m_address = address;
+    memcpy(
+		reinterpret_cast<void*>(&m_clust),
+		reinterpret_cast<void*>(&tmpClust),
+		tmpClust.size()
+    );
+
+    uint32_t lastTime = 0;
+    for (unsigned i = 0; i < records_count(); i++) {
+    	if (m_clust[i].time > lastTime) {
+    		lastTime = m_clust[i].time;
+    	}
+    }
+
+    *time = lastTime;
+
+    return RECORD_OK;
 }
 
 bool RecordClust::validate(record_clust_t* clust)
@@ -190,6 +239,9 @@ bool RecordClust::validate(record_clust_t* clust)
 void RecordClust::show()
 {
 #if RECORD_BEDUG
+	RTC_TimeTypeDef time = {};
+	clock_get_rtc_time(&time);
+	printPretty("                %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
 	printPretty("##############RECORD CLUST###############\n");
 	printPretty("Device type: %u\n", m_clust.dv_type);
 	printPretty("Software v%02u\n", m_clust.sw_id);
@@ -218,28 +270,23 @@ void RecordClust::show()
 
 bool RecordClust::loadExist(bool validateSize)
 {
-    StorageDriver storageDriver;
-    StorageAT storage(
-    	flash_w25qxx_get_pages_count(),
-    	&storageDriver
-    );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
 
-    storageStatus = storage.find(FIND_MODE_EQUAL, &address, PREFIX, m_recordId);
+    storageStatus = storage->find(FIND_MODE_EQUAL, &address, PREFIX, m_recordId);
 
     if (storageStatus != STORAGE_OK) {
 #if RECORD_BEDUG
         printTagLog(TAG, "Unable to find an EQUAL cluster, the NEXT cluster is being searched");
 #endif
-        storageStatus = storage.find(FIND_MODE_NEXT, &address, PREFIX, m_recordId);
+        storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_recordId);
     }
 
     if (storageStatus != STORAGE_OK) {
 #if RECORD_BEDUG
         printTagLog(TAG, "Unable to find an NEXT cluster, the MAX ID cluster is being searched");
 #endif
-        storageStatus = storage.find(FIND_MODE_MAX, &address, PREFIX);
+        storageStatus = storage->find(FIND_MODE_MAX, &address, PREFIX);
     }
 
     if (storageStatus != STORAGE_OK) {
@@ -250,14 +297,14 @@ bool RecordClust::loadExist(bool validateSize)
     }
 
     record_clust_t tmpClust = {}; // TODO: load function for structure
-	storageStatus = storage.load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
+	storageStatus = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
 #if RECORD_BEDUG
 	BEDUG_ASSERT((storageStatus == STORAGE_OK), "Load record cluster meta error");
 #endif
 	if (storageStatus != STORAGE_OK) {
 		return RECORD_ERROR;
 	}
-	storageStatus = storage.load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
+	storageStatus = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
 #if RECORD_BEDUG
 	BEDUG_ASSERT((storageStatus == STORAGE_OK), "Load record cluster error");
 #endif
@@ -269,11 +316,11 @@ bool RecordClust::loadExist(bool validateSize)
 #if RECORD_BEDUG
         printTagLog(TAG, "Validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
 #endif
-        BEDUG_ASSERT(storage.clearAddress(address) == STORAGE_OK, "Delete record error");
+        BEDUG_ASSERT(storage->clearAddress(address) == STORAGE_OK, "Delete record error");
         return false;
     }
 
-    if (validateSize && m_recordSize > 0 &&  tmpClust.rcrd_size != m_recordSize) {
+    if (validateSize && m_recordSize > 0 && tmpClust.rcrd_size != m_recordSize) {
 #if RECORD_BEDUG
         printTagLog(TAG, "The current cluster has another record size, abort search");
 #endif
@@ -292,19 +339,14 @@ bool RecordClust::loadExist(bool validateSize)
 
 bool RecordClust::createNew()
 {
-    StorageDriver storageDriver;
-    StorageAT storage(
-    	flash_w25qxx_get_pages_count(),
-    	&storageDriver
-    );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
     StorageFindMode findMode = FIND_MODE_EMPTY;
 
-    storageStatus = storage.find(findMode, &address);
+    storageStatus = storage->find(findMode, &address);
     if (storageStatus == STORAGE_NOT_FOUND || storageStatus == STORAGE_OOM) {
         findMode = FIND_MODE_MIN;
-        storageStatus = storage.find(findMode, &address);
+        storageStatus = storage->find(findMode, &address);
     }
 
 #if RECORD_BEDUG
@@ -315,7 +357,7 @@ bool RecordClust::createNew()
     }
 
     if (findMode == FIND_MODE_MIN) {
-        storageStatus = storage.clearAddress(address);
+        storageStatus = storage->clearAddress(address);
     }
 #if RECORD_BEDUG // TODO: up
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
@@ -338,15 +380,10 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
-    StorageDriver storageDriver;
-    StorageAT storage(
-    	flash_w25qxx_get_pages_count(),
-    	&storageDriver
-    );
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
 
-    storageStatus = storage.find(FIND_MODE_MAX, &address, PREFIX);
+    storageStatus = storage->find(FIND_MODE_MAX, &address, PREFIX);
     if (storageStatus == STORAGE_NOT_FOUND) {
 #if RECORD_BEDUG
         printTagLog(TAG, "MAX ID not found, reset ID");
@@ -362,14 +399,14 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
     }
 
     record_clust_t tmpClust = {}; // TODO: load function for structure
-    storageStatus = storage.load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
+    storageStatus = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
 #if RECORD_BEDUG
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to load record cluster meta");
 #endif
     if (storageStatus != STORAGE_OK) {
         return RECORD_ERROR;
     }
-    storageStatus = storage.load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
+    storageStatus = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
 #if RECORD_BEDUG
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to load record cluster");
 #endif
@@ -381,7 +418,7 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 #if RECORD_BEDUG
         printTagLog(TAG, "Validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
 #endif
-        BEDUG_ASSERT(storage.clearAddress(address) == STORAGE_OK, "Delete record error");
+        BEDUG_ASSERT(storage->clearAddress(address) == STORAGE_OK, "Delete record error");
         return RECORD_ERROR;
     }
 

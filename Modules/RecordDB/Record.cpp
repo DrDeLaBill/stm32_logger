@@ -105,6 +105,11 @@ RecordStatus Record::loadNext()
     return RECORD_OK;
 }
 
+RecordStatus Record::getLastTime(uint32_t* time)
+{
+	return RecordClust().getLastTime(time);
+}
+
 RecordStatus Record::save()
 {
 	if (!this->count()) {

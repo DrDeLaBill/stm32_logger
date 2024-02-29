@@ -14,23 +14,18 @@
 #include "CodeStopwatch.h"
 
 
-extern StorageAT storage;
+extern StorageAT* storage;
 
 
 SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(settings) { }
 
 SettingsStatus SettingsDB::load()
 {
-    StorageDriver storageDriver;
-    StorageAT storage(
-    	flash_w25qxx_get_pages_count(),
-    	&storageDriver
-    );
 	uint32_t address1 = 0, address2 = 0;
 	StorageStatus status = STORAGE_OK;
 
 	bool needResaveFirst = false, needResaveSecond = false;
-    status = storage.find(FIND_MODE_EQUAL, &address1, PREFIX, 1);
+    status = storage->find(FIND_MODE_EQUAL, &address1, PREFIX, 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: try to find duplicate (error=%02X)", status);
@@ -38,7 +33,7 @@ SettingsStatus SettingsDB::load()
         needResaveFirst = true;
     }
 
-    status = storage.find(FIND_MODE_EQUAL, &address2, PREFIX, 2);
+    status = storage->find(FIND_MODE_EQUAL, &address2, PREFIX, 2);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
@@ -48,9 +43,9 @@ SettingsStatus SettingsDB::load()
 
     settings_t tmpSettings = {};
     if (!needResaveFirst) {
-        status = storage.load(address1, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
+        status = storage->load(address1, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
     } else if (!needResaveSecond) {
-        status = storage.load(address2, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
+        status = storage->load(address2, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
     } else {
     	status = STORAGE_NOT_FOUND;
     }
@@ -78,28 +73,23 @@ SettingsStatus SettingsDB::save()
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
-    StorageDriver storageDriver;
-    StorageAT storage(
-    	flash_w25qxx_get_pages_count(),
-    	&storageDriver
-    );
 	uint32_t address = 0;
 	StorageStatus status = STORAGE_OK;
 
-    status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
+    status = storage->find(FIND_MODE_EQUAL, &address, PREFIX, 1);
 
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage find error, try to find duplicate (error=%02X)", status);
 #endif
-    	status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 2);
+    	status = storage->find(FIND_MODE_EQUAL, &address, PREFIX, 2);
     }
 
     if (status == STORAGE_NOT_FOUND) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage find duplicate error, try to find empty (error=%02X)", status);
 #endif
-        status = storage.find(FIND_MODE_EMPTY, &address);
+        status = storage->find(FIND_MODE_EMPTY, &address);
     }
 
     if (status == STORAGE_NOT_FOUND) {
@@ -107,7 +97,7 @@ SettingsStatus SettingsDB::save()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage find empty error, try to find any address (error=%02X)", status);
 #endif
-    	status = storage.find(FIND_MODE_NEXT, &address, "", 0);
+    	status = storage->find(FIND_MODE_NEXT, &address, "", 0);
     }
 
     if (status != STORAGE_OK) {
@@ -118,7 +108,7 @@ SettingsStatus SettingsDB::save()
     }
 
     // Save original settings
-	status = storage.rewrite(address, PREFIX, 1, this->settings, this->size);
+	status = storage->rewrite(address, PREFIX, 1, this->settings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);
@@ -127,16 +117,16 @@ SettingsStatus SettingsDB::save()
     }
 
     // Save duplicate settings
-	status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 2);
+	status = storage->find(FIND_MODE_EQUAL, &address, PREFIX, 2);
 
     if (status == STORAGE_NOT_FOUND) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings duplicate: storage find error, try to find empty (error=%02X)", status);
 #endif
-        status = storage.find(FIND_MODE_EMPTY, &address);
+        status = storage->find(FIND_MODE_EMPTY, &address);
     }
 
-	status = storage.rewrite(address, PREFIX, 2, this->settings, this->size);
+	status = storage->rewrite(address, PREFIX, 2, this->settings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings duplicate: storage save error=%02X address=%lu", status, address);
