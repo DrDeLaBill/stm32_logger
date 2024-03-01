@@ -21,6 +21,7 @@
 #include "adc.h"
 #include "rtc.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -70,7 +71,32 @@ static constexpr char MAIN_TAG[] = "MAIN";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance == LED_TIM.Instance) //check if the interrupt comes from TIM1
+	{
+		static utl::Timer timer(SECOND_MS / 10);
+		static utl::Timer errTimer(SECOND_MS);
+		static bool errEnabled = false;
+		if (errEnabled) {
+			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+		} else if (!timer.wait()) {
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			timer.start();
+		}
+		if (!errTimer.wait() && has_errors()) {
+			timer.changeDelay(SECOND_MS / 50);
+			errEnabled = !errEnabled;
+			errTimer.start();
+		} else if (is_status(WAIT_LOAD)) {
+			timer.changeDelay(SECOND_MS / 50);
+			errEnabled = false;
+		} else if (!has_errors()) {
+			timer.changeDelay(SECOND_MS / 10);
+			errEnabled = false;
+		}
+	}
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -112,9 +138,8 @@ int main(void)
   MX_USART6_UART_Init();
   MX_USB_DEVICE_Init();
   MX_RTC_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
-	utl::Timer tim(SECOND_MS / 10);
 	// TODO: RAM analyzer & crystal check & clock check & modbus check
 	SoulGuard<
 		RestartWatchdog,
@@ -130,6 +155,8 @@ int main(void)
 	set_status(WAIT_LOAD);
 
 	HAL_Delay(100);
+
+	HAL_TIM_Base_Start_IT(&LED_TIM);
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
@@ -149,23 +176,16 @@ int main(void)
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
+    utl::Timer tmp(SECOND_MS);
 	while (1)
 	{
 		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
 
 		soulGuard.defend();
 
-		if (!tim.wait()) { // TODO: remove blink
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-			tim.start();
-		}
-
-		if (has_errors()) {
-			tim.changeDelay(SECOND_MS / 50);
+		if (has_errors() || is_status(WAIT_LOAD)) {
 			continue;
 		}
-
-		tim.changeDelay(SECOND_MS / 10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -248,11 +268,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	__disable_irq();
-	while (1)
-	{
-		// TODO: check system (clock is 8MGz and etc.), delay 1 sec and reboot
-	}
+	set_error(INTERNAL_ERROR);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -269,9 +285,8 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-#ifdef DEBUG
 	b_assert((char*)file, line, "Wrong parameters value");
-#endif
+	set_error(INTERNAL_ERROR);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

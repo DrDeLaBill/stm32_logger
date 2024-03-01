@@ -25,12 +25,12 @@ private:
 	static utl::Timer timer;
 	static bool updated;
 
-    using hid_table_t = HIDTable<
+    using settings_table_t = HIDTable<
         HIDTuple<uint16_t, SettingsInterface::dv_type>,
         HIDTuple<uint8_t,  SettingsInterface::sw_id>,
         HIDTuple<uint8_t,  SettingsInterface::fw_id>,
         HIDTuple<uint32_t, SettingsInterface::cf_id>,
-        HIDTuple<uint32_t, SettingsInterface::record_period>, // TODO: max time - 86400000 ms
+        HIDTuple<uint32_t, SettingsInterface::record_period>, // TODO: max time month
         HIDTuple<uint32_t, SettingsInterface::send_period>,
         HIDTuple<uint32_t, SettingsInterface::record_id>,
         HIDTuple<uint16_t, SettingsInterface::modbus1_status,    __arr_len(settings_t::modbus1_status)>,
@@ -42,7 +42,7 @@ private:
 //        HIDTuple<uint16_t, DeviceRecord::values> // TODO: ids and values for HID
     >;
 
-    HIDController<hid_table_t> hid_controller;
+    HIDController<settings_table_t> hid_controller;
 
     void clear();
 

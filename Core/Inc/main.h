@@ -127,6 +127,10 @@ extern UART_HandleTypeDef  huart6;
 extern UART_HandleTypeDef  huart2;
 #define BEDUG_UART         (huart2)
 
+// LED TIM
+extern TIM_HandleTypeDef   htim4;
+#define LED_TIM            (htim4)
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

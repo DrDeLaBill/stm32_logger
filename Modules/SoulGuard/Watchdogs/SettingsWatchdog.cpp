@@ -29,6 +29,8 @@ void SettingsWatchdog::check()
 
 void SettingsWatchdog::state_init::operator ()() const
 {
+	set_status(WAIT_LOAD);
+
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.load();
 	if (status == SETTINGS_OK) {
@@ -83,6 +85,8 @@ void SettingsWatchdog::state_idle::operator ()() const
 
 void SettingsWatchdog::state_save::operator ()() const
 {
+	set_status(WAIT_LOAD);
+
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.save();
 	if (status == SETTINGS_OK) {

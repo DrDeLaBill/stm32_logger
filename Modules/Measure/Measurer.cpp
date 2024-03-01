@@ -6,6 +6,7 @@
 
 #include "log.h"
 #include "main.h"
+#include "soul.h"
 #include "utils.h"
 #include "sensor.h"
 #include "bmacro.h"
@@ -15,6 +16,7 @@
 #include "modbus_rtu_master.h"
 
 #include "Record.h"
+#include "USBController.h"
 
 
 uint32_t Measure::sensIndex  = 0;
@@ -112,6 +114,9 @@ void Measure::init_sens_a::operator ()()
 	Measure::sensIndex = 0;
 	Measure::errorsCount = 0;
 	record = Record(0, sensors_count());
+	if (!USBController::connected()) {
+		HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_SET);
+	}
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
@@ -130,6 +135,7 @@ void Measure::wait_start_a::operator ()()
 
 void Measure::save_start_a::operator ()()
 {
+	set_status(WAIT_LOAD);
 	fsm.clear_events();
 #if MEASURER_BEDUG
 	printTagLog(TAG, "Save new record begin");
@@ -149,12 +155,14 @@ void Measure::save_start_a::operator ()()
 	Measure::errorsCount = 0;
 	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
+	reset_status(WAIT_LOAD);
 }
 
 void Measure::idle_start_a::operator ()()
 {
 	fsm.clear_events();
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
 
 	measureNeeded = false;
 }

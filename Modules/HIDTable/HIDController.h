@@ -9,14 +9,15 @@
 #include <unordered_map>
 
 #include "log.h"
+#include "utils.h"
 #include "hid_defs.h"
-
 #include "HIDTable.h"
 #include "HIDTuple.h"
-#ifdef USE_HAL_DRIVER
-#include "bmacro.h"
+
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
+#	include "bmacro.h"
 #else
-#include "app_exception.h"
+#	include "app_exception.h"
 #endif
 
 
@@ -38,8 +39,8 @@ private:
 
     void details(const uint16_t key, const uint8_t index)
     {
-#ifdef USE_HAL_DRIVER
-        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, static_cast<long unsigned>(maxKey()));
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
+        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, maxKey());
 #endif
     }
 
@@ -71,7 +72,7 @@ public:
     {
         auto it = characteristics.find(key);
         if (it == characteristics.end()) {
-#ifdef USE_HAL_DRIVER
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
         	return;
@@ -81,7 +82,7 @@ public:
         }
 
         auto lambda = [&] (auto& tuple) {
-            tuple.target()[index] = tuple.deserialize(value);
+            tuple.set(tuple.deserialize(value), index);
         };
 
         std::visit(lambda, it->second);
@@ -91,7 +92,7 @@ public:
     {
     	auto it = characteristics.find(key);
         if (it == characteristics.end()) {
-#ifdef USE_HAL_DRIVER
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
         	return;
@@ -101,7 +102,7 @@ public:
         }
 
         auto lambda = [&] (auto& tuple) {
-        	memcpy(dst, tuple.serialize(index).get(), tuple.size());
+            memcpy(dst, tuple.serialize(index).get(), __min(sizeof(uint32_t), tuple.size()));
         };
 
         std::visit(lambda, it->second);
@@ -116,7 +117,7 @@ public:
     {
         auto it = characteristics.find(characteristic_id);
         if (it == characteristics.end()) {
-#ifdef USE_HAL_DRIVER
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
             BEDUG_ASSERT(false, "HID table not found error");
         	details(characteristic_id, 0);
             return 0;

@@ -3,6 +3,8 @@
 #pragma once
 
 
+#include "hal_defs.h"
+
 #include "Timer.h"
 #include "FiniteStateMachine.h"
 
@@ -112,6 +114,10 @@ public:
 
 struct MemoryWatchdog
 {
+private:
+	static utl::Timer timer;
+
+public:
 	void check();
 };
 

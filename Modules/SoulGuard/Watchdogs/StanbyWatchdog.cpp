@@ -307,6 +307,5 @@ void StandbyWatchdog::alarmFirstInit()
 uint32_t StandbyWatchdog::sleepTimeSec()
 {
 	uint32_t seconds = (clock_get_timestamp() + settings.record_period / SECOND_MS);
-	seconds = (clock_get_timestamp() + 30); // TODO: remove
 	return seconds;
 }
