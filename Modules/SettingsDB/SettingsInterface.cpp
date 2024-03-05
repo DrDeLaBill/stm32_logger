@@ -2,6 +2,8 @@
 
 #include "SettingsInterface.h"
 
+#include "utils.h"
+
 
 // TODO: add values check for all parameters
 void SettingsInterface::dv_type::set(uint32_t, unsigned)
@@ -66,6 +68,7 @@ uint32_t SettingsInterface::send_period::get(unsigned)
 
 void SettingsInterface::record_id::set(uint32_t value, unsigned)
 {
+	// TODO: check
     settings.record_id = value;
 }
 
@@ -81,6 +84,19 @@ void SettingsInterface::modbus1_status::set(uint32_t value, unsigned index)
 
 uint32_t SettingsInterface::modbus1_status::get(unsigned index)
 {
+//	bool found = false; // TODO
+//	for (unsigned i = 0, counter = 0; i < __arr_len(settings.modbus1_status); i++) {
+//		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
+//			if (counter == index) {
+//				found = true;
+//				break;
+//			}
+//			counter++;
+//		}
+//	}
+//	if (!found) {
+//		return 0;
+//	}
     return settings.modbus1_status[index];
 }
 

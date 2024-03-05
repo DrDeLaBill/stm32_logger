@@ -178,10 +178,10 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	uint32_t minutes = seconds / SECONDS_PER_MINUTE;
 
 	time->Minutes = (uint8_t)(minutes % MINUTES_PER_HOUR);
-	uint32_t hours = (uint8_t)minutes / MINUTES_PER_HOUR;
+	uint32_t hours = minutes / MINUTES_PER_HOUR;
 
 	time->Hours = (uint8_t)(hours % HOURS_PER_DAY);
-	uint32_t days = (uint8_t)hours / HOURS_PER_DAY;
+	uint32_t days = hours / HOURS_PER_DAY;
 
 	uint8_t year  = 0;
 	uint8_t month = 1;

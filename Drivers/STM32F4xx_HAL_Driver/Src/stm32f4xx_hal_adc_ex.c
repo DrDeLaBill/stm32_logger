@@ -777,7 +777,6 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeStop_DMA(ADC_HandleTypeDef *hadc)
   */
 uint32_t HAL_ADCEx_MultiModeGetValue(ADC_HandleTypeDef *hadc)
 {
-  UNUSED(hadc);
   ADC_Common_TypeDef *tmpADC_Common;
 
   /* Pointer to the common control register to which is belonging hadc    */

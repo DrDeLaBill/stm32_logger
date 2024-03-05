@@ -77,8 +77,6 @@ private:
 
 	static void response_packet_handler (modbus_response_t*);
 
-	static bool measureNeeded;
-
 protected:
 	static uint32_t sensIndex;
 	static uint8_t  errorsCount;
@@ -94,8 +92,5 @@ public:
 
 	Measure();
 	void process();
-
-	static void setNeeded();
-	static bool needed();
 
 };

@@ -162,6 +162,8 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 
 RecordStatus RecordClust::getLastTime(uint32_t* time)
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
 	uint32_t address = 0;
 	StorageStatus status = storage->find(FIND_MODE_MAX, &address, PREFIX);
     if (status != STORAGE_OK) {

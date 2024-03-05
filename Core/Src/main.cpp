@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "rtc.h"
 #include "spi.h"
 #include "tim.h"
@@ -71,38 +72,15 @@ static constexpr char MAIN_TAG[] = "MAIN";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if(htim->Instance == LED_TIM.Instance) //check if the interrupt comes from TIM1
-	{
-		static utl::Timer timer(SECOND_MS / 10);
-		static utl::Timer errTimer(SECOND_MS);
-		static bool errEnabled = false;
-		if (errEnabled) {
-			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-		} else if (!timer.wait()) {
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-			timer.start();
-		}
-		if (!errTimer.wait() && has_errors()) {
-			timer.changeDelay(SECOND_MS / 50);
-			errEnabled = !errEnabled;
-			errTimer.start();
-		} else if (is_status(WAIT_LOAD)) {
-			timer.changeDelay(SECOND_MS / 50);
-			errEnabled = false;
-		} else if (!has_errors()) {
-			timer.changeDelay(SECOND_MS / 10);
-			errEnabled = false;
-		}
-	}
-}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 StorageDriver storageDriver;
 StorageAT* storage;
+
+utl::Timer exitTimer(10000);
 /* USER CODE END 0 */
 
 /**
@@ -131,6 +109,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
@@ -140,26 +119,41 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-	// TODO: RAM analyzer & crystal check & clock check & modbus check
+	// TODO: RAM analyzer & crystal check & clock check & modbus check & reload controller
 	SoulGuard<
 		RestartWatchdog,
+		PowerWatchdog,
 		MemoryWatchdog,
 		StackWatchdog,
-		SettingsWatchdog,
-		RTCWatchdog,
 		StandbyWatchdog
-	> soulGuard;
+	> hardwareSoulGuard;
+	SoulGuard<
+		SettingsWatchdog,
+		RTCWatchdog
+	> softwareSoulGuard;
 	USBController usbc;
 	Measure measure;
 
 	set_status(WAIT_LOAD);
+	set_error(POWER_ERROR);
+	set_error(MEMORY_ERROR);
+	set_error(STACK_ERROR);
 
 	HAL_Delay(100);
+
+	exitTimer.start();
 
 	HAL_TIM_Base_Start_IT(&LED_TIM);
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+
+	while (has_errors()) hardwareSoulGuard.defend();
 
     flash_w25qxx_init();
     storage = new StorageAT(
@@ -167,21 +161,19 @@ int main(void)
 		&storageDriver
 	);
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-
-	while (is_status(WAIT_LOAD)) soulGuard.defend();
+    while (is_status(WAIT_LOAD)) {
+    	hardwareSoulGuard.defend();
+    	softwareSoulGuard.defend();
+    }
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
-    utl::Timer tmp(SECOND_MS);
 	while (1)
 	{
 		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
 
-		soulGuard.defend();
+		hardwareSoulGuard.defend();
+		softwareSoulGuard.defend();
 
 		if (has_errors() || is_status(WAIT_LOAD)) {
 			continue;
@@ -202,8 +194,8 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
   */
@@ -257,6 +249,46 @@ int _write(int, uint8_t *ptr, int len) {
     return 0;
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance == LED_TIM.Instance) //check if the interrupt comes from TIM1
+	{
+		static utl::Timer timer(SECOND_MS / 10);
+		static utl::Timer errTimer(SECOND_MS);
+		static bool errEnabled = false;
+		if (errEnabled) {
+			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+		} else if (!timer.wait()) {
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			timer.start();
+		}
+		if (!errTimer.wait() && has_errors()) {
+			timer.changeDelay(SECOND_MS / 50);
+			errEnabled = !errEnabled;
+			errTimer.start();
+		} else if (has_errors()) {
+
+		} else if (is_status(WAIT_LOAD)) {
+			timer.changeDelay(SECOND_MS / 50);
+			errEnabled = false;
+		} else if (!has_errors()) {
+			timer.changeDelay(SECOND_MS / 10);
+			errEnabled = false;
+		}
+		if (!has_errors()) {
+			exitTimer.start();
+		} else if (!exitTimer.wait() && !USBController::connected()) {
+			set_status(NEED_STANDBY);
+		}
+	}
+}
+
+void system_fault_handler()
+{
+	set_error(INTERNAL_ERROR);
+	NVIC_SystemReset();
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -269,6 +301,7 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -287,6 +320,7 @@ void assert_failed(uint8_t *file, uint32_t line)
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 	b_assert((char*)file, line, "Wrong parameters value");
 	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

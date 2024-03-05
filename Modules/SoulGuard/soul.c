@@ -92,3 +92,8 @@ void _reset_status(SOUL_STATUS status)
 	uint8_t status_num = (uint8_t)(status) - 1;
 	soul.errors[status_num / BITS_IN_BYTE] &= (uint8_t)~(0x01 << (status_num % BITS_IN_BYTE));
 }
+
+void restart_i2c_errata()
+{
+	// TODO
+}

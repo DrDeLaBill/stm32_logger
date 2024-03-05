@@ -3,6 +3,7 @@
 #include "StorageDriver.h"
 
 #include "log.h"
+#include "soul.h"
 #include "w25qxx.h"
 #include "bmacro.h"
 
@@ -14,6 +15,9 @@ bool StorageDriver::hasError = false;
 
 
 StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len) {
+	if (is_error(POWER_ERROR)) {
+		return STORAGE_ERROR;
+	}
 	flash_status_t status = FLASH_OK;
 	if (hasBuffer && lastAddress == address && len == Page::PAGE_SIZE) {
 		memcpy(data, bufferPage, len);
@@ -53,6 +57,9 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 ;
 
 StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len) {
+	if (is_error(POWER_ERROR)) {
+		return STORAGE_ERROR;
+	}
 #if STORAGE_DRIVER_BEDUG
 	printTagLog(TAG, "Write %lu address start", address);
 #endif

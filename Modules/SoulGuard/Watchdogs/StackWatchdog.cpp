@@ -62,6 +62,7 @@ void StackWatchdog::check()
 	if (!freeRamBytes) {
 		set_error(STACK_ERROR);
 	} else if (__abs_dif(lastFree, freeRamBytes)) {
+		reset_error(STACK_ERROR);
 		extern unsigned _sdata;
 		extern unsigned _estack;
 		printTagLog(TAG, "-----ATTENTION! INDIRECT DATA BEGIN:-----");

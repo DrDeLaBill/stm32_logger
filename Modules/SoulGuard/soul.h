@@ -23,6 +23,8 @@ typedef enum _SOUK_STATUS {
 	WAIT_LOAD,
 	NEED_INIT_RECORD_TMP,
 	NEED_SAVE_RECORD,
+	NEED_MEASURE,
+	NEED_STANDBY,
 	MODBUS_FAULT,
 	PUMP_FAULT,
 	RTC_FAULT,
@@ -64,6 +66,8 @@ void reset_error(SOUL_STATUS error);
 bool is_status(SOUL_STATUS status);
 void set_status(SOUL_STATUS status);
 void reset_status(SOUL_STATUS status);
+
+void restart_i2c_errata();
 
 
 #ifdef __cplusplus

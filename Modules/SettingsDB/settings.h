@@ -14,7 +14,7 @@ extern "C" {
 
 #include "main.h"
 
-
+// TODO: add most significant byte of version (now it v0.1.4 -.fw.sw)
 #define DEVICE_TYPE ((uint16_t)0x0001)
 #define SW_VERSION  ((uint8_t)0x04)
 #define FW_VERSION  ((uint8_t)0x01)

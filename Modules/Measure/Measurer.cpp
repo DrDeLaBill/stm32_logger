@@ -24,7 +24,6 @@ uint8_t Measure::errorsCount = 0;
 
 fsm::FiniteStateMachine<Measure::fsm_table> Measure::fsm;
 utl::Timer Measure::timer(GENERAL_TIMEOUT_MS);
-bool Measure::measureNeeded = false;
 Record Measure::record(0);
 
 
@@ -48,7 +47,12 @@ void Measure::_init_s::operator ()()
 	}
 }
 
-void Measure::_idle_s::operator ()() {}
+void Measure::_idle_s::operator ()()
+{
+	if (is_status(NEED_MEASURE)) {
+		fsm.push_event(need_measure_e{});
+	}
+}
 
 void Measure::_request_s::operator ()()
 {
@@ -164,7 +168,7 @@ void Measure::idle_start_a::operator ()()
 	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
 
-	measureNeeded = false;
+	reset_status(NEED_MEASURE);
 }
 
 void Measure::iterate_sens_a::operator ()()
@@ -196,7 +200,7 @@ void Measure::register_error_a::operator ()()
 	// TODO: send measure error to errors list
 	fsm.clear_events();
 
-	measureNeeded = false;
+	reset_status(NEED_MEASURE);
 }
 
 void Measure::response_packet_handler(modbus_response_t* packet)
@@ -230,15 +234,4 @@ void Measure::response_packet_handler(modbus_response_t* packet)
 
     record.set(sensIndex + 1, packet->response[0]);
     fsm.push_event(response_e{});
-}
-
-void Measure::setNeeded()
-{
-	fsm.push_event(need_measure_e{});
-	measureNeeded = true;
-}
-
-bool Measure::needed()
-{
-	return measureNeeded;
 }

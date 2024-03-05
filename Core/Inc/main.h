@@ -131,6 +131,14 @@ extern UART_HandleTypeDef  huart2;
 extern TIM_HandleTypeDef   htim4;
 #define LED_TIM            (htim4)
 
+// Power supply
+extern ADC_HandleTypeDef   hadc1;
+#define POWER_ADC          (hadc1)
+
+
+void system_fault_handler();
+
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
