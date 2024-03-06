@@ -16,15 +16,5 @@ void MemoryWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("MEM", GENERAL_TIMEOUT_MS);
 
-	if (timer.wait()) {
-		return;
-	}
-
-	if (StorageDriver::storageError()) {
-		set_error(MEMORY_ERROR);
-	} else {
-		reset_error(MEMORY_ERROR);
-	}
-
-	timer.start();
+	// TODO: if device has MEMORY_ERROR: check memory every 1000 ms
 }

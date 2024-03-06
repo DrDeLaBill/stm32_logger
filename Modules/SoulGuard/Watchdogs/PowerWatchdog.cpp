@@ -60,6 +60,12 @@ void PowerWatchdog::start_DMA_a::operator ()()
 
 void PowerWatchdog::check_power_a::operator ()()
 {
+	if (USBController::connected()) {
+		reset_error(POWER_ERROR);
+		fsm.push_event(success_e{});
+		return;
+	}
+
 	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * adcLevel) / ADC_MAX);
 	if (vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) {
 		fsm.push_event(error_e{});

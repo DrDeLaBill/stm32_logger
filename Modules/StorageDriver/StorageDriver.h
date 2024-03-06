@@ -8,7 +8,8 @@
 #include "StorageAT.h"
 
 
-#define STORAGE_DRIVER_BEDUG (false)
+#define STORAGE_DRIVER_BEDUG      (false)
+#define STORAGE_DRIVER_USE_BUFFER (true)
 
 
 struct StorageDriver: public IStorageDriver
@@ -16,15 +17,13 @@ struct StorageDriver: public IStorageDriver
 private:
 	static constexpr char TAG[] = "DRVR";
 
+#if STORAGE_DRIVER_USE_BUFFER
     static bool     hasBuffer;
     static uint8_t  bufferPage[Page::PAGE_SIZE];
     static uint32_t lastAddress;
-
-    static bool     hasError;
+#endif
 
 public:
     StorageStatus read(uint32_t address, uint8_t *data, uint32_t len) override;
     StorageStatus write(uint32_t address, uint8_t *data, uint32_t len) override;
-
-    static bool storageError();
 };

@@ -19,5 +19,5 @@ void hid_report_set_data(report_pack_t* report, const uint8_t* src_data, const u
 {
     BEDUG_ASSERT(src_data, "Data must not be null"); // TODO: app and device (throw)
 
-    memcpy_s(report->data, sizeof(report->data), src_data, size);
+    memcpy(report->data, src_data, __min(sizeof(report->data), size));
 }

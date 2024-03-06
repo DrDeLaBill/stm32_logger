@@ -22,11 +22,13 @@ extern "C" void STACK_WATCHDOG_FILL_RAM(void);
 
 struct StackWatchdog
 {
-	void check();
-
 private:
 	static constexpr char TAG[] = "STCK";
 	static unsigned lastFree;
+
+public:
+	void check();
+
 };
 
 struct RestartWatchdog

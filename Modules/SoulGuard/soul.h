@@ -18,7 +18,7 @@ extern "C" {
 
 typedef enum _SOUK_STATUS {
 	/* Device statuses start */
-	STATUSES_START,
+	STATUSES_START = 0,
 
 	WAIT_LOAD,
 	NEED_INIT_RECORD_TMP,

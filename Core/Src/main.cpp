@@ -136,7 +136,7 @@ int main(void)
 
 	set_status(WAIT_LOAD);
 	set_error(POWER_ERROR);
-	set_error(MEMORY_ERROR);
+//	set_error(MEMORY_ERROR); // TODO
 	set_error(STACK_ERROR);
 
 	HAL_Delay(100);
