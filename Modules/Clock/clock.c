@@ -142,9 +142,8 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 	for (unsigned i = 0; i < (unsigned)(date->Month > 0 ? date->Month - 1 : 0); i++) {
 		days += _get_days_in_month(date->Year, i);
 	}
-	if (date->Date > 0) {
-		days += (date->Date - 1);
-	}
+	days += date->Date;
+	days -= 1;
 	uint32_t hours = days * HOURS_PER_DAY + time->Hours;
 	uint32_t minutes = hours * MINUTES_PER_HOUR + time->Minutes;
 	uint32_t seconds = minutes * SECONDS_PER_MINUTE + time->Seconds;
@@ -186,6 +185,7 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	uint8_t year  = 0;
 	uint8_t month = 1;
 	uint8_t day   = 1;
+	date->WeekDay = (RTC_WEEKDAY_SATURDAY + days % (DAYS_PER_WEEK + 1)) % (DAYS_PER_WEEK + 1);
 	while (days) {
 		uint16_t days_in_year = (year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
 		if (days > days_in_year) {
@@ -201,7 +201,9 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 			continue;
 		}
 
-		day += days;
+		if (days > 0) {
+			day = days;
+		}
 		days = 0;
 	}
 

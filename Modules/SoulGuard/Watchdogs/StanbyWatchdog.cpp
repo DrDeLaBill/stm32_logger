@@ -258,7 +258,7 @@ void StandbyWatchdog::_init_s::operator()()
 void StandbyWatchdog::_idle_s::operator ()()
 {
 #if USE_WKUP_RTC_ALARM
-//	if (needStartAlarm()) {
+//	if (needStartAlarm()) { // TODO
 //		fsm.push_event(need_start_alarm_e{});
 //	}
 #endif

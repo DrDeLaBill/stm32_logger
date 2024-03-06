@@ -35,7 +35,8 @@ private:
         HIDTuple<uint32_t, SettingsInterface::record_id>,
         HIDTuple<uint16_t, SettingsInterface::modbus1_status,    __arr_len(settings_t::modbus1_status)>,
         HIDTuple<uint16_t, SettingsInterface::modbus1_value_reg, __arr_len(settings_t::modbus1_value_reg)>,
-        HIDTuple<uint16_t, SettingsInterface::modbus1_id_reg,    __arr_len(settings_t::modbus1_id_reg)>
+        HIDTuple<uint16_t, SettingsInterface::modbus1_id_reg,    __arr_len(settings_t::modbus1_id_reg)>,
+		HIDTuple<uint32_t, SettingsInterface::time>
 //        HIDTuple<uint32_t, RecordInterface::id>,
 //        HIDTuple<uint32_t, RecordInterface::time>
 //        HIDTuple<uint8_t,  DeviceRecord::IDs>,

@@ -2,7 +2,24 @@
 
 #include "SettingsInterface.h"
 
+#include "log.h"
+#include "clock.h"
 #include "utils.h"
+#include "settings.h"
+
+
+
+unsigned __get_index(const unsigned index)
+{
+	unsigned counter = __arr_len(settings.modbus1_status) - 1;
+	for (unsigned i = index; i < __arr_len(settings.modbus1_status); i++) {
+		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
+			counter = index;
+			break;
+		}
+	}
+	return counter;
+}
 
 
 // TODO: add values check for all parameters
@@ -84,20 +101,12 @@ void SettingsInterface::modbus1_status::set(uint32_t value, unsigned index)
 
 uint32_t SettingsInterface::modbus1_status::get(unsigned index)
 {
-//	bool found = false; // TODO
-//	for (unsigned i = 0, counter = 0; i < __arr_len(settings.modbus1_status); i++) {
-//		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
-//			if (counter == index) {
-//				found = true;
-//				break;
-//			}
-//			counter++;
-//		}
-//	}
-//	if (!found) {
-//		return 0;
-//	}
     return settings.modbus1_status[index];
+}
+
+unsigned SettingsInterface::modbus1_status::index(unsigned index)
+{
+	return __get_index(index);
 }
 
 void SettingsInterface::modbus1_value_reg::set(uint32_t value, unsigned index)
@@ -110,6 +119,11 @@ uint32_t SettingsInterface::modbus1_value_reg::get(unsigned index)
     return settings.modbus1_value_reg[index];
 }
 
+unsigned SettingsInterface::modbus1_value_reg::index(unsigned index)
+{
+	return __get_index(index);
+}
+
 void SettingsInterface::modbus1_id_reg::set(uint32_t value, unsigned index)
 {
     settings.modbus1_id_reg[index] = value;
@@ -118,4 +132,23 @@ void SettingsInterface::modbus1_id_reg::set(uint32_t value, unsigned index)
 uint32_t SettingsInterface::modbus1_id_reg::get(unsigned index)
 {
     return settings.modbus1_id_reg[index];
+}
+
+unsigned SettingsInterface::modbus1_id_reg::index(unsigned index)
+{
+	return __get_index(index);
+}
+
+void SettingsInterface::time::set(uint32_t value, unsigned)
+{
+	RTC_TimeTypeDef dumpTime = {};
+	RTC_DateTypeDef dumpDate = {};
+	clock_seconds_to_datetime(value, &dumpDate, &dumpTime);
+	clock_save_date(&dumpDate);
+	clock_save_time(&dumpTime);
+}
+
+uint32_t SettingsInterface::time::get(unsigned)
+{
+	return clock_get_timestamp();
 }

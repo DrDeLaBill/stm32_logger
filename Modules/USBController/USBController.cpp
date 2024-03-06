@@ -50,7 +50,7 @@ void USBController::proccess()
 		return;
 	}
 
-	report_pack_t response = {};
+	report_pack_t response     = {};
 	response.report_id         = HID_OUTPUT_REPORT_ID;
 	response.characteristic_id = 0;
 	response.index             = request.index;
@@ -58,17 +58,18 @@ void USBController::proccess()
 
 	if (request.characteristic_id == HID_GETTER_ID) {
 		response.characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
-		hid_controller.getValue(response.characteristic_id, response.data, response.index);
 	} else {
 		response.characteristic_id = request.characteristic_id;
 		hid_controller.setValue(request.characteristic_id, request.data, request.index);
-		hid_controller.getValue(response.characteristic_id, response.data, response.index);
 		updated = true;
 		timer.start();
 	}
 
+	hid_controller.getValue(response.characteristic_id, response.data, response.index);
+	response.index = hid_controller.getIndex(response.characteristic_id, response.index);
+
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, reinterpret_cast<uint8_t*>(&response), sizeof(response));
-#if USB_CONTROLLER_BEDUG
+#if HID_TABLE_BEDUG
 	printTagLog(TAG, "USB host request:");
 	hid_report_show(&request);
 	printTagLog(TAG, "USB device response:");

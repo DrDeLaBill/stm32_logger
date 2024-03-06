@@ -241,8 +241,12 @@ bool RecordClust::validate(record_clust_t* clust)
 void RecordClust::show()
 {
 #if RECORD_BEDUG
+	RTC_DateTypeDef date = {};
+	clock_get_rtc_date(&date);
 	RTC_TimeTypeDef time = {};
 	clock_get_rtc_time(&time);
+
+	printPretty("               %02u-%02u-20%02u\n", date.Date, date.Month, date.Year);
 	printPretty("                %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
 	printPretty("##############RECORD CLUST###############\n");
 	printPretty("Device type: %u\n", m_clust.dv_type);

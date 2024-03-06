@@ -7,6 +7,8 @@
 #include <memory>
 #include <cstdint>
 
+#include "hid_defs.h"
+
 #ifdef USE_HAL_DRIVER
 #   include "bmacro.h"
 #   include "variables.h"
@@ -15,6 +17,8 @@
 #   include "variables.h"
 #endif
 
+
+#define HID_TUPLE_BEDUG (true)
 
 
 struct HIDTupleBase {};
@@ -36,10 +40,10 @@ struct HIDTuple : HIDTupleBase
         return LENGTH;
     }
 
-    void details(unsigned index = 0)
+    void details(const unsigned index = 0)
     {
-#ifdef USE_HAL_DRIVER
-        gprint("Details: target pointer = %lu; index = %u; size = %d; length = %u\n", get(), index, sizeof(type_t), length());
+#if defined(USE_HAL_DRIVER) && HID_TABLE_BEDUG
+        gprint("Details: target pointer = %u; index = %u; size = %d; length = %u\n", get(), index, sizeof(type_t), length());
 #endif
     }
 
@@ -47,7 +51,9 @@ struct HIDTuple : HIDTupleBase
     {
         if (!src) {
 #ifdef USE_HAL_DRIVER
+#	if HID_TABLE_BEDUG
             BEDUG_ASSERT(false, "Source must not be null");
+#	endif
         	return 0;
 #else
             throw new exceptions::TemplateErrorException();
@@ -56,13 +62,15 @@ struct HIDTuple : HIDTupleBase
         return utl::deserialize<type_t>(src)[0];
     }
 
-    std::shared_ptr<uint8_t[]> serialize(unsigned index = 0)
+    std::shared_ptr<uint8_t[]> serialize(const unsigned index = 0)
     {
         type_t value = static_cast<type_t>(callback_c{}.get(index));
         if (index >= length()) {
 #ifdef USE_HAL_DRIVER
+#	if HID_TABLE_BEDUG
             BEDUG_ASSERT(false, "Target must not be null");
             details(index);
+#	endif
         	return nullptr;
 #else
             throw new exceptions::TemplateErrorException();
@@ -71,7 +79,7 @@ struct HIDTuple : HIDTupleBase
         return utl::serialize<type_t>(&value);
     }
 
-    void set(type_t value, unsigned index = 0)
+    void set(type_t value, const unsigned index = 0)
     {
         callback_c{}.set(value, index);
     }
@@ -79,6 +87,11 @@ struct HIDTuple : HIDTupleBase
     type_t get(unsigned index = 0)
     {
         return callback_c{}.get(index);
+    }
+
+    unsigned index(const unsigned index = 0)
+    {
+    	return callback_c{}.index(index);
     }
 };
 

@@ -298,7 +298,6 @@ void system_fault_handler()
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	set_error(INTERNAL_ERROR);
 	while (1);
@@ -316,8 +315,6 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 	b_assert((char*)file, line, "Wrong parameters value");
 	set_error(INTERNAL_ERROR);
 	while (1);

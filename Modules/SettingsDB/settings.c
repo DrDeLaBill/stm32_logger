@@ -70,10 +70,13 @@ bool settings_check(settings_t* other)
 
 void settings_show()
 {
+	RTC_DateTypeDef date = {};
+	clock_get_rtc_date(&date);
 	RTC_TimeTypeDef time = {};
 	clock_get_rtc_time(&time);
 
 	printPretty("\n");
+	printPretty("                   %02u-%02u-20%02u\n", date.Date, date.Month, date.Year);
 	printPretty("                    %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
 	printPretty("####################SETTINGS####################\n");
 	printPretty("Device type: %u\n", settings.dv_type);

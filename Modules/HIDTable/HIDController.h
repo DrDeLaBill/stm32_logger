@@ -39,8 +39,8 @@ private:
 
     void details(const uint16_t key, const uint8_t index)
     {
-#if defined(USE_HAL_DRIVER) && defined(DEBUG)
-        gprint("Details: key = %u; index = %u; max key = %lu\n", key, index, maxKey());
+#if defined(USE_HAL_DRIVER) && HID_TABLE_BEDUG
+        gprint("Details: key = %u; index = %u; max key = %u\n", key, index, maxKey());
 #endif
     }
 
@@ -72,9 +72,11 @@ public:
     {
         auto it = characteristics.find(key);
         if (it == characteristics.end()) {
-#if defined(USE_HAL_DRIVER) && defined(DEBUG)
+#if defined(USE_HAL_DRIVER)
+#	if HID_TABLE_BEDUG
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
+#	endif
         	return;
 #else
             throw new exceptions::TemplateErrorException();
@@ -82,7 +84,7 @@ public:
         }
 
         auto lambda = [&] (auto& tuple) {
-            tuple.set(tuple.deserialize(value), index);
+            tuple.set(tuple.deserialize(value), tuple.index(index));
         };
 
         std::visit(lambda, it->second);
@@ -92,9 +94,11 @@ public:
     {
     	auto it = characteristics.find(key);
         if (it == characteristics.end()) {
-#if defined(USE_HAL_DRIVER) && defined(DEBUG)
+#if defined(USE_HAL_DRIVER)
+#	if HID_TABLE_BEDUG
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
+#	endif
         	return;
 #else
             throw new exceptions::TemplateErrorException();
@@ -102,10 +106,34 @@ public:
         }
 
         auto lambda = [&] (auto& tuple) {
-            memcpy(dst, tuple.serialize(index).get(), __min(sizeof(uint32_t), tuple.size()));
+            memcpy(dst, tuple.serialize(tuple.index(index)).get(), __min(sizeof(uint32_t), tuple.size()));
         };
 
         std::visit(lambda, it->second);
+    }
+
+    unsigned getIndex(const uint16_t key, const uint8_t index = 0)
+    {
+    	auto it = characteristics.find(key);
+        if (it == characteristics.end()) {
+#if defined(USE_HAL_DRIVER) && defined(DEBUG)
+#	if HID_TABLE_BEDUG
+        	BEDUG_ASSERT(false, "HID table not found error");
+        	details(key, index);
+#	endif
+        	return 0;
+#else
+            throw new exceptions::TemplateErrorException();
+#endif
+        }
+
+        unsigned result = 0;
+        auto lambda = [&] (auto& tuple) {
+        	result = tuple.index(index);
+        };
+        std::visit(lambda, it->second);
+
+        return result;
     }
 
     constexpr unsigned maxKey()
@@ -118,8 +146,10 @@ public:
         auto it = characteristics.find(characteristic_id);
         if (it == characteristics.end()) {
 #if defined(USE_HAL_DRIVER) && defined(DEBUG)
+#	if HID_TABLE_BEDUG
             BEDUG_ASSERT(false, "HID table not found error");
         	details(characteristic_id, 0);
+#	endif
             return 0;
 #else
             throw new exceptions::TemplateErrorException();
