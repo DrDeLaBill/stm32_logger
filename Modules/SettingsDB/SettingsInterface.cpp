@@ -13,8 +13,8 @@ unsigned __get_index(const unsigned index)
 {
 	unsigned counter = __arr_len(settings.modbus1_status) - 1;
 	for (unsigned i = index; i < __arr_len(settings.modbus1_status); i++) {
-		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
-			counter = index;
+		if (SettingsInterface::modbus1_status{}.get(i) != SETTINGS_SENSOR_EMPTY) {
+			counter = i;
 			break;
 		}
 	}

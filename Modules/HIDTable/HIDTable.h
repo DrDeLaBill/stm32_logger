@@ -41,6 +41,11 @@ struct HIDTable : HIDTableBase
 
     using tuple_p = utl::simple_list_t<TuplesTable...>;
     using tuple_v = std::variant<TuplesTable...>;
+
+    static constexpr unsigned count()
+    {
+        return sizeof...(TuplesTable);
+    }
 };
 
 

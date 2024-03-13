@@ -58,6 +58,7 @@ void USBController::proccess()
 
 	if (request.characteristic_id == HID_GETTER_ID) {
 		response.characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
+		response.index = hid_controller.getIndex(response.characteristic_id, response.index);
 	} else {
 		response.characteristic_id = request.characteristic_id;
 		hid_controller.setValue(request.characteristic_id, request.data, request.index);
@@ -66,7 +67,6 @@ void USBController::proccess()
 	}
 
 	hid_controller.getValue(response.characteristic_id, response.data, response.index);
-	response.index = hid_controller.getIndex(response.characteristic_id, response.index);
 
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, reinterpret_cast<uint8_t*>(&response), sizeof(response));
 #if HID_TABLE_BEDUG

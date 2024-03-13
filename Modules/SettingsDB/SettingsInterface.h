@@ -75,7 +75,7 @@ struct SettingsInterface
     {
         void set(uint32_t value, unsigned index = 0);
         uint32_t get(unsigned index = 0);
-        unsigned index(unsigned index = 0) { return 0; }
+        unsigned index(unsigned) { return 0; }
     };
 };
 
