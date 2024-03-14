@@ -230,3 +230,8 @@ public:
 
 	static void stopDMA();
 };
+
+struct InfoWatchdog
+{
+	void check();
+};

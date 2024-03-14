@@ -39,11 +39,11 @@ protected:
     uint32_t m_address;
     record_clust_t m_clust;
 
-    bool validate(record_clust_t* clust);
     bool loadExist(bool validateSize);
     bool createNew();
-    RecordStatus getMaxId(uint32_t *maxId);
+
     static uint32_t getCountByRecordSize(uint32_t recordSize);
+    static bool validate(record_clust_t* clust);
 
 public:
     RecordClust(uint32_t recordId = 0, uint16_t recordSize = 0);
@@ -55,12 +55,17 @@ public:
     // TODO: RecordStatus erase(uint32_t address); with w25xx.h _flash_erase_data
 
     uint32_t records_count();
+    uint32_t record_size();
     uint32_t structure_size();
     void show();
 
-    RecordStatus getLastTime(uint32_t* time);
+    static RecordStatus getLastTime(uint32_t* time);
+    static RecordStatus getMaxId(uint32_t* maxId);
+    static RecordStatus getMinId(uint32_t* minId);
+
 
 private:
-    RecordStatus deleteClust(uint32_t address);
+    static RecordStatus deleteClust(uint32_t address);
+    static RecordStatus preLoadClust(const uint32_t address, record_clust_t& clust);
 
 };

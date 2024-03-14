@@ -71,7 +71,7 @@ struct HIDTuple : HIDTupleBase
 
     std::shared_ptr<uint8_t[]> serialize(const unsigned index = 0)
     {
-        type_t value = static_cast<type_t>(callback_c{}.get(index));
+        type_t value = static_cast<type_t>(callback_c::get(index));
         if (index >= length()) {
 #ifdef USE_HAL_DRIVER
 #	if HID_TABLE_BEDUG
@@ -88,7 +88,7 @@ struct HIDTuple : HIDTupleBase
 
     void set(type_t value, const unsigned index = 0)
     {
-        callback_c{}.set(value, index);
+        callback_c::set(value, index);
     }
 
 #ifndef USE_HAL_DRIVER
@@ -120,7 +120,7 @@ struct HIDTuple : HIDTupleBase
 #	endif
             return 0;
         }
-    	unsigned result = callback_c{}.index(index);
+    	unsigned result = callback_c::index(index);
     	if (result >= length()) {
 #	if HID_TABLE_BEDUG
             BEDUG_ASSERT(false, "Found index is out of range");

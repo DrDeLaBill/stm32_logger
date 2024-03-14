@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "soul.h"
 #include "clock.h"
 #include "settings.h"
 #include "StorageAT.h"
@@ -17,6 +18,7 @@
 Record::Record(uint32_t recordId, uint16_t sensCount):
 	m_recordId(recordId), m_sensCount(sensCount), m_counter(0)
 {
+	BEDUG_ASSERT(sensCount > 0, "Record sensors count must not be 0");
     memset(reinterpret_cast<size_t*>(&record), 0, sizeof(record));
 }
 
@@ -91,6 +93,8 @@ RecordStatus Record::loadNext()
         return RECORD_NO_LOG;
     }
 
+    m_sensCount = getSensorsCountBySize(clust.record_size());
+    m_recordId  = curId;
     memcpy(
         reinterpret_cast<void*>(&(this->record)),
         reinterpret_cast<void*>(&(clust[idx])),
@@ -107,7 +111,17 @@ RecordStatus Record::loadNext()
 
 RecordStatus Record::getLastTime(uint32_t* time)
 {
-	return RecordClust().getLastTime(time);
+	return RecordClust::getLastTime(time);
+}
+
+RecordStatus Record::getMinId(uint32_t* id)
+{
+	return RecordClust::getMinId(id);
+}
+
+RecordStatus Record::getMaxId(uint32_t* id)
+{
+	return RecordClust::getMaxId(id);
 }
 
 RecordStatus Record::save()
@@ -122,14 +136,18 @@ RecordStatus Record::save()
     record.time = clock_get_timestamp();
     recordStatus = clust.save(&record, this->size());
 
-#ifdef RECORD_BEDUG
     if (recordStatus == RECORD_OK) {
+    	set_status(NEED_LOAD_MIN_RECORD);
+    	set_status(NEED_LOAD_MAX_RECORD);
+#ifdef RECORD_BEDUG
     	clust.show();
         this->show();
     } else {
         printTagLog(TAG, "New record was not saved");
-    }
 #endif
+    }
+
+
 
     return recordStatus;
 }
@@ -158,6 +176,7 @@ unsigned Record::size()
 
 unsigned Record::count()
 {
+	BEDUG_ASSERT(m_sensCount > 0, "Sensors count must not be 0");
     return m_sensCount;
 }
 
@@ -175,10 +194,6 @@ void Record::set(uint8_t ID, uint16_t value)
 	record.sens[m_counter].ID = ID;
 	record.sens[m_counter].value = value;
 	m_counter++;
-
-//#if RECORD_BEDUG // TODO
-//	printTagLog(TAG, "Sensor with ID=%u not found (target value=%u)", ID, value);
-//#endif
 }
 
 uint16_t Record::get(uint8_t ID)

@@ -2,21 +2,21 @@
 
 #include "USBController.h"
 
-#include "usbd_customhid.h"
-
-#include "log.h"
-#include "hid_defs.h"
-#include "variables.h"
-
 #include "CodeStopwatch.h"
 
 
 utl::Timer USBController::timer(GENERAL_TIMEOUT_MS);
 bool USBController::updated = false;
 
+USBController::settings_controller_t USBController::settings_controller;
+USBController::info_controller_t USBController::info_controller;
+USBController::record_controller_t USBController::record_controller;
+
 
 void USBController::proccess()
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
 	uint8_t counter = 0;
 	report_pack_t request = {};
 	request.report_id = receive_buf[counter++];
@@ -29,10 +29,6 @@ void USBController::proccess()
 	if (request.report_id != HID_INPUT_REPORT_ID) {
 		return;
 	}
-
-	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
-
-	extern USBD_HandleTypeDef hUsbDeviceFS;
 
 	request.characteristic_id = utl::deserialize<uint16_t>(&receive_buf[counter])[0];
 	counter += sizeof(uint16_t);
@@ -50,32 +46,38 @@ void USBController::proccess()
 		return;
 	}
 
-	report_pack_t response     = {};
-	response.report_id         = HID_OUTPUT_REPORT_ID;
-	response.characteristic_id = 0;
-	response.index             = request.index;
-	memcpy(response.tag, REPORT_PREFIX, sizeof(response.tag));
-
-	if (request.characteristic_id == HID_GETTER_ID) {
-		response.characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
-		response.index = hid_controller.getIndex(response.characteristic_id, response.index);
-	} else {
-		response.characteristic_id = request.characteristic_id;
-		hid_controller.setValue(request.characteristic_id, request.data, request.index);
-		updated = true;
-		timer.start();
+	uint16_t characteristic_id = request.characteristic_id;
+	if (characteristic_id == HID_GETTER_ID) {
+		characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
 	}
 
-	hid_controller.getValue(response.characteristic_id, response.data, response.index);
-
-	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, reinterpret_cast<uint8_t*>(&response), sizeof(response));
+	if (characteristic_id <= settings_controller_t::maxID()) {
 #if HID_TABLE_BEDUG
-	printTagLog(TAG, "USB host request:");
-	hid_report_show(&request);
-	printTagLog(TAG, "USB device response:");
-	hid_report_show(&response);
+		printTagLog(TAG, "STNG ID: %u", characteristic_id);
 #endif
-	clear();
+		controllerProccess<settings_controller_t>(&settings_controller, request);
+		return;
+	}
+
+	if (characteristic_id <= info_controller_t::maxID()) {
+#if HID_TABLE_BEDUG
+		printTagLog(TAG, "INFO ID: %u", characteristic_id);
+#endif
+		controllerProccess<info_controller_t>(&info_controller, request);
+		return;
+	}
+
+	if (request.characteristic_id == HID_GETTER_ID &&
+		characteristic_id <= record_controller_t::maxID()
+	) {
+#if HID_TABLE_BEDUG
+		printTagLog(TAG, "RCRD ID: %u", characteristic_id);
+#endif
+		controllerProccess<record_controller_t>(&record_controller, request);
+		return;
+	}
+
+	BEDUG_ASSERT(characteristic_id <= record_controller.maxID(), "HID characteristic ID is out of range");
 }
 
 void USBController::clear()

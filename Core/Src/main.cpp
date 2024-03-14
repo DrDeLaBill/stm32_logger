@@ -129,6 +129,7 @@ int main(void)
 	> hardwareSoulGuard;
 	SoulGuard<
 		SettingsWatchdog,
+		InfoWatchdog,
 		RTCWatchdog
 	> softwareSoulGuard;
 	USBController usbc;
@@ -160,6 +161,10 @@ int main(void)
 		flash_w25qxx_get_pages_count(),
 		&storageDriver
 	);
+
+    set_status(NEED_LOAD_MIN_RECORD);
+    set_status(NEED_LOAD_MAX_RECORD);
+    set_status(NEED_LOAD_NEXT_RECORD);
 
     while (is_status(WAIT_LOAD)) {
     	hardwareSoulGuard.defend();

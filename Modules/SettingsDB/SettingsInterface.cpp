@@ -3,7 +3,6 @@
 #include "SettingsInterface.h"
 
 #include "log.h"
-#include "clock.h"
 #include "utils.h"
 #include "settings.h"
 
@@ -137,18 +136,4 @@ uint32_t SettingsInterface::modbus1_id_reg::get(unsigned index)
 unsigned SettingsInterface::modbus1_id_reg::index(unsigned index)
 {
 	return __get_index(index);
-}
-
-void SettingsInterface::time::set(uint32_t value, unsigned)
-{
-	RTC_TimeTypeDef dumpTime = {};
-	RTC_DateTypeDef dumpDate = {};
-	clock_seconds_to_datetime(value, &dumpDate, &dumpTime);
-	clock_save_date(&dumpDate);
-	clock_save_time(&dumpTime);
-}
-
-uint32_t SettingsInterface::time::get(unsigned)
-{
-	return clock_get_timestamp();
 }

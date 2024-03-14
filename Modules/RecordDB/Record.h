@@ -24,6 +24,8 @@ public:
     RecordStatus loadNext();
 
     static RecordStatus getLastTime(uint32_t* time);
+    static RecordStatus getMinId(uint32_t* id);
+    static RecordStatus getMaxId(uint32_t* id);
 
     void show();
     unsigned size();
@@ -40,5 +42,5 @@ private:
 
     uint32_t m_recordId;
     uint16_t m_sensCount;
-    uint8_t m_counter;
+    uint8_t  m_counter;
 };
