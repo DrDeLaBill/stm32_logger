@@ -14,7 +14,7 @@ bool RestartWatchdog::flagsCleared = false;
 
 void RestartWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch(TAG, WATCHDOG_TIMEOUT_MS);
 
 	if (flagsCleared) {
 		return;

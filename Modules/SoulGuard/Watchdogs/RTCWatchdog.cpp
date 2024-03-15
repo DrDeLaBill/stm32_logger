@@ -11,7 +11,7 @@
 
 void RTCWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("RTC", GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch("RTC", WATCHDOG_TIMEOUT_MS);
 
 	RTC_DateTypeDef date = {};
 	RTC_TimeTypeDef time = {};

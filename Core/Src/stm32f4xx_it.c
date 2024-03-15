@@ -89,6 +89,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+	NVIC_SystemReset(); // TODO: normal reset for all fault handlers
 	system_fault_handler();
   /* USER CODE END HardFault_IRQn 0 */
   while (1)

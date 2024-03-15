@@ -3,6 +3,8 @@
 #pragma once
 
 
+#include <cstdint>
+
 #include "hal_defs.h"
 
 #include "Timer.h"
@@ -11,6 +13,9 @@
 
 #define SETTINGS_WATCHDOG_BEDUG (true)
 #define POWER_WATCHDOG_BEDUG    (true)
+
+
+#define WATCHDOG_TIMEOUT_MS     ((uint32_t)10) // TODO: change to 100
 
 
 /*

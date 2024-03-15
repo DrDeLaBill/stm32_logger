@@ -33,7 +33,8 @@ void STACK_WATCHDOG_FILL_RAM(void) {
 
 void StackWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("STCK", GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch("STCK", WATCHDOG_TIMEOUT_MS);
+
 	extern unsigned _ebss;
 	unsigned *start, *end;
 	__asm__ volatile ("mov %[end], sp" : [end] "=r" (end) : : );

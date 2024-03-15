@@ -56,6 +56,7 @@ void USBController::proccess()
 		printTagLog(TAG, "STNG ID: %u", characteristic_id);
 #endif
 		controllerProccess<settings_controller_t>(&settings_controller, request);
+		updated = (request.characteristic_id == HID_GETTER_ID ? updated : true);
 		return;
 	}
 

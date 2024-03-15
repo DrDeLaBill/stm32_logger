@@ -10,6 +10,11 @@
 #include "RecordType.h"
 
 
+#define RECORD_CLUST_BEDUG        (false)
+
+#define RECORD_CLUST_ENABLE_CACHE (true)
+
+
 class RecordClust
 {
 public:
@@ -26,6 +31,8 @@ public:
 
         record_t& operator[](unsigned i);
 
+        uint32_t minID();
+        uint32_t maxID();
         uint32_t count();
         uint32_t size();
     } record_clust_t;
@@ -67,5 +74,24 @@ public:
 private:
     static RecordStatus deleteClust(uint32_t address);
     static RecordStatus preLoadClust(const uint32_t address, record_clust_t& clust);
+
+#if RECORD_CLUST_ENABLE_CACHE
+
+    enum CacheMode {
+    	CACHE_MODE_NONE = 0,
+		CACHE_MODE_EQUAL,
+		CACHE_MODE_MIN,
+		CACHE_MODE_NEXT,
+		CACHE_MODE_MAX
+    };
+
+    static CacheMode m_cacheMode;
+    static record_clust_t m_cache;
+    static uint16_t m_cachedRecordSize;
+    static uint32_t m_cachedAddress;
+
+    bool checkCachedRecordCLuster();
+
+#endif
 
 };

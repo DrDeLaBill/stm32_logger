@@ -23,7 +23,7 @@ SettingsWatchdog::SettingsWatchdog()
 
 void SettingsWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("STNG", GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch("STNG", WATCHDOG_TIMEOUT_MS);
 	fsm.proccess();
 }
 

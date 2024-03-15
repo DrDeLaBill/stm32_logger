@@ -10,6 +10,7 @@
 #include "hal_defs.h"
 
 #include "Timer.h"
+#include "CodeStopwatch.h"
 #include "USBController.h"
 
 
@@ -28,6 +29,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 void PowerWatchdog::check()
 {
+	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
+
 	fsm.proccess();
 }
 

@@ -86,7 +86,6 @@ private:
     	} else {
     		response.characteristic_id = request.characteristic_id;
     		controller->hid_table.setValue(request.characteristic_id, request.data, request.index);
-    		updated = true;
     		timer.start();
     	}
 

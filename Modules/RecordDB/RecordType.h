@@ -6,7 +6,7 @@
 #include "main.h"
 
 
-#define RECORD_BEDUG (true)
+#define RECORD_BEDUG (false)
 
 
 typedef enum _RecordStatus {

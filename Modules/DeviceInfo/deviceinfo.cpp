@@ -70,6 +70,9 @@ uint32_t DeviceInfo::current_count::get(unsigned)
 
 void DeviceInfo::record_loaded::set(uint32_t value, unsigned)
 {
+	if (!value) {
+		set_status(NEED_LOAD_NEXT_RECORD);
+	}
     info.record_loaded = value;
 }
 

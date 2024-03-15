@@ -88,6 +88,9 @@ struct HIDTuple : HIDTupleBase
 
     void set(type_t value, const unsigned index = 0)
     {
+    	if (value == callback_c::get(index)) {
+    		return;
+    	}
         callback_c::set(value, index);
     }
 
