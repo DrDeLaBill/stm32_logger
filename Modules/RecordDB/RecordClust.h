@@ -10,11 +10,6 @@
 #include "RecordType.h"
 
 
-#define RECORD_CLUST_BEDUG        (false)
-
-#define RECORD_CLUST_ENABLE_CACHE (true)
-
-
 class RecordClust
 {
 public:
@@ -33,6 +28,7 @@ public:
 
         uint32_t minID();
         uint32_t maxID();
+        bool hasID(uint32_t ID);
         uint32_t count();
         uint32_t size();
     } record_clust_t;
@@ -69,26 +65,21 @@ public:
     static RecordStatus getLastTime(uint32_t* time);
     static RecordStatus getMaxId(uint32_t* maxId);
     static RecordStatus getMinId(uint32_t* minId);
+#if RECORD_ENABLE_CACHE
+    static RecordStatus updateCache(uint32_t cacheAfterId);
+#endif
 
 
 private:
     static RecordStatus deleteClust(uint32_t address);
     static RecordStatus preLoadClust(const uint32_t address, record_clust_t& clust);
 
-#if RECORD_CLUST_ENABLE_CACHE
+#if RECORD_ENABLE_CACHE
 
-    enum CacheMode {
-    	CACHE_MODE_NONE = 0,
-		CACHE_MODE_EQUAL,
-		CACHE_MODE_MIN,
-		CACHE_MODE_NEXT,
-		CACHE_MODE_MAX
-    };
-
-    static CacheMode m_cacheMode;
-    static record_clust_t m_cache;
-    static uint16_t m_cachedRecordSize;
-    static uint32_t m_cachedAddress;
+    static record_clust_t m_cache[RECORD_CACHED_COUNT]; // TODO: use circle buffer
+    static uint16_t m_cachedRecordSize[RECORD_CACHED_COUNT];
+    static uint32_t m_cachedAddress[RECORD_CACHED_COUNT];
+    static uint32_t m_cacheAfterId;
 
     bool checkCachedRecordCLuster();
 

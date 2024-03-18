@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "utils.h"
 #include "clock.h"
 #include "w25qxx.h"
 #include "bmacro.h"
@@ -21,12 +22,12 @@
 extern StorageAT* storage;
 
 
-#if RECORD_CLUST_ENABLE_CACHE
+#if RECORD_ENABLE_CACHE
 
-RecordClust::CacheMode RecordClust::m_cacheMode = CACHE_MODE_NONE;
-RecordClust::record_clust_t RecordClust::m_cache = {};
-uint16_t RecordClust::m_cachedRecordSize = 0;
-uint32_t RecordClust::m_cachedAddress = 0;
+RecordClust::record_clust_t RecordClust::m_cache[RECORD_CACHED_COUNT] = {};
+uint16_t RecordClust::m_cachedRecordSize[RECORD_CACHED_COUNT] = {};
+uint32_t RecordClust::m_cachedAddress[RECORD_CACHED_COUNT] = {};
+uint32_t RecordClust::m_cacheAfterId = 0;
 
 #endif
 
@@ -92,9 +93,6 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
         return RECORD_ERROR;
     }
 
-#if RECORD_CLUST_ENABLE_CACHE
-	m_cacheMode = CACHE_MODE_NONE;
-#endif
     RecordStatus recordStatus = RECORD_OK;
 
     // 1. find max id
@@ -306,15 +304,17 @@ void RecordClust::show()
 #endif
 }
 
-#if RECORD_CLUST_ENABLE_CACHE
+#if RECORD_ENABLE_CACHE
 
 bool RecordClust::checkCachedRecordCLuster()
 {
-	if (m_cacheMode == CACHE_MODE_NONE) {
-		return false;
+	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
+		if (m_cache[i].hasID(m_recordId) || m_recordId < m_cache[i].minID()) {
+			return true;
+		}
 	}
 
-	return m_cache.minID() <= m_recordId && m_recordId <= m_cache.maxID();
+	return false;
 }
 
 #endif
@@ -324,74 +324,72 @@ bool RecordClust::loadExist(bool validateSize)
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
 
-    record_clust_t tmpClust = {}; // TODO: load function for structure
+    record_clust_t tmpClust = {};
 
-#if RECORD_CLUST_ENABLE_CACHE
+#if RECORD_ENABLE_CACHE
 
+    bool cacheFound = false;
     if (checkCachedRecordCLuster()) {
-#if RECORD_CLUST_BEDUG
+#	if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Use cached cluster");
-#endif
-        memcpy(
-    		reinterpret_cast<void*>(&tmpClust),
-    		reinterpret_cast<void*>(&m_cache),
-			sizeof(m_cache)
-        );
-        m_recordSize = m_cachedRecordSize;
-        m_address = m_cachedAddress;
+#	endif
+    	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
+    		if (m_cache[i].hasID(m_recordId) || m_recordId < m_cache[i].minID()) {
+				memcpy(
+					reinterpret_cast<void*>(&tmpClust),
+					reinterpret_cast<void*>(&m_cache[i]),
+					sizeof(m_cache[i])
+				);
+				m_recordSize = m_cachedRecordSize[i];
+				m_address = m_cachedAddress[i];
+				cacheFound = true;
+				break;
+    		}
+    	}
 
     } else {
 
 #endif
 
-    storageStatus = storage->find(FIND_MODE_EQUAL, &address, PREFIX, m_recordId);
-#if RECORD_CLUST_ENABLE_CACHE
-    m_cacheMode = CACHE_MODE_EQUAL;
-#endif
-
-    if (storageStatus != STORAGE_OK) {
+		storageStatus = storage->find(FIND_MODE_EQUAL, &address, PREFIX, m_recordId);
+		if (storageStatus != STORAGE_OK) {
 #if RECORD_CLUST_BEDUG
-        printTagLog(TAG, "Unable to find an EQUAL cluster, the NEXT cluster is being searched");
+			printTagLog(TAG, "Unable to find an EQUAL cluster, the NEXT cluster is being searched");
 #endif
-        storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_recordId);
-#if RECORD_CLUST_ENABLE_CACHE
-        m_cacheMode = CACHE_MODE_NEXT;
+			storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_recordId);
+		}
+
+		if (storageStatus != STORAGE_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Unable to find an NEXT cluster, the MAX ID cluster is being searched");
 #endif
+			storageStatus = storage->find(FIND_MODE_MAX, &address, PREFIX);
+		}
+
+		if (storageStatus != STORAGE_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Unable to find a cluster with error=%u", storageStatus);
+#endif
+			return false;
+		}
+
+		RecordStatus recordStatus = preLoadClust(address, tmpClust);
+		if (recordStatus != RECORD_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Load record cluster error=%u", recordStatus);
+#endif
+			return false;
+		}
+
+#if RECORD_ENABLE_CACHE
+
     }
 
-    if (storageStatus != STORAGE_OK) {
+    if (checkCachedRecordCLuster() && !cacheFound) {
 #if RECORD_CLUST_BEDUG
-        printTagLog(TAG, "Unable to find an NEXT cluster, the MAX ID cluster is being searched");
+        printTagLog(TAG, "Use cached cluster error - not found");
 #endif
-        storageStatus = storage->find(FIND_MODE_MAX, &address, PREFIX);
-#if RECORD_CLUST_ENABLE_CACHE
-        m_cacheMode = CACHE_MODE_MAX;
-#endif
-    }
-
-    if (storageStatus != STORAGE_OK) {
-#if RECORD_CLUST_BEDUG
-        printTagLog(TAG, "Unable to find a cluster with error=%u", storageStatus);
-#endif
-#if RECORD_CLUST_ENABLE_CACHE
-        m_cacheMode = CACHE_MODE_NONE;
-#endif
-        return false;
-    }
-
-    RecordStatus recordStatus = preLoadClust(address, tmpClust);
-	if (recordStatus != RECORD_OK) {
-#if RECORD_CLUST_BEDUG
-        printTagLog(TAG, "Load record cluster error=%u", recordStatus);
-#endif
-#if RECORD_CLUST_ENABLE_CACHE
-        m_cacheMode = CACHE_MODE_NONE;
-#endif
-		return false;
-	}
-
-#if RECORD_CLUST_ENABLE_CACHE
-
+    	return false;
     }
 
 #endif
@@ -400,9 +398,6 @@ bool RecordClust::loadExist(bool validateSize)
     if (validateSize && m_recordSize > 0 && tmpClust.rcrd_size != m_recordSize) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "The current cluster has another record size, abort search");
-#endif
-#if RECORD_CLUST_ENABLE_CACHE
-        m_cacheMode = CACHE_MODE_NONE;
 #endif
         return false;
     }
@@ -413,18 +408,6 @@ bool RecordClust::loadExist(bool validateSize)
 		reinterpret_cast<void*>(&tmpClust),
 		tmpClust.size()
     );
-
-#if RECORD_CLUST_ENABLE_CACHE
-
-	memcpy(
-		reinterpret_cast<void*>(&m_cache),
-		reinterpret_cast<void*>(&tmpClust),
-		sizeof(tmpClust)
-	);
-	m_cachedRecordSize = m_recordSize;
-	m_cachedAddress = m_address;
-
-#endif
 
     return true;
 }
@@ -548,6 +531,91 @@ RecordStatus RecordClust::getMinId(uint32_t* minId)
     return RECORD_OK;
 }
 
+#if RECORD_ENABLE_CACHE
+
+RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
+{
+	if (m_cache[0].hasID(cacheAfterId)) {
+		return RECORD_OK;
+	}
+
+	unsigned index = 0;
+	uint32_t maxID = 0;
+	bool maxIDFound = false;
+	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
+		if (cacheAfterId < m_cache[i].maxID()) {
+			maxIDFound = true;
+			break;
+		}
+		index++;
+	}
+
+	if (index == 0) {
+		return RECORD_OK;
+	}
+
+#if RECORD_CLUST_BEDUG
+	printTagLog(TAG, "Update cache (length=%u)", __arr_len(m_cache));
+#endif
+
+	if (maxIDFound) {
+		for (unsigned i = 0; i < __arr_len(m_cache) - index; i++) {
+			memcpy(reinterpret_cast<void*>(&m_cache[i]), reinterpret_cast<void*>(&m_cache[i + index]), sizeof(m_cache[i]));
+			m_cachedRecordSize[i] = m_cachedRecordSize[i + index];
+			m_cachedAddress[i] = m_cachedAddress[i + index];
+			maxID = m_cache[i].maxID();
+		}
+#if RECORD_CLUST_BEDUG
+		printTagLog(TAG, "Remove cache index=[%u->%u)", 0, index);
+#endif
+	} else {
+		memset(reinterpret_cast<void*>(&m_cache), 0, sizeof(m_cache));
+		memset(m_cachedRecordSize, 0, sizeof(m_cachedRecordSize));
+		memset(m_cachedAddress, 0, sizeof(m_cachedAddress));
+		index = __arr_len(m_cache);
+	}
+
+	StorageStatus storageStatus = STORAGE_OK;
+	uint32_t address = 0;
+	for (unsigned i = 0; i < index; i++) {
+		storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, maxID);
+	    if (storageStatus != STORAGE_OK) {
+#if RECORD_CLUST_BEDUG
+	        printTagLog(TAG, "Unable to find a cluster after ID %lu with error=%u", maxID, storageStatus);
+#endif
+	        return RECORD_ERROR;
+	    }
+
+	    record_clust_t tmpClust = {};
+	    RecordStatus recordStatus = preLoadClust(address, tmpClust);
+		if (recordStatus != RECORD_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Load record cluster after ID %lu error=%u", maxID, recordStatus);
+#endif
+			return RECORD_ERROR;
+		}
+
+		uint32_t tagetIndex = __arr_len(m_cache) - index + i;
+		memcpy(
+			reinterpret_cast<void*>(&m_cache[tagetIndex]),
+			reinterpret_cast<void*>(&tmpClust),
+			sizeof(tmpClust)
+		);
+		m_cachedRecordSize[tagetIndex] = tmpClust.rcrd_size;
+		m_cachedAddress[tagetIndex] = address;
+
+		maxID = tmpClust.maxID();
+
+#if RECORD_CLUST_BEDUG
+		printTagLog(TAG, "Cache updated on index=%u", tagetIndex);
+#endif
+	}
+
+	return RECORD_OK;
+}
+
+#endif
+
 uint32_t RecordClust::getCountByRecordSize(uint32_t recordSize)
 {
 #if RECORD_CLUST_BEDUG
@@ -583,6 +651,11 @@ uint32_t RecordClust::record_clust_t::maxID()
 		}
 	}
 	return maxId;
+}
+
+bool RecordClust::record_clust_t::hasID(uint32_t ID)
+{
+	return minID() <= ID && ID <= maxID();
 }
 
 uint32_t RecordClust::record_clust_t::count()

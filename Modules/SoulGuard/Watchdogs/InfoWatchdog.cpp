@@ -18,6 +18,9 @@ void InfoWatchdog::check()
 		!is_status(NEED_LOAD_MIN_RECORD) &&
 		!is_status(NEED_LOAD_NEXT_RECORD)
 	) {
+#if RECORD_ENABLE_CACHE
+		Record::updateCache(DeviceInfo::current_id::get());
+#endif
 		return;
 	}
 
@@ -46,6 +49,7 @@ void InfoWatchdog::check()
 		DeviceInfo::record_loaded::set(0);
 		recordStatus = record.loadNext();
 		if (recordStatus == RECORD_NO_LOG) {
+			DeviceInfo::current_id::set(0);
 			reset_status(NEED_LOAD_NEXT_RECORD);
 		}
 		if (recordStatus == RECORD_OK) {
