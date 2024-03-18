@@ -81,6 +81,8 @@ StorageDriver storageDriver;
 StorageAT* storage;
 
 utl::Timer exitTimer(10000);
+
+USBController usbc;
 /* USER CODE END 0 */
 
 /**
@@ -132,7 +134,6 @@ int main(void)
 		InfoWatchdog,
 		RTCWatchdog
 	> softwareSoulGuard;
-	USBController usbc;
 	Measure measure;
 
 	set_status(WAIT_LOAD);
@@ -187,8 +188,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		measure.process();
-
-		usbc.proccess();
 	}
   /* USER CODE END 3 */
 }
@@ -284,6 +283,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			exitTimer.start();
 		} else if (!exitTimer.wait() && !USBController::connected()) {
 			set_status(NEED_STANDBY);
+		}
+
+		if (!has_errors()) {
+			usbc.proccess();
 		}
 	}
 }
