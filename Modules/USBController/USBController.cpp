@@ -30,6 +30,8 @@ void USBController::proccess()
 		return;
 	}
 
+	uint32_t time = HAL_GetTick();
+
 	request.characteristic_id = utl::deserialize<uint16_t>(&receive_buf[counter])[0];
 	counter += sizeof(uint16_t);
 
@@ -57,6 +59,7 @@ void USBController::proccess()
 #endif
 		controllerProccess<settings_controller_t>(&settings_controller, request);
 		updated = (request.characteristic_id == HID_GETTER_ID ? updated : true);
+//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
 		return;
 	}
 
@@ -65,6 +68,7 @@ void USBController::proccess()
 		printTagLog(TAG, "INFO ID: %u", characteristic_id);
 #endif
 		controllerProccess<info_controller_t>(&info_controller, request);
+//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
 		return;
 	}
 
@@ -75,6 +79,7 @@ void USBController::proccess()
 		printTagLog(TAG, "RCRD ID: %u", characteristic_id);
 #endif
 		controllerProccess<record_controller_t>(&record_controller, request);
+//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
 		return;
 	}
 

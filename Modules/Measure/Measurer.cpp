@@ -29,9 +29,6 @@ Record Measure::record(0);
 
 Measure::Measure()
 {
-#if MEASURER_BEDUG
-	BEDUG_ASSERT(delay, "Measure delay should be larger than 0");
-#endif
 	sensors_init(&response_packet_handler);
 }
 

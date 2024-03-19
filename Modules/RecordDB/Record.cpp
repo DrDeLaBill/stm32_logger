@@ -18,7 +18,7 @@
 Record::Record(uint32_t recordId, uint16_t sensCount):
 	m_recordId(recordId), m_sensCount(sensCount), m_counter(0)
 {
-	BEDUG_ASSERT(sensCount > 0, "Record sensors count must not be 0");
+//	BEDUG_ASSERT(sensCount > 0, "Record sensors count must not be 0"); // TODO: remove
     memset(reinterpret_cast<size_t*>(&record), 0, sizeof(record));
 }
 
@@ -108,6 +108,15 @@ RecordStatus Record::loadNext()
 
     return RECORD_OK;
 }
+
+#if RECORD_ENABLE_CACHE
+
+RecordStatus Record::updateCache(uint32_t cacheAfterId)
+{
+	return RecordClust::updateCache(cacheAfterId);
+}
+
+#endif
 
 RecordStatus Record::getLastTime(uint32_t* time)
 {

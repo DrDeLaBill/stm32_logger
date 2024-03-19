@@ -26,6 +26,9 @@ public:
     static RecordStatus getLastTime(uint32_t* time);
     static RecordStatus getMinId(uint32_t* id);
     static RecordStatus getMaxId(uint32_t* id);
+#if RECORD_ENABLE_CACHE
+    static RecordStatus updateCache(uint32_t cacheAfterId);
+#endif
 
     void show();
     unsigned size();

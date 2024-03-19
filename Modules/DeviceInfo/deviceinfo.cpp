@@ -46,8 +46,6 @@ uint32_t DeviceInfo::max_id::get(unsigned)
 
 void DeviceInfo::current_id::set(uint32_t value, unsigned)
 {
-	set_status(NEED_LOAD_NEXT_RECORD);
-	DeviceInfo::record_loaded::set(0);
     info.current_id = value;
 }
 
@@ -70,9 +68,6 @@ uint32_t DeviceInfo::current_count::get(unsigned)
 
 void DeviceInfo::record_loaded::set(uint32_t value, unsigned)
 {
-	if (!value) {
-		set_status(NEED_LOAD_NEXT_RECORD);
-	}
     info.record_loaded = value;
 }
 
