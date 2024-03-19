@@ -165,7 +165,6 @@ int main(void)
 
     set_status(NEED_LOAD_MIN_RECORD);
     set_status(NEED_LOAD_MAX_RECORD);
-    set_status(NEED_LOAD_NEXT_RECORD);
 
     while (is_status(WAIT_LOAD)) {
     	hardwareSoulGuard.defend();

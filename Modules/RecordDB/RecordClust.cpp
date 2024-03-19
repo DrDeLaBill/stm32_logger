@@ -24,10 +24,9 @@ extern StorageAT* storage;
 
 #if RECORD_ENABLE_CACHE
 
-RecordClust::record_clust_t RecordClust::m_cache[RECORD_CACHED_COUNT] = {};
-uint16_t RecordClust::m_cachedRecordSize[RECORD_CACHED_COUNT] = {};
-uint32_t RecordClust::m_cachedAddress[RECORD_CACHED_COUNT] = {};
+utl::circle_buffer<RECORD_CACHED_COUNT, RecordClust::cache_t> RecordClust::m_cache;
 uint32_t RecordClust::m_cacheAfterId = 0;
+bool RecordClust::m_cacheLoaded = false;
 
 #endif
 
@@ -45,6 +44,32 @@ record_t& RecordClust::operator[](unsigned i)
 #endif
     return m_clust[i];
 }
+
+RecordClust::cache_t::cache_t()
+{
+	memset(reinterpret_cast<void*>(&(this->cluster)), 0, sizeof(cluster));
+	this->recordSize = 0;
+	this->address = 0;
+}
+
+RecordClust::cache_t::cache_t(const cache_t& other)
+{
+	(*this) = other;
+}
+
+RecordClust::cache_t& RecordClust::cache_t::operator=(const cache_t& other)
+{
+	memcpy(
+		reinterpret_cast<void*>(&(this->cluster)),
+		reinterpret_cast<void*>(const_cast<record_clust_t*>(&(other.cluster))),
+		sizeof(this->cluster)
+	);
+	this->recordSize = other.recordSize;
+	this->address = other.address;
+	return *this;
+}
+
+RecordClust::cache_t::~cache_t() {}
 
 record_t& RecordClust::record_clust_t::operator[](unsigned i)
 {
@@ -308,8 +333,12 @@ void RecordClust::show()
 
 bool RecordClust::checkCachedRecordCLuster()
 {
-	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
-		if (m_cache[i].hasID(m_recordId) || m_recordId < m_cache[i].minID()) {
+	if (!m_cacheLoaded) {
+		return false;
+	}
+
+	for (unsigned i = 0; i < m_cache.size(); i++) {
+		if (m_cache[i].cluster.hasID(m_recordId) || m_recordId < m_cache[i].cluster.minID()) {
 			return true;
 		}
 	}
@@ -333,16 +362,15 @@ bool RecordClust::loadExist(bool validateSize)
 #	if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Use cached cluster");
 #	endif
-    	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
-    		if (m_cache[i].hasID(m_recordId) || m_recordId < m_cache[i].minID()) {
-				memcpy(
-					reinterpret_cast<void*>(&tmpClust),
-					reinterpret_cast<void*>(&m_cache[i]),
-					sizeof(m_cache[i])
-				);
-				m_recordSize = m_cachedRecordSize[i];
-				m_address = m_cachedAddress[i];
-				cacheFound = true;
+    	for (unsigned i = 0; i < m_cache.size(); i++) {
+    		if (m_cache[i].cluster.hasID(m_recordId) ||
+				m_recordId < m_cache[i].cluster.minID()
+			) {
+    			tmpClust     = m_cache[i].cluster;
+				m_recordSize = m_cache[i].recordSize;
+				m_address    = m_cache[i].address;
+				address      = m_cache[i].address;
+				cacheFound   = true;
 				break;
     		}
     	}
@@ -535,15 +563,15 @@ RecordStatus RecordClust::getMinId(uint32_t* minId)
 
 RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 {
-	if (m_cache[0].hasID(cacheAfterId)) {
+	if (m_cache[0].cluster.hasID(cacheAfterId + 1)) {
 		return RECORD_OK;
 	}
 
 	unsigned index = 0;
 	uint32_t maxID = 0;
 	bool maxIDFound = false;
-	for (unsigned i = 0; i < __arr_len(m_cache); i++) {
-		if (cacheAfterId < m_cache[i].maxID()) {
+	for (unsigned i = 0; i < m_cache.size(); i++) {
+		if (m_cache[i].cluster.hasID(cacheAfterId + 1)) {
 			maxIDFound = true;
 			break;
 		}
@@ -555,24 +583,21 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 	}
 
 #if RECORD_CLUST_BEDUG
-	printTagLog(TAG, "Update cache (length=%u)", __arr_len(m_cache));
+	printTagLog(TAG, "Update cache (length=%u)", m_cache.size());
 #endif
 
 	if (maxIDFound) {
-		for (unsigned i = 0; i < __arr_len(m_cache) - index; i++) {
-			memcpy(reinterpret_cast<void*>(&m_cache[i]), reinterpret_cast<void*>(&m_cache[i + index]), sizeof(m_cache[i]));
-			m_cachedRecordSize[i] = m_cachedRecordSize[i + index];
-			m_cachedAddress[i] = m_cachedAddress[i + index];
-			maxID = m_cache[i].maxID();
+		m_cache.pop_front();
+		for (unsigned i = 0; i < m_cache.size() - index; i++) {
+			maxID = m_cache[i].cluster.maxID();
 		}
 #if RECORD_CLUST_BEDUG
 		printTagLog(TAG, "Remove cache index=[%u->%u)", 0, index);
 #endif
 	} else {
-		memset(reinterpret_cast<void*>(&m_cache), 0, sizeof(m_cache));
-		memset(m_cachedRecordSize, 0, sizeof(m_cachedRecordSize));
-		memset(m_cachedAddress, 0, sizeof(m_cachedAddress));
-		index = __arr_len(m_cache);
+		m_cache.clear();
+		m_cacheLoaded = false;
+		index = m_cache.size();
 	}
 
 	StorageStatus storageStatus = STORAGE_OK;
@@ -595,21 +620,20 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 			return RECORD_ERROR;
 		}
 
-		uint32_t tagetIndex = __arr_len(m_cache) - index + i;
-		memcpy(
-			reinterpret_cast<void*>(&m_cache[tagetIndex]),
-			reinterpret_cast<void*>(&tmpClust),
-			sizeof(tmpClust)
-		);
-		m_cachedRecordSize[tagetIndex] = tmpClust.rcrd_size;
-		m_cachedAddress[tagetIndex] = address;
+		cache_t tmpCache;
+		tmpCache.cluster = tmpClust;
+		tmpCache.recordSize = tmpClust.rcrd_size;
+		tmpCache.address = address;
+		m_cache.push_back(tmpCache);
 
 		maxID = tmpClust.maxID();
 
 #if RECORD_CLUST_BEDUG
-		printTagLog(TAG, "Cache updated on index=%u", tagetIndex);
+		printTagLog(TAG, "Cache updated");
 #endif
 	}
+
+	m_cacheLoaded = true;
 
 	return RECORD_OK;
 }

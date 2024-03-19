@@ -8,13 +8,14 @@
 #include "main.h"
 #include "bmacro.h"
 #include "RecordType.h"
+#include "CircleBuffer.h"
 
 
 class RecordClust
 {
 public:
     static const unsigned META_SIZE = sizeof(uint8_t) * 2 + sizeof(uint16_t);
-    typedef struct __attribute__((packed)) _record_clust_t {
+    struct __attribute__((packed)) record_clust_t {
     	// Device type
         uint8_t  dv_type;
         // Software version
@@ -31,7 +32,7 @@ public:
         bool hasID(uint32_t ID);
         uint32_t count();
         uint32_t size();
-    } record_clust_t;
+    };
 
 protected:
     static constexpr char TAG[] = "RDC";
@@ -76,10 +77,20 @@ private:
 
 #if RECORD_ENABLE_CACHE
 
-    static record_clust_t m_cache[RECORD_CACHED_COUNT]; // TODO: use circle buffer
-    static uint16_t m_cachedRecordSize[RECORD_CACHED_COUNT];
-    static uint32_t m_cachedAddress[RECORD_CACHED_COUNT];
+    struct cache_t {
+    	record_clust_t cluster;
+    	uint16_t recordSize;
+    	uint32_t address;
+
+    	cache_t();
+
+    	cache_t(const cache_t& other);
+    	cache_t& operator=(const cache_t& other);
+        ~cache_t();
+    };
+    static utl::circle_buffer<RECORD_CACHED_COUNT, cache_t> m_cache;
     static uint32_t m_cacheAfterId;
+    static bool m_cacheLoaded;
 
     bool checkCachedRecordCLuster();
 

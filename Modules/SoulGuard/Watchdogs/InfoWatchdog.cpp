@@ -16,7 +16,7 @@ void InfoWatchdog::check()
 
 	if (!is_status(NEED_LOAD_MAX_RECORD) &&
 		!is_status(NEED_LOAD_MIN_RECORD) &&
-		!is_status(NEED_LOAD_NEXT_RECORD)
+		DeviceInfo::record_loaded::get()
 	) {
 #if RECORD_ENABLE_CACHE
 		Record::updateCache(DeviceInfo::current_id::get());
@@ -45,12 +45,10 @@ void InfoWatchdog::check()
 	}
 
 	Record record(DeviceInfo::current_id::get());
-	if (is_status(NEED_LOAD_NEXT_RECORD)) {
-		DeviceInfo::record_loaded::set(0);
+	if (!DeviceInfo::record_loaded::get()) {
 		recordStatus = record.loadNext();
 		if (recordStatus == RECORD_NO_LOG) {
 			DeviceInfo::current_id::set(0);
-			reset_status(NEED_LOAD_NEXT_RECORD);
 		}
 		if (recordStatus == RECORD_OK) {
 			RecordInterface::id::set(record.record.id);
@@ -62,7 +60,6 @@ void InfoWatchdog::check()
 			DeviceInfo::current_id::set(record.record.id);
 			DeviceInfo::current_count::set(record.count());
 			DeviceInfo::record_loaded::set(1);
-			reset_status(NEED_LOAD_NEXT_RECORD);
 		}
 	}
 }

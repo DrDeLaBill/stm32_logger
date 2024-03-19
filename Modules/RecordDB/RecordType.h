@@ -10,7 +10,7 @@
 #define RECORD_CLUST_BEDUG  (false)
 
 #define RECORD_ENABLE_CACHE (true)
-#define RECORD_CACHED_COUNT (3)
+#define RECORD_CACHED_COUNT (8)
 
 
 typedef enum _RecordStatus {

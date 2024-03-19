@@ -83,12 +83,18 @@ bool _is_status(SOUL_STATUS status)
 
 void _set_status(SOUL_STATUS status)
 {
+	if (status == 0) {
+		return;
+	}
 	uint8_t status_num = (uint8_t)(status) - 1;
 	soul.errors[status_num / BITS_IN_BYTE] |= (0x01 << (status_num % BITS_IN_BYTE));
 }
 
 void _reset_status(SOUL_STATUS status)
 {
+	if (status == 0) {
+		return;
+	}
 	uint8_t status_num = (uint8_t)(status) - 1;
 	soul.errors[status_num / BITS_IN_BYTE] &= (uint8_t)~(0x01 << (status_num % BITS_IN_BYTE));
 }
