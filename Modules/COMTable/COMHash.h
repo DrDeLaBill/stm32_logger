@@ -7,7 +7,7 @@
 #include <cstdint>
 
 
-constexpr uint16_t hidHash(const char* data)
+constexpr uint16_t comHash(const char* data)
 {
     uint16_t  res = 0;
 

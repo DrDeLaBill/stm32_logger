@@ -9,9 +9,10 @@
 #include <unordered_map>
 
 #include "utils.h"
-#include "hid_defs.h"
-#include "HIDTable.h"
-#include "HIDTuple.h"
+#include "com_defs.h"
+#include "COMTable.h"
+#include "COMTuple.h"
+
 #ifdef USE_HAL_DRIVER
 #	include "log.h"
 #	include "bmacro.h"
@@ -21,10 +22,10 @@
 
 
 template<class Table>
-struct HIDController
+struct COMController
 {
 public:
-    static_assert(std::is_base_of<HIDTableBase, Table>::value, "Template class must be HIDTable");
+    static_assert(std::is_base_of<COMTableBase, Table>::value, "Template class must be HIDTable");
 
     static constexpr unsigned count()
     {
@@ -42,7 +43,7 @@ private:
 
     uint16_t currID;
 
-#if defined(USE_HAL_DRIVER) && HID_TABLE_BEDUG
+#if defined(USE_HAL_DRIVER) && COM_TABLE_BEDUG
     void details(const uint16_t key, const uint8_t index)
     {
         gprint("Details: key = %u; index = %u; max key = %u\n", key, index, count() - 1);
@@ -61,13 +62,23 @@ private:
     {
         using tuple_t = typename decltype(tuplePack)::TYPE;
 
-        characteristics.insert({currID++, tuple_t{}});
+        characteristics.insert({currID, tuple_t{}});
+
+#ifndef USE_HAL_DRIVER
+        auto it = characteristics.find(currID);
+        auto lambda = [&] (const auto& tuple) {
+            tuple.setID(currID);
+        };
+        std::visit(lambda, it->second);
+#endif
+
+        currID++;
     }
 
 public:
     tuple_t characteristics;
 
-    HIDController(const uint16_t startKey = HID_FIRST_KEY)
+    COMController(const uint16_t startKey = COM_FIRST_KEY)
     {
         currID = startKey;
         set_table(tuple_p{});
@@ -78,7 +89,7 @@ public:
         auto it = characteristics.find(key);
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
 #	endif
@@ -100,7 +111,7 @@ public:
     	auto it = characteristics.find(key);
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
 #	endif
@@ -151,7 +162,7 @@ public:
     {
     	auto it = characteristics.find(key);
     	if (it == characteristics.end()) {
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
         	BEDUG_ASSERT(false, "HID table not found error");
         	details(key, index);
 #	endif
@@ -173,7 +184,7 @@ public:
         auto it = characteristics.find(characteristic_id);
         if (it == characteristics.end()) {
 #ifdef USE_HAL_DRIVER
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
             BEDUG_ASSERT(false, "HID table not found error");
         	details(characteristic_id, 0);
 #	endif

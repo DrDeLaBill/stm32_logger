@@ -7,7 +7,10 @@
 #include <memory>
 #include <cstdint>
 
+
 #ifdef USE_HAL_DRIVER
+#	include "com_defs.h"
+
 #	include "log.h"
 #   include "bmacro.h"
 #   include "variables.h"
@@ -18,17 +21,17 @@
 
 
 
-struct HIDTupleBase {};
+struct COMTupleBase {};
 
 template<class type_t, class callback_c = void, unsigned LENGTH = 1>
-struct HIDTuple : HIDTupleBase
+struct COMTuple : COMTupleBase
 {
     static_assert(!std::is_same<callback_c, void>::value, "The tuple getter functor must be non void");
     static_assert(LENGTH > 0, "The length must not be 0");
 
 
 #ifndef USE_HAL_DRIVER
-    HIDTuple()
+    COMTuple()
     {
         if (callback_c::updated) {
             throw new exceptions::TemplateErrorException();
@@ -47,7 +50,7 @@ struct HIDTuple : HIDTupleBase
         return LENGTH;
     }
 
-#if defined(USE_HAL_DRIVER) && HID_TABLE_BEDUG
+#if defined(USE_HAL_DRIVER) && COM_TABLE_BEDUG
     void details(const unsigned index = 0)
     {
         gprint("Details: index = %u; size = %d; length = %u\n", index, sizeof(type_t), length());
@@ -58,7 +61,7 @@ struct HIDTuple : HIDTupleBase
     {
         if (!src) {
 #ifdef USE_HAL_DRIVER
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
             BEDUG_ASSERT(false, "The source must not be null");
 #	endif
         	return 0;
@@ -74,7 +77,7 @@ struct HIDTuple : HIDTupleBase
         type_t value = static_cast<type_t>(callback_c::get(index));
         if (index >= length()) {
 #ifdef USE_HAL_DRIVER
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
             BEDUG_ASSERT(false, "The target must not be null");
             details(index);
 #	endif
@@ -112,12 +115,17 @@ struct HIDTuple : HIDTupleBase
         callback_c::updated[index] = false;
     }
 
+    void setID(const uint16_t ID) const
+    {
+        callback_c::ID = ID;
+    }
+
 #else
 
     unsigned index(const unsigned index = 0)
     {
         if (index > LENGTH - 1) {
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
             BEDUG_ASSERT(false, "Target index is out of range");
         	details(index);
 #	endif
@@ -125,7 +133,7 @@ struct HIDTuple : HIDTupleBase
         }
     	unsigned result = callback_c::index(index);
     	if (result >= length()) {
-#	if HID_TABLE_BEDUG
+#	if COM_TABLE_BEDUG
             BEDUG_ASSERT(false, "Found index is out of range");
         	details(result);
 #	endif

@@ -2,6 +2,8 @@
 
 #include "USBController.h"
 
+#include "usbd_cdc_if.h"
+
 #include "CodeStopwatch.h"
 
 
@@ -19,67 +21,64 @@ void USBController::proccess()
 
 	uint8_t counter = 0;
 	report_pack_t request = {};
-	request.report_id = receive_buf[counter++];
 
 	if (updated && !timer.wait()) {
 		set_settings_update_status(true);
 		updated = false;
 	}
 
-	if (request.report_id != HID_INPUT_REPORT_ID) {
+	if (UserRxBufferFS[sizeof(request) - 1] == 0) {
 		return;
 	}
 
-	uint32_t time = HAL_GetTick();
+	request.flag = UserRxBufferFS[counter];
+	if (request.flag != COM_SEND_FLAG) {
+		return;
+	}
+	counter++;
 
-	request.characteristic_id = utl::deserialize<uint16_t>(&receive_buf[counter])[0];
+	request.characteristic_id = utl::deserialize<uint16_t>(&UserRxBufferFS[counter])[0];
 	counter += sizeof(uint16_t);
 
-	request.index = receive_buf[counter++];
+	request.index = UserRxBufferFS[counter++];
 
-	memcpy(&request.data, &receive_buf[counter], sizeof(request.data));
+	memcpy(&request.data, &UserRxBufferFS[counter], sizeof(request.data));
 	counter += sizeof(request.data);
 
-	memcpy(&request.tag, &receive_buf[counter], sizeof(request.tag));
-	counter += sizeof(request.tag);
-
-	if (memcmp(request.tag, REPORT_PREFIX, sizeof(request.tag))) {
+	if (request.crc != com_get_crc(&request)) {
 		clear();
 		return;
 	}
 
 	uint16_t characteristic_id = request.characteristic_id;
-	if (characteristic_id == HID_GETTER_ID) {
+	if (characteristic_id == COM_GETTER_ID) {
 		characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
 	}
 
 	if (characteristic_id <= settings_controller_t::maxID()) {
-#if HID_TABLE_BEDUG
+#if COM_TABLE_BEDUG
 		printTagLog(TAG, "STNG ID: %u", characteristic_id);
 #endif
 		controllerProccess<settings_controller_t>(&settings_controller, request);
-		updated = (request.characteristic_id == HID_GETTER_ID ? updated : true);
-//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
+		updated = (request.characteristic_id == COM_GETTER_ID ? updated : true);
 		return;
 	}
 
 	if (characteristic_id <= info_controller_t::maxID()) {
-#if HID_TABLE_BEDUG
+#if COM_TABLE_BEDUG
 		printTagLog(TAG, "INFO ID: %u", characteristic_id);
 #endif
 		controllerProccess<info_controller_t>(&info_controller, request);
-//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
 		return;
 	}
 
-	if (request.characteristic_id == HID_GETTER_ID &&
+	if (request.characteristic_id == COM_GETTER_ID &&
 		characteristic_id <= record_controller_t::maxID()
 	) {
-#if HID_TABLE_BEDUG
+#if COM_TABLE_BEDUG
 		printTagLog(TAG, "RCRD ID: %u", characteristic_id);
 #endif
 		controllerProccess<record_controller_t>(&record_controller, request);
-//		printTagLog(TAG, "char %03u: %lu ms", characteristic_id, HAL_GetTick() - time);
 		return;
 	}
 
@@ -88,7 +87,7 @@ void USBController::proccess()
 
 void USBController::clear()
 {
-	memset(receive_buf, 0, sizeof(receive_buf));
+	memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
 }
 
 bool USBController::connected()

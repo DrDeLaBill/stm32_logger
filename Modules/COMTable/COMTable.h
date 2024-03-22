@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <variant>
 
-#include "HIDHash.h"
-#include "HIDTuple.h"
+#include "COMHash.h"
+#include "COMTuple.h"
 
 #ifdef USE_HAL_DRIVER
 #   include "settings.h"
@@ -21,10 +21,10 @@
 #endif
 
 
-struct HIDTableBase {};
+struct COMTableBase {};
 
 template<class... TuplesTable>
-struct HIDTable : HIDTableBase
+struct COMTable : COMTableBase
 {
     static_assert(
         !utl::empty(typename utl::typelist_t<TuplesTable...>::RESULT{}),

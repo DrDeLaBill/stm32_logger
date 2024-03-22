@@ -6,19 +6,19 @@
 
 #include <cstdint>
 
-#include "HIDController.h"
+#include "COMController.h"
 #include "TypeListService.h"
 
 
 template<class Table, uint16_t START_ID>
-struct HIDTableWorker
+struct COMTableWorker
 {
     static_assert(
         !utl::empty(typename utl::typelist_t<Table>::RESULT{}),
         "HIDTableWorker must not be empty"
     );
 
-    static HIDController<Table> hid_table;
+    static COMController<Table> hid_table;
 
     static constexpr uint16_t minID()
     {
@@ -27,12 +27,12 @@ struct HIDTableWorker
 
     static constexpr uint16_t maxID()
     {
-        return START_ID + HIDController<Table>::count() - 1;
+        return START_ID + COMController<Table>::count() - 1;
     }
 };
 
 template<class Table, uint16_t START_ID>
-HIDController<Table> HIDTableWorker<Table, START_ID>::hid_table(START_ID);
+COMController<Table> COMTableWorker<Table, START_ID>::hid_table(START_ID);
 
 
 #endif
