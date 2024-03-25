@@ -14,20 +14,20 @@
 
 uint16_t com_get_crc(const report_pack_t* report)
 {
-  uint16_t crc = 0xFFFF;
-  uint8_t* data = (uint8_t*)report;
-  for (unsigned i = 0; i < sizeof(report_pack_t); i++) {
-	crc ^= (uint16_t)data[i];
-	for (int i = 8; i != 0; i--) {
-		if ((crc & 0x0001) != 0) {
-			crc >>= 1;
-			crc ^= 0xA001;
-		} else {
-			crc >>= 1;
-		}
-	}
-  }
-  return crc;
+    uint16_t crc = 0xFFFF;
+    uint8_t* data = (uint8_t*)report;
+    for (unsigned i = 0; i < sizeof(report_pack_t) - sizeof(uint16_t); i++) {
+        crc ^= (uint16_t)data[i];
+        for (unsigned j = 8; j != 0; j--) {
+            if ((crc & 0x0001) != 0) {
+                crc >>= 1;
+                crc ^= 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc;
 }
 
 
@@ -64,7 +64,7 @@ bool com_send_report(report_pack_t* report)
 	report->flag = COM_SEND_FLAG;
 	report->crc  = com_get_crc(report);
 
-	return CDC_Transmit_FS((uint8_t*)report, sizeof(report)) == USBD_OK;
+	return CDC_Transmit_FS((uint8_t*)report, sizeof(report_pack_t)) == USBD_OK;
 }
 
 //void com_report_set_data(report_pack_t* report, const uint8_t* src_data, const unsigned size)

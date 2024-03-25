@@ -115,6 +115,11 @@ void clock_save_date(RTC_DateTypeDef* date)
     if (date->Date > DAYS_PER_MONTH_MAX || date->Month > MONTHS_PER_YEAR) {
         return;
     } else {
+    	/* calculating weekday begin */
+    	RTC_TimeTypeDef time = {0};
+    	uint32_t seconds = clock_datetime_to_seconds(date, &time);
+    	clock_seconds_to_datetime(seconds, date, &time);
+    	/* calculating weekday end */
         status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
     }
     if (status != HAL_OK)
@@ -185,7 +190,7 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	uint8_t year  = 0;
 	uint8_t month = 1;
 	uint8_t day   = 1;
-	date->WeekDay = (RTC_WEEKDAY_SATURDAY + days % (DAYS_PER_WEEK + 1)) % (DAYS_PER_WEEK + 1);
+	date->WeekDay = (RTC_WEEKDAY_SATURDAY + days % (DAYS_PER_WEEK + 1)) % (DAYS_PER_WEEK + 1) + 1;
 	while (days) {
 		uint16_t days_in_year = (year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
 		if (days > days_in_year) {

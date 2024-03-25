@@ -27,10 +27,6 @@ void USBController::proccess()
 		updated = false;
 	}
 
-	if (UserRxBufferFS[sizeof(request) - 1] == 0) {
-		return;
-	}
-
 	request.flag = UserRxBufferFS[counter];
 	if (request.flag != COM_SEND_FLAG) {
 		return;
@@ -42,8 +38,15 @@ void USBController::proccess()
 
 	request.index = UserRxBufferFS[counter++];
 
-	memcpy(&request.data, &UserRxBufferFS[counter], sizeof(request.data));
+	memcpy(request.data, &UserRxBufferFS[counter], sizeof(request.data));
 	counter += sizeof(request.data);
+
+	memcpy(&request.crc, &UserRxBufferFS[counter], sizeof(request.crc));
+	counter += sizeof(request.crc);
+
+	if (!request.crc) {
+		return;
+	}
 
 	if (request.crc != com_get_crc(&request)) {
 		clear();
