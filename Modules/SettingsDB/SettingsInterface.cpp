@@ -7,20 +7,6 @@
 #include "settings.h"
 
 
-
-unsigned __get_index(const unsigned index)
-{
-	unsigned counter = __arr_len(settings.modbus1_status) - 1;
-	for (unsigned i = index; i < __arr_len(settings.modbus1_status); i++) {
-		if (SettingsInterface::modbus1_status{}.get(i) != SETTINGS_SENSOR_EMPTY) {
-			counter = i;
-			break;
-		}
-	}
-	return counter;
-}
-
-
 // TODO: add values check for all parameters
 void SettingsInterface::dv_type::set(uint32_t, unsigned)
 {
@@ -105,7 +91,7 @@ uint32_t SettingsInterface::modbus1_status::get(unsigned index)
 
 unsigned SettingsInterface::modbus1_status::index(unsigned index)
 {
-	return __get_index(index);
+	return settings_get_index(index);
 }
 
 void SettingsInterface::modbus1_value_reg::set(uint32_t value, unsigned index)
@@ -120,7 +106,7 @@ uint32_t SettingsInterface::modbus1_value_reg::get(unsigned index)
 
 unsigned SettingsInterface::modbus1_value_reg::index(unsigned index)
 {
-	return __get_index(index);
+	return settings_get_index(index);
 }
 
 void SettingsInterface::modbus1_id_reg::set(uint32_t value, unsigned index)
@@ -135,5 +121,5 @@ uint32_t SettingsInterface::modbus1_id_reg::get(unsigned index)
 
 unsigned SettingsInterface::modbus1_id_reg::index(unsigned index)
 {
-	return __get_index(index);
+	return settings_get_index(index);
 }

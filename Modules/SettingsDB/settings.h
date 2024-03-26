@@ -86,6 +86,8 @@ bool settings_check(settings_t* other);
 
 void settings_show();
 
+unsigned settings_get_index(const unsigned index);
+
 bool is_settings_saved();
 bool is_settings_updated();
 bool is_settings_initialized();

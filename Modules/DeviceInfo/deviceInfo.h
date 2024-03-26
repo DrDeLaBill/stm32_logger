@@ -6,9 +6,14 @@
 
 #include <cstdint>
 
+#include "settings.h"
+
 
 class DeviceInfo
 {
+private:
+	static uint16_t m_modbus1_value[MODBUS_SENS_COUNT];
+
 public:
     typedef struct _info_t {
         uint32_t time;
@@ -59,6 +64,13 @@ public:
     	static uint32_t get(unsigned index = 0);
     	static unsigned index(unsigned) { return 0; }
     };
+    struct modbus1_value
+    {
+        static void set(uint32_t value, unsigned index = 0);
+        static uint32_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+
 };
 
 #endif // DEVICEINFO_H

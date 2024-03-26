@@ -4,6 +4,7 @@
 #include "clock.h"
 
 
+uint16_t DeviceInfo::m_modbus1_value[MODBUS_SENS_COUNT] = {};
 DeviceInfo::info_t DeviceInfo::info = {};
 
 
@@ -74,4 +75,19 @@ void DeviceInfo::record_loaded::set(uint32_t value, unsigned)
 uint32_t DeviceInfo::record_loaded::get(unsigned)
 {
     return info.record_loaded;
+}
+
+void DeviceInfo::modbus1_value::set(uint32_t value, unsigned index)
+{
+	m_modbus1_value[index] = value;
+}
+
+uint32_t DeviceInfo::modbus1_value::get(unsigned index)
+{
+    return m_modbus1_value[index];
+}
+
+unsigned DeviceInfo::modbus1_value::index(unsigned index)
+{
+	return settings_get_index(index);
 }

@@ -56,6 +56,8 @@ RecordStatus Record::load()
     }
 
     memcpy(reinterpret_cast<void*>(&(this->record)), reinterpret_cast<void*>(&(clust[id])), this->size());
+    m_sensCount = getSensorsCountBySize(clust.record_size());
+    m_recordId  = this->record.id;
 
 #if RECORD_BEDUG
     printTagLog(TAG, "Record loaded (cluster index=%u)", id);
@@ -156,8 +158,6 @@ RecordStatus Record::save()
 #endif
     }
 
-
-
     return recordStatus;
 }
 
@@ -200,7 +200,7 @@ void Record::set(uint8_t ID, uint16_t value)
 		}
 	}
 
-	record.sens[m_counter].ID = ID;
+	record.sens[m_counter].ID    = ID;
 	record.sens[m_counter].value = value;
 	m_counter++;
 }

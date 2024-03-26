@@ -121,6 +121,18 @@ void settings_show()
     printPretty("####################SETTINGS####################\n\n");
 }
 
+unsigned settings_get_index(const unsigned index)
+{
+	unsigned counter = __arr_len(settings.modbus1_status) - 1;
+	for (unsigned i = index; i < __arr_len(settings.modbus1_status); i++) {
+		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
+			counter = i;
+			break;
+		}
+	}
+	return counter;
+}
+
 bool is_settings_saved()
 {
 	return stngs_info.settings_saved;

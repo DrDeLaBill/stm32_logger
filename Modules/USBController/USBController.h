@@ -51,7 +51,8 @@ private:
 		COMTuple<uint32_t, DeviceInfo::max_id>,
 		COMTuple<uint32_t, DeviceInfo::current_id>,
 		COMTuple<uint32_t, DeviceInfo::current_count>,
-		COMTuple<uint8_t,  DeviceInfo::record_loaded>
+		COMTuple<uint8_t,  DeviceInfo::record_loaded>,
+        COMTuple<uint16_t, DeviceInfo::modbus1_value, MODBUS_SENS_COUNT>
     >;
     using info_controller_t = COMTableWorker<info_controller_table_t, settings_controller_t::maxID() + 1>;
     static info_controller_t info_controller;

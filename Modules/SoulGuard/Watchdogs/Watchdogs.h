@@ -238,5 +238,11 @@ public:
 
 struct InfoWatchdog
 {
+private:
+	bool loadMaxRecord();
+	bool loadMinRecord();
+	bool loadRecord();
+
+public:
 	void check();
 };

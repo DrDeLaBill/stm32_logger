@@ -71,6 +71,7 @@ struct SettingsInterface
         static uint32_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
+
 };
 
 

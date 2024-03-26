@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "w25qxx.h"
@@ -461,9 +462,12 @@ bool RecordClust::createNew()
 
     if (findMode == FIND_MODE_MIN) {
         storageStatus = storage->clearAddress(address);
+        set_status(NEED_LOAD_MIN_RECORD);
     }
-#if RECORD_CLUST_BEDUG // TODO: up
-    BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
+#if RECORD_CLUST_BEDUG
+	if (findMode == FIND_MODE_MIN && storageStatus != STORAGE_OK) {
+		BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
+	}
 #endif
     if (storageStatus != STORAGE_OK) {
         return false;
@@ -598,6 +602,7 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 		m_cache.clear();
 		m_cacheLoaded = false;
 		index = m_cache.size();
+		maxID = cacheAfterId;
 	}
 
 	StorageStatus storageStatus = STORAGE_OK;

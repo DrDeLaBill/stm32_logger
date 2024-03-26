@@ -30,7 +30,9 @@ public:
         uint32_t minID();
         uint32_t maxID();
         bool hasID(uint32_t ID);
+        // Records counnt
         uint32_t count();
+        // Records size
         uint32_t size();
     };
 
