@@ -78,8 +78,8 @@ int _write(int, uint8_t *ptr, int len);
 #define FLASH_SPI_CS_GPIO_Port GPIOA
 #define POWER_L4_Pin GPIO_PIN_4
 #define POWER_L4_GPIO_Port GPIOC
-#define USB_HOST_EN_Pin GPIO_PIN_0
-#define USB_HOST_EN_GPIO_Port GPIOB
+#define _1WIRE_Pin GPIO_PIN_0
+#define _1WIRE_GPIO_Port GPIOB
 #define RS485_EN_Pin GPIO_PIN_15
 #define RS485_EN_GPIO_Port GPIOB
 #define RS485_TX_Pin GPIO_PIN_6
@@ -128,9 +128,17 @@ extern UART_HandleTypeDef  huart6;
 extern UART_HandleTypeDef  huart2;
 #define BEDUG_UART         (huart2)
 
-// LED TIM
+// USB TIM
 extern TIM_HandleTypeDef   htim4;
-#define LED_TIM            (htim4)
+#define USB_TIM            (htim4)
+
+// 1WIRE TIM
+extern TIM_HandleTypeDef   htim5;
+#define _1WIRE_TIM         (htim5)
+
+// USB & LED TIM
+extern TIM_HandleTypeDef   htim9;
+#define LED_TIM            (htim9)
 
 // Power supply
 extern ADC_HandleTypeDef   hadc1;

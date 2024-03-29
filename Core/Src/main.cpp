@@ -35,6 +35,7 @@
 #include "w25qxx.h"
 #include "hal_defs.h"
 #include "settings.h"
+#include "onewire_driver.h"
 
 #include "Timer.h"
 #include "Record.h"
@@ -120,6 +121,8 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_RTC_Init();
   MX_TIM4_Init();
+  MX_TIM5_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
 	// TODO: RAM analyzer & crystal check & clock check & modbus check & reload controller
 	SoulGuard<
@@ -145,7 +148,10 @@ int main(void)
 
 	exitTimer.start();
 
-	HAL_TIM_Base_Start_IT(&LED_TIM);
+	HAL_TIM_Base_Start_IT(&USB_TIM);
+//	HAL_TIM_Base_Start_IT(&LED_TIM);  // TODO: uncomment after 1wire test
+	HAL_GPIO_WritePin(_1WIRE_GPIO_Port, _1WIRE_Pin, GPIO_PIN_RESET); // TODO: remove after 1wire test
+	HAL_TIM_Base_Start_IT(&_1WIRE_TIM);
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
@@ -173,6 +179,8 @@ int main(void)
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
+    utl::Timer timer(SECOND_MS);
+    HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET); // TODO: remove after 1wire test
 	while (1)
 	{
 		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
@@ -186,7 +194,28 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		measure.process();
+		onewire_driver_tick();
+
+		{
+			 // TODO: remove block after 1wire test
+			static bool first = false, shown = false;
+			if (!timer.wait()) {
+				if (first) {
+					onewire_driver_next_search();
+				} else {
+					onewire_driver_start_search();
+				}
+				timer.start();
+				shown = false;
+			}
+			if (onewire_driver_ready() && !shown) {
+				printTagLog(MAIN_TAG, "address: 0x%08X 0x%08X", (unsigned)(get_onewire_driver_address() >> 32), (unsigned)(get_onewire_driver_address()));
+				first = true;
+				shown = true;
+			}
+		}
+
+//		measure.process(); // TODO: uncomment after 1wire test
 	}
   /* USER CODE END 3 */
 }
@@ -197,44 +226,44 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
+	RCC_OscInitTypeDef RCC_OscInitStruct = {};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
 
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+	/** Configure the main internal regulator output voltage
+	*/
+	__HAL_RCC_PWR_CLK_ENABLE();
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 96;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/** Initializes the RCC Oscillators according to the specified parameters
+	* in the RCC_OscInitTypeDef structure.
+	*/
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLM = 4;
+	RCC_OscInitStruct.PLL.PLLN = 168;
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+	RCC_OscInitStruct.PLL.PLLQ = 7;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	/** Initializes the CPU, AHB and APB buses clocks
+	*/
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+								 |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+	{
+		Error_Handler();
+	}
 }
 
 /* USER CODE BEGIN 4 */
@@ -254,8 +283,14 @@ int _write(int, uint8_t *ptr, int len) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim->Instance == LED_TIM.Instance) //check if the interrupt comes from TIM1
-	{
+	if (htim->Instance == USB_TIM.Instance) {
+		if (!has_errors()) {
+			exitTimer.start();
+			usbc.proccess();
+		} else if (!exitTimer.wait() && !USBController::connected()) {
+			set_status(NEED_STANDBY);
+		}
+	} else if(htim->Instance == LED_TIM.Instance) {
 		static utl::Timer timer(SECOND_MS / 10);
 		static utl::Timer errTimer(SECOND_MS);
 		static bool errEnabled = false;
@@ -270,7 +305,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			errEnabled = !errEnabled;
 			errTimer.start();
 		} else if (has_errors()) {
-
 		} else if (is_status(WAIT_LOAD)) {
 			timer.changeDelay(SECOND_MS / 50);
 			errEnabled = false;
@@ -278,20 +312,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			timer.changeDelay(SECOND_MS / 10);
 			errEnabled = false;
 		}
-		if (!has_errors()) {
-			exitTimer.start();
-		} else if (!exitTimer.wait() && !USBController::connected()) {
-			set_status(NEED_STANDBY);
-		}
-
-		if (!has_errors()) {
-			usbc.proccess();
-		}
 	}
 }
 
 void system_fault_handler()
 {
+	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	set_error(INTERNAL_ERROR);
 	NVIC_SystemReset();
 }
@@ -305,6 +331,7 @@ void system_fault_handler()
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
+	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	set_error(INTERNAL_ERROR);
 	while (1);
@@ -322,6 +349,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
+	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	b_assert((char*)file, line, "Wrong parameters value");
 	set_error(INTERNAL_ERROR);
 	while (1);
