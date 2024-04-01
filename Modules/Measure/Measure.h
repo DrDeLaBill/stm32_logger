@@ -9,7 +9,7 @@
 #include "modbus_rtu_master.h"
 
 #include "Timer.h"
-#include "Record.h"
+#include "RecordDB.h"
 #include "FiniteStateMachine.h"
 
 
@@ -88,7 +88,7 @@ protected:
 	static utl::Timer timer;
 
 public:
-	static Record record;
+	static RecordDB record;
 
 	Measure();
 	void process();

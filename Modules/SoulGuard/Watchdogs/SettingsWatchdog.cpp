@@ -23,14 +23,12 @@ SettingsWatchdog::SettingsWatchdog()
 
 void SettingsWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("STNG", WATCHDOG_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch("STNG", GENERAL_TIMEOUT_MS);
 	fsm.proccess();
 }
 
 void SettingsWatchdog::state_init::operator ()() const
 {
-	set_status(WAIT_LOAD);
-
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.load();
 	if (status == SETTINGS_OK) {
@@ -39,9 +37,9 @@ void SettingsWatchdog::state_init::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
 		reset_error(SETTINGS_LOAD_ERROR);
-	    set_settings_initialized();
 		settings_show();
 
+		set_status(SETTINGS_INITIALIZED);
 		reset_error(SETTINGS_LOAD_ERROR);
 		reset_status(WAIT_LOAD);
 
@@ -56,10 +54,11 @@ void SettingsWatchdog::state_init::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 		reset_error(SETTINGS_LOAD_ERROR);
-	    set_settings_initialized();
 		settings_show();
 
+		set_status(SETTINGS_INITIALIZED);
 		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
 
 		return;
@@ -70,12 +69,12 @@ void SettingsWatchdog::state_init::operator ()() const
 
 void SettingsWatchdog::state_idle::operator ()() const
 {
-	if (is_settings_updated()) {
+	if (is_status(NEED_SAVE_SETTINGS)) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_idle: event_updated");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_updated{});
-	} else if (is_settings_saved()) {
+	} else if (is_status(NEED_LOAD_SETTINGS)) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_idle: event_saved");
 #endif
@@ -85,8 +84,6 @@ void SettingsWatchdog::state_idle::operator ()() const
 
 void SettingsWatchdog::state_save::operator ()() const
 {
-	set_status(WAIT_LOAD);
-
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.save();
 	if (status == SETTINGS_OK) {
@@ -94,10 +91,11 @@ void SettingsWatchdog::state_save::operator ()() const
 		printTagLog(TAG, "state_save: event_saved");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
-		set_settings_update_status(false);
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+
+		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
 	}
 }
@@ -111,10 +109,10 @@ void SettingsWatchdog::state_load::operator ()() const
 		printTagLog(TAG, "state_load: event_loaded");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
-		set_settings_save_status(false);
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(NEED_LOAD_SETTINGS);
 		reset_status(WAIT_LOAD);
 	}
 }
@@ -137,5 +135,5 @@ void SettingsWatchdog::action_reset::operator ()() const
 		printTagLog(TAG, "action_reset: reset");
 #endif
 	settings_reset(&settings);
-	set_settings_update_status(true);
+	set_status(NEED_SAVE_SETTINGS);
 }

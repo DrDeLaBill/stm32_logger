@@ -134,6 +134,7 @@ int main(void)
 	> hardwareSoulGuard;
 	SoulGuard<
 		SettingsWatchdog,
+		OneWireWatcher,
 		InfoWatchdog,
 		RTCWatchdog
 	> softwareSoulGuard;
@@ -196,26 +197,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		onewire_driver_tick();
 
-		{
-			 // TODO: remove block after 1wire test
-			static bool first = false, shown = false;
-			if (!timer.wait()) {
-				if (first) {
-					onewire_driver_next_search();
-				} else {
-					onewire_driver_start_search();
-				}
-				timer.start();
-				shown = false;
-			}
-			if (onewire_driver_ready() && !shown) {
-				printTagLog(MAIN_TAG, "address: 0x%08X 0x%08X", (unsigned)(get_onewire_driver_address() >> 32), (unsigned)(get_onewire_driver_address()));
-				first = true;
-				shown = true;
-			}
-		}
-
-//		measure.process(); // TODO: uncomment after 1wire test
+		measure.process();
 	}
   /* USER CODE END 3 */
 }

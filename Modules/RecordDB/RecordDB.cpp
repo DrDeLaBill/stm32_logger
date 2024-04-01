@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "RecordClust.h"
+#include "RecordDB.h"
 
 #include <limits>
 #include <cstring>
@@ -14,7 +14,7 @@
 #include "bmacro.h"
 #include "settings.h"
 
-#include "Record.h"
+#include "record.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
 #include "CodeStopwatch.h"
@@ -25,62 +25,89 @@ extern StorageAT* storage;
 
 #if RECORD_ENABLE_CACHE
 
-utl::circle_buffer<RECORD_CACHED_COUNT, RecordClust::cache_t> RecordClust::m_cache;
-uint32_t RecordClust::m_cacheAfterId = 0;
-bool RecordClust::m_cacheLoaded = false;
+utl::circle_buffer<RECORD_CACHED_COUNT, record_cache_t> RecordDB::m_cache;
+uint32_t RecordDB::m_cacheAfterId = 0;
+bool RecordDB::m_cacheLoaded = false;
 
 #endif
 
 
-RecordClust::RecordClust(uint32_t recordId, uint16_t recordSize):
- 	m_recordId(recordId), m_recordSize(recordSize), m_address(0)
+RecordDB::RecordDB(uint32_t targetId):
+	m_targetId(targetId), m_address(0), clust({}), record(nullptr)
 {
-    memset(reinterpret_cast<void*>(&m_clust), 0, sizeof(m_clust));
+	record_cluster_create(&clust);
+    record = get_record_by_index(&clust, 0);
 }
 
-record_t& RecordClust::operator[](unsigned i)
+RecordDB::RecordDB(const RecordDB& other)
 {
-#if RECORD_CLUST_BEDUG
-    BEDUG_ASSERT((i < getCountByRecordSize(m_clust.rcrd_size)), "Cluster records out of range");
-#endif
-    return m_clust[i];
-}
-
-RecordClust::cache_t::cache_t()
-{
-	memset(reinterpret_cast<void*>(&(this->cluster)), 0, sizeof(cluster));
-	this->recordSize = 0;
-	this->address = 0;
-}
-
-RecordClust::cache_t::cache_t(const cache_t& other)
-{
-	(*this) = other;
-}
-
-RecordClust::cache_t& RecordClust::cache_t::operator=(const cache_t& other)
-{
+	this->m_targetId = other.m_targetId;
+	this->m_address  = other.m_address;
 	memcpy(
-		reinterpret_cast<void*>(&(this->cluster)),
-		reinterpret_cast<void*>(const_cast<record_clust_t*>(&(other.cluster))),
-		sizeof(this->cluster)
+		reinterpret_cast<void*>(&(this->clust)),
+		reinterpret_cast<void*>(const_cast<record_clust_t*>(&(other.clust))),
+		sizeof(this->clust)
 	);
-	this->recordSize = other.recordSize;
-	this->address = other.address;
+	this->record     = get_record_by_index(&(this->clust), 0);
+}
+
+RecordDB& RecordDB::operator=(const RecordDB& other)
+{
+	this->m_targetId = other.m_targetId;
+	this->m_address  = other.m_address;
+	memcpy(
+		reinterpret_cast<void*>(&(this->clust)),
+		reinterpret_cast<void*>(const_cast<record_clust_t*>(&(other.clust))),
+		sizeof(this->clust)
+	);
+	this->record     = get_record_by_index(&(this->clust), 0);
+
 	return *this;
 }
 
-RecordClust::cache_t::~cache_t() {}
+RecordDB::~RecordDB() {}
 
-record_t& RecordClust::record_clust_t::operator[](unsigned i)
+RecordStatus RecordDB::loadNext()
 {
-#if RECORD_CLUST_BEDUG
-    BEDUG_ASSERT((i < RecordClust::getCountByRecordSize(rcrd_size)), "Cluster records out of range");
+    m_targetId += 1;
+
+    RecordStatus recordStatus = this->load(false);
+    if (recordStatus != RECORD_OK) {
+        return recordStatus;
+    }
+
+    bool recordFound = false;
+    unsigned idx;
+    uint32_t curId = 0xFFFFFFFF;
+    for (unsigned i = 0; i < records_current_count(&clust); i++) {
+    	record_t* tmp_record = get_record_by_index(&clust, i);
+        if (tmp_record->id > m_targetId && curId > tmp_record->id) {
+            curId       = tmp_record->id;
+            recordFound = true;
+            idx         = i;
+            break;
+        }
+    }
+
+    if (!recordFound) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Next record not found");
 #endif
-    return *(reinterpret_cast<record_t*>(&(records[i * rcrd_size])));
+        return RECORD_NO_LOG;
+    }
+
+    m_targetId = curId;
+    record     = get_record_by_index(&clust, idx);
+
+#if RECORD_BEDUG
+    printTagLog(TAG, "Next record loaded (cluster index=%u)", idx);
+    record_cluster_show(&clust);
+#endif
+
+    return RECORD_OK;
 }
 
-RecordStatus RecordClust::load(bool validateSize)
+RecordStatus RecordDB::load(bool validateSize)
 {
     bool statusFlag = this->loadExist(validateSize);
     if (statusFlag) {
@@ -103,19 +130,48 @@ RecordStatus RecordClust::load(bool validateSize)
 
 #if RECORD_CLUST_BEDUG
 	printTagLog(TAG, "Cluster loaded");
-	this->show();
+    record_cluster_show(&clust);
+#endif
+
+	bool recordFound = false;
+    unsigned id;
+    for (unsigned i = 0; i < records_current_count(&clust); i++) {
+    	record_t* tmp_record = get_record_by_index(&clust, i);
+        if (tmp_record->id == this->m_targetId) {
+            recordFound = true;
+            id = i;
+            break;
+        }
+    }
+    if (!recordFound) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Record not found");
+#endif
+        return RECORD_NO_LOG;
+    }
+
+    m_targetId = this->record->id;
+    record     = get_record_by_index(&clust, id);
+
+#if RECORD_BEDUG
+    printTagLog(TAG, "Record loaded (cluster index=%u)", id);
+    record_cluster_show(&clust);
 #endif
 
     return RECORD_OK;
 }
 
-RecordStatus RecordClust::save(record_t *record, uint32_t size)
+RecordStatus RecordDB::save()
 {
+	uint32_t size = record_current_size(&clust);
+
 #if RECORD_CLUST_BEDUG
     printTagLog(TAG, "Saving record (size=%lu)", size);
-    BEDUG_ASSERT(size <= RECORD_SIZE_MAX, "Size of record is incorrect");
 #endif
-    if (size <= RECORD_META_SIZE || size > RECORD_SIZE_MAX) {
+
+    BEDUG_ASSERT(size <= record_max_size(), "Size of record is incorrect");
+
+    if (size <= record_meta_size() || size > record_max_size()) {
         return RECORD_ERROR;
     }
 
@@ -124,7 +180,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
     // 1. find max id
     uint32_t maxId = 0;
     uint32_t newId = 0;
-    recordStatus = RecordClust::getMaxId(&maxId); // TODO: assert + update record ID
+    recordStatus = RecordDB::getMaxId(&maxId); // TODO: assert + update record ID
     if (recordStatus == RECORD_NO_LOG) {
         maxId = 0;
     } else if (recordStatus != RECORD_OK) {
@@ -139,7 +195,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 //    record_clust_t tmpClust = {};
 
     // 3. load cluster to tmp and validate
-    this->m_recordId = maxId;
+    this->m_targetId = maxId;
     recordStatus = this->load(true);
 #if RECORD_CLUST_BEDUG
     BEDUG_ASSERT((recordStatus == RECORD_OK), "Unable to load cluster");
@@ -153,8 +209,9 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
     {
         bool clustFLag = true;
         bool foundFlag = false;
-        for (unsigned i = 0; i < m_clust.count(); i++) {
-            if (!(*this)[i].id) {
+        for (unsigned i = 0; i < records_current_count(&clust); i++) {
+        	record_t* tmp_record = get_record_by_index(&clust, i);
+            if (!tmp_record->id) {
                 emptyIndex = i;
                 foundFlag = true;
                 break;
@@ -170,57 +227,76 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
             return RECORD_ERROR;
         }
     }
+
+    record_create(record);
     record->id = newId;
+
+    record_t* clust_record = get_record_by_index(&clust, emptyIndex);
     memcpy(
-        reinterpret_cast<void*>(&(*this)[emptyIndex]),
+        reinterpret_cast<void*>(clust_record),
         reinterpret_cast<void*>(record),
-        m_recordSize
+        record_current_size(&clust)
     );
 
     // 5. save cluster
     StorageStatus storageStatus = STORAGE_OK;
     {
-        storageStatus = storage->rewrite(m_address, PREFIX, newId, reinterpret_cast<uint8_t*>(&m_clust), m_clust.size());
-#if RECORD_CLUST_BEDUG
+        storageStatus = storage->rewrite(
+			m_address,
+			PREFIX,
+			newId,
+			reinterpret_cast<uint8_t*>(&clust),
+	        record_current_size(&clust)
+		);
         BEDUG_ASSERT((storageStatus == STORAGE_OK), "Storage save record error");
-#endif
         if (storageStatus != STORAGE_OK) {
             return RECORD_ERROR;
         }
 
-        this->m_recordId = newId;
+        this->m_targetId = newId;
     }
 
     // 6. load cluster
     recordStatus = this->load(true);
-#if RECORD_CLUST_BEDUG
     BEDUG_ASSERT((recordStatus == RECORD_OK), "Error loading the saved record");
+#if RECORD_CLUST_BEDUG
     if (recordStatus == RECORD_OK) {
-        printTagLog(TAG, "Record cluster saved (address=%lu, id=%lu, record_size=%u)", m_address, newId, m_recordSize);
+        printTagLog(TAG, "Record cluster saved (address=%lu, id=%lu, record_size=%u)", m_address, newId, record_current_size(&clust));
     }
 #endif
+
+    if (recordStatus == RECORD_OK) {
+    	set_status(NEED_LOAD_MIN_RECORD);
+    	set_status(NEED_LOAD_MAX_RECORD);
+#ifdef RECORD_BEDUG
+        record_cluster_show(&clust);
+    	record_show(&clust, emptyIndex);
+    } else {
+        printTagLog(TAG, "New record was not saved");
+#endif
+    }
 
     return recordStatus;
 }
 
-RecordStatus RecordClust::preLoadClust(const uint32_t address, record_clust_t& clust)
+RecordStatus RecordDB::preLoadClust(const uint32_t address, record_clust_t& clust)
 {
     record_clust_t tmpClust = {};
-    StorageStatus status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), RecordClust::META_SIZE);
+    StorageStatus status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), record_cluster_meta_size());
 	if (status != STORAGE_OK) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Preload cluster error: load record cluster meta error=%u", status);
 #endif
 		return RECORD_ERROR;
 	}
-	status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), tmpClust.size());
+	status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpClust), record_cluster_size(&tmpClust));
 	if (status != STORAGE_OK) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Preload cluster error: load record cluster error=%u", status);
 #endif
 		return RECORD_ERROR;
 	}
-    if (!validate(&tmpClust)) {
+    if (!record_cluster_validate(&tmpClust)) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Preload cluster error: validation failed (there is an incorrect cluster in the memory), delete cluster from address=%lu", address);
 #endif
@@ -231,13 +307,13 @@ RecordStatus RecordClust::preLoadClust(const uint32_t address, record_clust_t& c
     memcpy(
 		reinterpret_cast<void*>(&clust),
 		reinterpret_cast<void*>(&tmpClust),
-		tmpClust.size()
+		record_cluster_size(&tmpClust)
     );
 
     return RECORD_OK;
 }
 
-RecordStatus RecordClust::getLastTime(uint32_t* time)
+RecordStatus RecordDB::getLastTime(uint32_t* time)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
@@ -250,8 +326,8 @@ RecordStatus RecordClust::getLastTime(uint32_t* time)
         return RECORD_ERROR;
     }
 
-    RecordClust tmpClust;
-    RecordStatus recordStatus = preLoadClust(address, tmpClust.m_clust);
+    RecordDB tmpClust;
+    RecordStatus recordStatus = preLoadClust(address, tmpClust.clust);
 	if (recordStatus != RECORD_OK) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "Get last time error: load record cluster error=%u", status);
@@ -260,9 +336,10 @@ RecordStatus RecordClust::getLastTime(uint32_t* time)
 	}
 
     uint32_t lastTime = 0;
-    for (unsigned i = 0; i < tmpClust.records_count(); i++) {
-    	if (tmpClust[i].time > lastTime) {
-    		lastTime = tmpClust[i].time;
+    for (unsigned i = 0; i < records_current_count(&tmpClust.clust); i++) {
+    	record_t* tmp_record = get_record_by_index(&tmpClust.clust, i);
+    	if (tmp_record->time > lastTime) {
+    		lastTime = tmp_record->time;
     	}
     }
 
@@ -271,75 +348,16 @@ RecordStatus RecordClust::getLastTime(uint32_t* time)
     return RECORD_OK;
 }
 
-bool RecordClust::validate(record_clust_t* clust)
-{
-    if (clust->dv_type != settings.dv_type) {
-        return false;
-    }
-
-    if (clust->sw_id != settings.sw_id) {
-        return false;
-    }
-
-    if (!clust->rcrd_size || clust->rcrd_size > RECORD_SIZE_MAX) {
-    	return false;
-    }
-
-    for (unsigned i = 0; i < getCountByRecordSize(clust->rcrd_size); i++) {
-    	if ((*clust)[i].id) {
-    		return true;
-    	}
-    }
-
-    return false;
-}
-
-void RecordClust::show()
-{
-#if RECORD_CLUST_BEDUG
-	RTC_DateTypeDef date = {};
-	clock_get_rtc_date(&date);
-	RTC_TimeTypeDef time = {};
-	clock_get_rtc_time(&time);
-
-	printPretty("               %02u-%02u-20%02u\n", date.Date, date.Month, date.Year);
-	printPretty("                %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
-	printPretty("##############RECORD CLUST###############\n");
-	printPretty("Device type: %u\n", m_clust.dv_type);
-	printPretty("Software v%02u\n", m_clust.sw_id);
-	printPretty("Record size %u\n", m_clust.rcrd_size);
-    printPretty("INDEX   RCRDID    TIME       SENSID   VALUE\n");
-	for (uint8_t i = 0; i < getCountByRecordSize(m_clust.rcrd_size); i++) {
-		if (!(*this)[i].id) {
-			break;
-		}
-	    printPretty("%03u     %09lu %010lu ", i, (*this)[i].id, (*this)[i].time);
-	    for (uint8_t j = 0; j < Record::getSensorsCountBySize(m_clust.rcrd_size); j++) {
-	    	sensor_t* sensPtr = reinterpret_cast<sensor_t*>((*this)[i].sens);
-	    	if (j == 0) {
-	    		gprint("%03u      %u\n", sensPtr[j].ID, sensPtr[j].value);
-	    	} else {
-	    		printPretty("                             %03u      %u\n", sensPtr[j].ID, sensPtr[j].value);
-	    	}
-	    }
-	}
-	if (!getCountByRecordSize(m_clust.rcrd_size)) {
-        printPretty("------------------EMPTY------------------\n");
-	}
-	printPretty("##############RECORD CLUST###############\n");
-#endif
-}
-
 #if RECORD_ENABLE_CACHE
 
-bool RecordClust::checkCachedRecordCLuster()
+bool RecordDB::checkCachedRecordCLuster()
 {
 	if (!m_cacheLoaded) {
 		return false;
 	}
 
 	for (unsigned i = 0; i < m_cache.size(); i++) {
-		if (m_cache[i].cluster.hasID(m_recordId) || m_recordId < m_cache[i].cluster.minID()) {
+		if (hasID(m_cache[i].cluster, m_targetId) || m_targetId < getMinID(m_cache[i].cluster)) {
 			return true;
 		}
 	}
@@ -349,7 +367,7 @@ bool RecordClust::checkCachedRecordCLuster()
 
 #endif
 
-bool RecordClust::loadExist(bool validateSize)
+bool RecordDB::loadExist(bool validateSize)
 {
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
@@ -364,11 +382,12 @@ bool RecordClust::loadExist(bool validateSize)
         printTagLog(TAG, "Use cached cluster");
 #	endif
     	for (unsigned i = 0; i < m_cache.size(); i++) {
-    		if (m_cache[i].cluster.hasID(m_recordId) ||
-				m_recordId < m_cache[i].cluster.minID()
-			) {
-    			tmpClust     = m_cache[i].cluster;
-				m_recordSize = m_cache[i].recordSize;
+    		if (hasID(m_cache[i].cluster, m_targetId) || m_targetId < getMinID(m_cache[i].cluster)) {
+    			memcpy(
+					reinterpret_cast<void*>(&tmpClust),
+					reinterpret_cast<void*>(&m_cache[i].cluster),
+					record_cluster_size(&tmpClust)
+				);
 				m_address    = m_cache[i].address;
 				address      = m_cache[i].address;
 				cacheFound   = true;
@@ -380,12 +399,12 @@ bool RecordClust::loadExist(bool validateSize)
 
 #endif
 
-		storageStatus = storage->find(FIND_MODE_EQUAL, &address, PREFIX, m_recordId);
+		storageStatus = storage->find(FIND_MODE_EQUAL, &address, PREFIX, m_targetId);
 		if (storageStatus != STORAGE_OK) {
 #if RECORD_CLUST_BEDUG
 			printTagLog(TAG, "Unable to find an EQUAL cluster, the NEXT cluster is being searched");
 #endif
-			storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_recordId);
+			storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_targetId);
 		}
 
 		if (storageStatus != STORAGE_OK) {
@@ -424,7 +443,7 @@ bool RecordClust::loadExist(bool validateSize)
 #endif
 
 
-    if (validateSize && m_recordSize > 0 && tmpClust.rcrd_size != m_recordSize) {
+    if (validateSize && record_cluster_validate_size(&clust, &tmpClust)) {
 #if RECORD_CLUST_BEDUG
         printTagLog(TAG, "The current cluster has another record size, abort search");
 #endif
@@ -433,15 +452,15 @@ bool RecordClust::loadExist(bool validateSize)
 
     m_address = address;
     memcpy(
-		reinterpret_cast<void*>(&m_clust),
+		reinterpret_cast<void*>(&clust),
 		reinterpret_cast<void*>(&tmpClust),
-		tmpClust.size()
+		record_cluster_size(&tmpClust)
     );
 
     return true;
 }
 
-bool RecordClust::createNew()
+bool RecordDB::createNew()
 {
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
@@ -453,9 +472,7 @@ bool RecordClust::createNew()
         storageStatus = storage->find(findMode, &address);
     }
 
-#if RECORD_CLUST_BEDUG
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to find memory for log record");
-#endif
     if (storageStatus != STORAGE_OK) {
         return false;
     }
@@ -464,26 +481,21 @@ bool RecordClust::createNew()
         storageStatus = storage->clearAddress(address);
         set_status(NEED_LOAD_MIN_RECORD);
     }
-#if RECORD_CLUST_BEDUG
 	if (findMode == FIND_MODE_MIN && storageStatus != STORAGE_OK) {
 		BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");
 	}
-#endif
     if (storageStatus != STORAGE_OK) {
         return false;
     }
 
-    this->m_clust.dv_type   = settings.dv_type;
-    this->m_clust.sw_id     = settings.sw_id;
-    this->m_clust.rcrd_size = m_recordSize;
-    memset(this->m_clust.records, 0, sizeof(this->m_clust.records));
-
     this->m_address = address;
+
+    record_cluster_create(&clust);
 
     return true;
 }
 
-RecordStatus RecordClust::getMaxId(uint32_t* maxId)
+RecordStatus RecordDB::getMaxId(uint32_t* maxId)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
@@ -498,9 +510,7 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
         return RECORD_NO_LOG;
     }
 
-#if RECORD_CLUST_BEDUG
     BEDUG_ASSERT((storageStatus == STORAGE_OK), "Storage find error");
-#endif
     if (storageStatus != STORAGE_OK) {
         return RECORD_ERROR;
     }
@@ -514,7 +524,7 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 		return recordStatus;
 	}
 
-    *maxId = tmpClust.maxID();
+    *maxId = getMaxID(tmpClust);
 
 #if RECORD_CLUST_BEDUG
     printTagLog(TAG, "MAX ID received from address=%lu id=%lu", address, *maxId);
@@ -523,7 +533,7 @@ RecordStatus RecordClust::getMaxId(uint32_t* maxId)
     return RECORD_OK;
 }
 
-RecordStatus RecordClust::getMinId(uint32_t* minId)
+RecordStatus RecordDB::getMinId(uint32_t* minId)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
@@ -554,7 +564,7 @@ RecordStatus RecordClust::getMinId(uint32_t* minId)
 		return recordStatus;
 	}
 
-    *minId = tmpClust.minID();
+    *minId = getMinID(tmpClust);
 
 #if RECORD_CLUST_BEDUG
     printTagLog(TAG, "MIN ID received from address=%lu id=%lu", address, *minId);
@@ -565,9 +575,9 @@ RecordStatus RecordClust::getMinId(uint32_t* minId)
 
 #if RECORD_ENABLE_CACHE
 
-RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
+RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
 {
-	if (m_cache[0].cluster.hasID(cacheAfterId + 1)) {
+	if (hasID(m_cache[0].cluster, cacheAfterId + 1)) {
 		return RECORD_OK;
 	}
 
@@ -575,7 +585,7 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 	uint32_t maxID = 0;
 	bool maxIDFound = false;
 	for (unsigned i = 0; i < m_cache.size(); i++) {
-		if (m_cache[i].cluster.hasID(cacheAfterId + 1)) {
+		if (hasID(m_cache[i].cluster, cacheAfterId + 1)) {
 			maxIDFound = true;
 			break;
 		}
@@ -593,7 +603,7 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 	if (maxIDFound) {
 		m_cache.pop_front();
 		for (unsigned i = 0; i < m_cache.size() - index; i++) {
-			maxID = m_cache[i].cluster.maxID();
+			maxID = getMaxID(m_cache[i].cluster);
 		}
 #if RECORD_CLUST_BEDUG
 		printTagLog(TAG, "Remove cache index=[%u->%u)", 0, index);
@@ -625,13 +635,16 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 			return RECORD_ERROR;
 		}
 
-		cache_t tmpCache;
-		tmpCache.cluster = tmpClust;
-		tmpCache.recordSize = tmpClust.rcrd_size;
-		tmpCache.address = address;
+		record_cache_t tmpCache;
+		memcpy(
+			reinterpret_cast<void*>(&tmpCache.cluster),
+			reinterpret_cast<void*>(&tmpClust),
+			record_cluster_size(&tmpCache.cluster)
+		);
+		tmpCache.address    = address;
 		m_cache.push_back(tmpCache);
 
-		maxID = tmpClust.maxID();
+		maxID = getMaxID(tmpClust);
 
 #if RECORD_CLUST_BEDUG
 		printTagLog(TAG, "Cache updated");
@@ -645,24 +658,11 @@ RecordStatus RecordClust::updateCache(uint32_t cacheAfterId)
 
 #endif
 
-uint32_t RecordClust::getCountByRecordSize(uint32_t recordSize)
-{
-#if RECORD_CLUST_BEDUG
-    BEDUG_ASSERT((recordSize > 0), "Record size must be large than 0");
-#endif
-    if (recordSize == 0) {
-        return 0;
-    }
-
-    uint32_t payload_clust = Page::PAYLOAD_SIZE - RecordClust::META_SIZE;
-    return (recordSize > payload_clust) ? 1 : (payload_clust / recordSize);
-}
-
-uint32_t RecordClust::record_clust_t::minID()
+uint32_t RecordDB::getMinID(const record_clust_t& clust)
 {
 	uint32_t minId = std::numeric_limits<uint32_t>::max();
-	for (unsigned i = 0; i < getCountByRecordSize(rcrd_size); i++) {
-		uint32_t tmpId = (*this)[i].id;
+	for (unsigned i = 0; i < records_current_count(&clust); i++) {
+		uint32_t tmpId = get_record_by_index(&clust, i)->id;
 		if (tmpId && minId > tmpId) {
 			minId = tmpId;
 		}
@@ -670,11 +670,11 @@ uint32_t RecordClust::record_clust_t::minID()
 	return minId;
 }
 
-uint32_t RecordClust::record_clust_t::maxID()
+uint32_t RecordDB::getMaxID(const record_clust_t& clust)
 {
 	uint32_t maxId = 0;
-	for (unsigned i = 0; i < getCountByRecordSize(rcrd_size); i++) {
-		uint32_t tmpId = (*this)[i].id;
+	for (unsigned i = 0; i < records_current_count(&clust); i++) {
+		uint32_t tmpId = get_record_by_index(&clust, i)->id;
 		if (tmpId && maxId < tmpId) {
 			maxId = tmpId;
 		}
@@ -682,39 +682,7 @@ uint32_t RecordClust::record_clust_t::maxID()
 	return maxId;
 }
 
-bool RecordClust::record_clust_t::hasID(uint32_t ID)
+bool RecordDB::hasID(const record_clust_t& clust, uint32_t ID)
 {
-	return minID() <= ID && ID <= maxID();
-}
-
-uint32_t RecordClust::record_clust_t::count()
-{
-    return getCountByRecordSize(this->rcrd_size);
-}
-
-uint32_t RecordClust::record_clust_t::size()
-{
-#if RECORD_CLUST_BEDUG
-    BEDUG_ASSERT((this->rcrd_size > 0), "Record size must be large than 0");
-#endif
-	if (!this->count()) {
-		return 0;
-	}
-
-    return RecordClust::META_SIZE + this->rcrd_size * this->count();
-}
-
-uint32_t RecordClust::records_count()
-{
-	return this->m_clust.count();
-}
-
-uint32_t RecordClust::record_size()
-{
-	return this->m_clust.rcrd_size;
-}
-
-uint32_t RecordClust::structure_size()
-{
-	return this->m_clust.size();
+	return getMinID(clust) <= ID && ID <= getMaxID(clust);
 }

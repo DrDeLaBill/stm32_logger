@@ -50,7 +50,8 @@ private:
 		COMTuple<uint32_t, DeviceInfo::min_id>,
 		COMTuple<uint32_t, DeviceInfo::max_id>,
 		COMTuple<uint32_t, DeviceInfo::current_id>,
-		COMTuple<uint32_t, DeviceInfo::current_count>,
+		COMTuple<uint32_t, DeviceInfo::current_mbodbus1_count>,
+		COMTuple<uint32_t, DeviceInfo::current_1wire_count>,
 		COMTuple<uint8_t,  DeviceInfo::record_loaded>,
         COMTuple<uint16_t, DeviceInfo::modbus1_value, MODBUS_SENS_COUNT>
     >;
@@ -60,8 +61,10 @@ private:
     using record_controller_table_t = COMTable<
 		COMTuple<uint32_t, RecordInterface::id>,
 		COMTuple<uint32_t, RecordInterface::time>,
-		COMTuple<uint8_t,  RecordInterface::ID,    __arr_len(record_t::sens)>,
-		COMTuple<uint16_t, RecordInterface::value, __arr_len(record_t::sens)>
+		COMTuple<uint8_t,  RecordInterface::MODBUS1_ID,    MODBUS_SENS_COUNT>,
+		COMTuple<uint16_t, RecordInterface::MODBUS1_value, MODBUS_SENS_COUNT>,
+		COMTuple<uint8_t,  RecordInterface::_1WIRE_ADDR,   MODBUS_SENS_COUNT>,
+		COMTuple<uint16_t, RecordInterface::_1WIRE_value,  MODBUS_SENS_COUNT>
 	>;
     using record_controller_t = COMTableWorker<record_controller_table_t, info_controller_t::maxID() + 1>;
     static record_controller_t record_controller;

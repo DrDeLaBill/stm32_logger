@@ -15,26 +15,38 @@ protected:
 public:
     struct id
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct time
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
-    struct ID
+    struct MODBUS1_ID
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
-    struct value
+    struct MODBUS1_value
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1WIRE_ADDR
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1WIRE_value
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
 };

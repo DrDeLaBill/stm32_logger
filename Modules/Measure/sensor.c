@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "log.h"
+#include "soul.h"
 #include "main.h"
 #include "utils.h"
 #include "gtime.h"
@@ -100,7 +101,7 @@ void sensor_send_new_id(uint8_t old_id, uint8_t new_id)
 	settings.modbus1_id_reg[old_id] = 0;
 	settings.modbus1_value_reg[old_id] = 0;
 
-	set_settings_update_status(true);
+	set_status(NEED_SAVE_SETTINGS);
 }
 
 void _request_data_sender(uint8_t* data, uint32_t len)

@@ -80,6 +80,7 @@ bool com_send_report(report_pack_t* report)
 
 void com_report_show(const report_pack_t* report)
 {
+	(void)report;
 #if COM_TABLE_BEDUG
     printPretty("characteristic_id: %02u[%03u] => { %03u %03u %03u %03u }\n", report->characteristic_id, report->index, report->data[0], report->data[1], report->data[2], report->data[3]);
 #endif

@@ -4,7 +4,7 @@
 
 #include "soul.h"
 
-#include "Record.h"
+#include "RecordDB.h"
 #include "deviceInfo.h"
 #include "CodeStopwatch.h"
 #include "RecordInterface.h"
@@ -23,7 +23,7 @@ void InfoWatchdog::check()
 		if (DeviceInfo::current_id::get() >= DeviceInfo::max_id::get()) {
 			DeviceInfo::current_id::set(0);
 		}
-		Record::updateCache(DeviceInfo::current_id::get());
+		RecordDB::updateCache(DeviceInfo::current_id::get());
 #endif
 		return;
 	}
@@ -59,7 +59,7 @@ bool InfoWatchdog::loadMaxRecord()
 
 	RecordStatus status = RECORD_OK;
 
-	status = Record::getMaxId(&maxId);
+	status = RecordDB::getMaxId(&maxId);
 	if (status != RECORD_OK) {
 		return false;
 	}
@@ -68,13 +68,14 @@ bool InfoWatchdog::loadMaxRecord()
 	if (maxId == 0) {
 		return true;
 	}
-	Record record(maxId - 1);
+	RecordDB record(maxId - 1);
 	status = record.loadNext();
 	if (status != RECORD_OK) {
 		return false;
 	}
-	for (unsigned i = 0; i < record.count(); i++) {
-		DeviceInfo::modbus1_value::set(record[i].value, record[i].ID - 1);
+	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
+		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.clust, i, record.record->mb1_sens[i].ID - 1);
+		DeviceInfo::modbus1_value::set(sensor->value, sensor->ID - 1);
 	}
 
 	return true;
@@ -84,7 +85,7 @@ bool InfoWatchdog::loadMinRecord()
 {
 	uint32_t minId = DeviceInfo::min_id::get();
 
-	RecordStatus status = Record::getMinId(&minId);
+	RecordStatus status = RecordDB::getMinId(&minId);
 	if (status == RECORD_OK) {
 		DeviceInfo::min_id::set(minId);
 		return true;
@@ -97,7 +98,7 @@ bool InfoWatchdog::loadRecord()
 {
 	RecordStatus status = RECORD_OK;
 
-	Record record(DeviceInfo::current_id::get());
+	RecordDB record(DeviceInfo::current_id::get());
 
 	status = record.loadNext();
 	if (status == RECORD_NO_LOG) {
@@ -110,14 +111,19 @@ bool InfoWatchdog::loadRecord()
 		return false;
 	}
 
-	RecordInterface::id::set(record.record.id);
-	RecordInterface::time::set(record.record.time);
-	for (unsigned i = 0; i < record.count(); i++) {
-		RecordInterface::ID::set(record[i].ID, i);
-		RecordInterface::value::set(record[i].value, i);
+	RecordInterface::id::set(record.record->id);
+	RecordInterface::time::set(record.record->time);
+	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
+		RecordInterface::MODBUS1_ID::set(record.record->mb1_sens[i].ID, i);
+		RecordInterface::MODBUS1_value::set(record.record->mb1_sens[i].value, i);
 	}
-	DeviceInfo::current_id::set(record.record.id);
-	DeviceInfo::current_count::set(record.count());
+	for (unsigned i = 0; i < record_1wire_sensors_count(&record.clust); i++) {
+		RecordInterface::_1WIRE_ADDR::set(record.record->ow_sens[i].ADDR, i);
+		RecordInterface::_1WIRE_value::set(record.record->ow_sens[i].value, i);
+	}
+	DeviceInfo::current_id::set(record.record->id);
+	DeviceInfo::current_mbodbus1_count::set(record.clust.modbus1_count);
+	DeviceInfo::current_1wire_count::set(record.clust._1wire_count);
 
 	return true;
 }

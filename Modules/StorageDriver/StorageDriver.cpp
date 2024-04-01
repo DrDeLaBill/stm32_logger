@@ -7,11 +7,13 @@
 #include "w25qxx.h"
 #include "bmacro.h"
 
+#include "StorageType.h"
+
 
 #if STORAGE_DRIVER_USE_BUFFER
 
 bool StorageDriver::hasBuffer = false;
-uint8_t StorageDriver::bufferPage[Page::PAGE_SIZE] = {};
+uint8_t StorageDriver::bufferPage[STORAGE_PAGE_SIZE] = {};
 uint32_t StorageDriver::lastAddress = 0;
 
 #endif
@@ -30,7 +32,7 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 
 #if STORAGE_DRIVER_USE_BUFFER
 
-	if (hasBuffer && lastAddress == address && len == Page::PAGE_SIZE) {
+	if (hasBuffer && lastAddress == address && len == STORAGE_PAGE_SIZE) {
 		memcpy(data, bufferPage, len);
 
 #	if STORAGE_DRIVER_BEDUG
@@ -67,8 +69,8 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 
 #if STORAGE_DRIVER_USE_BUFFER
 
-    if (lastAddress != address && len == Page::PAGE_SIZE) {
-    	memcpy(bufferPage, data, Page::PAGE_SIZE);
+    if (lastAddress != address && len == STORAGE_PAGE_SIZE) {
+    	memcpy(bufferPage, data, STORAGE_PAGE_SIZE);
     	lastAddress = address;
     	hasBuffer = true;
     }

@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "onewire.h"
+#include "onewire_prootocl.h"
 
 #include <string.h>
 
@@ -24,12 +24,12 @@
 #define END_DATA_DELAY_US    ((uint16_t)5)
 #define WAIT_SLAVE_BIT_US    ((uint16_t)5)
 
-#define SET_BUS()      (_1WIRE_GPIO_Port->ODR |= _1WIRE_Pin)
-#define RESET_BUS()    (_1WIRE_GPIO_Port->ODR &= ~(_1WIRE_Pin))
-#define READ_BUS()     (_1WIRE_GPIO_Port->IDR & _1WIRE_Pin)
+#define SET_BUS()            (_1WIRE_GPIO_Port->ODR |= _1WIRE_Pin)
+#define RESET_BUS()          (_1WIRE_GPIO_Port->ODR &= ~(_1WIRE_Pin))
+#define READ_BUS()           (_1WIRE_GPIO_Port->IDR & _1WIRE_Pin)
 
 
-typedef struct _onewire_t {
+typedef struct _onewire_protocol_t {
 	void (*fsm) (void);
 	bool     need_reset;
 	bool     ready;
@@ -39,30 +39,30 @@ typedef struct _onewire_t {
 	uint16_t count;
 	uint16_t need_count;
 	uint8_t  bit_idx;
-} onewire_t;
+} onewire_protocol_t;
 
 
-void _onewire_state_reset();
+void _onewire_protocol_state_reset();
 void _configure_timer(uint16_t target_usec);
-void _onewire_state_reset();
-bool _onewire_busy();
+void _onewire_protocol_state_reset();
+bool _onewire_protocol_busy();
 
-void _fsm_onewire_init();
-void _fsm_onewire_idle();
-void _fsm_onewire_error();
-void _fsm_onewire_write_reset_start();
-void _fsm_onewire_write_reset_end();
-void _fsm_onewire_wait_presense_start();
-void _fsm_onewire_wait_presense_end();
-void _fsm_onewire_send_bit_begin();
-void _fsm_onewire_send_bit_set();
-void _fsm_onewire_send_bit_end();
-void _fsm_onewire_send_iterate_bit();
-void _fsm_onewire_read_bit_begin();
-void _fsm_onewire_read_bit_set();
-void _fsm_onewire_read_bit_end();
-void _fsm_onewire_read_iterate_bit();
-void _fsm_onewire_end();
+void _fsm_onewire_protocol_init();
+void _fsm_onewire_protocol_idle();
+void _fsm_onewire_protocol_error();
+void _fsm_onewire_protocol_write_reset_start();
+void _fsm_onewire_protocol_write_reset_end();
+void _fsm_onewire_protocol_wait_presense_start();
+void _fsm_onewire_protocol_wait_presense_end();
+void _fsm_onewire_protocol_send_bit_begin();
+void _fsm_onewire_protocol_send_bit_set();
+void _fsm_onewire_protocol_send_bit_end();
+void _fsm_onewire_protocol_send_iterate_bit();
+void _fsm_onewire_protocol_read_bit_begin();
+void _fsm_onewire_protocol_read_bit_set();
+void _fsm_onewire_protocol_read_bit_end();
+void _fsm_onewire_protocol_read_iterate_bit();
+void _fsm_onewire_protocol_end();
 
 
 static const uint8_t ONEWIRE_CRC8_TABLE[] = {
@@ -85,24 +85,24 @@ static const uint8_t ONEWIRE_CRC8_TABLE[] = {
 };
 
 
-onewire_t _1wire_state = {
-	.fsm = _fsm_onewire_init
+onewire_protocol_t _1wire_state = {
+	.fsm = _fsm_onewire_protocol_init
 };
 
 
-void onewire_proccess()
+void onewire_protocol_proccess()
 {
 	if (_1wire_state.need_reset || !_1wire_state.fsm) {
-		_onewire_state_reset();
+		_onewire_protocol_state_reset();
 	}
 	LED_GPIO_Port->ODR |= LED_Pin; // TODO: remove after 1wire test
 	_1wire_state.fsm();
 	LED_GPIO_Port->ODR &= ~LED_Pin; // TODO: remove after 1wire test
 }
 
-void onewire_read_bits(uint8_t count)
+void onewire_protocol_read_bits(uint8_t count)
 {
-	if (_onewire_busy()) {
+	if (_onewire_protocol_busy()) {
 		BEDUG_ASSERT(false, "1WIRE is already busy");
 		return;
 	}
@@ -112,9 +112,9 @@ void onewire_read_bits(uint8_t count)
 	_1wire_state.ready = false;
 }
 
-void onewire_send_bit(uint8_t bit)
+void onewire_protocol_send_bit(uint8_t bit)
 {
-	if (_onewire_busy()) {
+	if (_onewire_protocol_busy()) {
 		BEDUG_ASSERT(false, "1WIRE is already busy");
 		return;
 	}
@@ -125,9 +125,9 @@ void onewire_send_bit(uint8_t bit)
 	_1wire_state.ready = false;
 }
 
-void onewire_send_request(bool* data, uint16_t bitCount, uint16_t needBitCount)
+void onewire_protocol_send_request(bool* data, uint16_t bitCount, uint16_t needBitCount)
 {
-	if (_onewire_busy()) {
+	if (_onewire_protocol_busy()) {
 		BEDUG_ASSERT(false, "1WIRE is already busy");
 		return;
 	}
@@ -150,22 +150,22 @@ void onewire_send_request(bool* data, uint16_t bitCount, uint16_t needBitCount)
 	_1wire_state.ready = false;
 }
 
-bool onewire_result_ready()
+bool onewire_protocol_result_ready()
 {
 	return _1wire_state.ready;
 }
 
-bool* onewire_response()
+bool* onewire_protocol_response()
 {
 	return _1wire_state.data;
 }
 
-void onewire_reset()
+void onewire_protocol_reset()
 {
 	_1wire_state.need_reset = true;
 }
 
-uint8_t onewire_crc8(uint8_t* data, uint8_t len)
+uint8_t onewire_protocol_crc8(uint8_t* data, uint8_t len)
 {
     uint8_t crc = 0x00;
 
@@ -183,105 +183,105 @@ void _configure_timer(uint16_t target_usec)
 	_1WIRE_TIM.Instance->ARR = target_usec;
 }
 
-void _onewire_state_reset()
+void _onewire_protocol_state_reset()
 {
 	memset((void*)&_1wire_state, 0, sizeof(_1wire_state));
-	_1wire_state.fsm = _fsm_onewire_init;
+	_1wire_state.fsm = _fsm_onewire_protocol_init;
 }
 
-bool _onewire_busy()
+bool _onewire_protocol_busy()
 {
 	return _1wire_state.count || _1wire_state.need_count;
 }
 
-void _fsm_onewire_init()
+void _fsm_onewire_protocol_init()
 {
-	_onewire_state_reset();
+	_onewire_protocol_state_reset();
 
 	SET_BUS();
 	_configure_timer(IDLE_DELAY_US);
 
-	_1wire_state.fsm = _fsm_onewire_idle;
+	_1wire_state.fsm = _fsm_onewire_protocol_idle;
 }
 
-void _fsm_onewire_idle()
+void _fsm_onewire_protocol_idle()
 {
 	if (_1wire_state.count == 1) {
 		SET_BUS();
 		_configure_timer(WAIT_DATA_DELAY_US);
-		_1wire_state.fsm = _fsm_onewire_send_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_send_bit_begin;
 	} else if (_1wire_state.count > 0) {
 		SET_BUS();
 		_configure_timer(START_DELAY_US);
-		_1wire_state.fsm = _fsm_onewire_write_reset_start;
+		_1wire_state.fsm = _fsm_onewire_protocol_write_reset_start;
 	} else if (_1wire_state.need_count > 0) {
 		SET_BUS();
 		_configure_timer(START_DELAY_US);
-		_1wire_state.fsm = _fsm_onewire_read_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_read_bit_begin;
 	}
 }
 
-void _fsm_onewire_error()
+void _fsm_onewire_protocol_error()
 {
 	_configure_timer(IDLE_DELAY_US);
 
-	_onewire_state_reset();
+	_onewire_protocol_state_reset();
 	// TODO: error action
 
-	_1wire_state.fsm = _fsm_onewire_end;
+	_1wire_state.fsm = _fsm_onewire_protocol_end;
 }
 
-void _fsm_onewire_write_reset_start()
+void _fsm_onewire_protocol_write_reset_start()
 {
 	_configure_timer(RESET_DELAY_US);
 	RESET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_write_reset_end;
+	_1wire_state.fsm = _fsm_onewire_protocol_write_reset_end;
 }
 
-void _fsm_onewire_write_reset_end()
+void _fsm_onewire_protocol_write_reset_end()
 {
 	_configure_timer(RESET_WAIT_US);
 	SET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_wait_presense_start;
+	_1wire_state.fsm = _fsm_onewire_protocol_wait_presense_start;
 }
 
-void _fsm_onewire_wait_presense_start()
+void _fsm_onewire_protocol_wait_presense_start()
 {
 	if (READ_BUS()) {
-		_1wire_state.fsm = _fsm_onewire_wait_presense_end;
+		_1wire_state.fsm = _fsm_onewire_protocol_wait_presense_end;
 	} else {
-		_1wire_state.fsm = _fsm_onewire_error;
+		_1wire_state.fsm = _fsm_onewire_protocol_error;
 	}
 
 	_configure_timer(WAIT_PRESENSE_US);
 }
 
-void _fsm_onewire_wait_presense_end()
+void _fsm_onewire_protocol_wait_presense_end()
 {
 	if (READ_BUS()) {
-		_1wire_state.fsm = _fsm_onewire_error;
+		_1wire_state.fsm = _fsm_onewire_protocol_error;
 	} else {
-		_1wire_state.fsm = _fsm_onewire_send_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_send_bit_begin;
 	}
 	_configure_timer(WAIT_PRESENSE_END_US);
 }
 
-void _fsm_onewire_send_bit_begin()
+void _fsm_onewire_protocol_send_bit_begin()
 {
 	if (!_1wire_state.count) {
-		_1wire_state.fsm = _fsm_onewire_send_iterate_bit;
+		_1wire_state.fsm = _fsm_onewire_protocol_send_iterate_bit;
 		return;
 	}
 
 	_configure_timer(RESET_DATA_DELAY_US);
 	RESET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_send_bit_set;
+	_1wire_state.fsm = _fsm_onewire_protocol_send_bit_set;
 }
 
-void _fsm_onewire_send_bit_set()
+void _fsm_onewire_protocol_send_bit_set()
 {
 	if (_1wire_state.data[_1wire_state.bit_idx]) {
 		SET_BUS();
@@ -290,76 +290,76 @@ void _fsm_onewire_send_bit_set()
 	}
 	_configure_timer(SLOT_DELAY_US);
 
-	_1wire_state.fsm = _fsm_onewire_send_bit_end;
+	_1wire_state.fsm = _fsm_onewire_protocol_send_bit_end;
 }
 
-void _fsm_onewire_send_bit_end()
+void _fsm_onewire_protocol_send_bit_end()
 {
 	_configure_timer(END_DATA_DELAY_US);
 	SET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_send_iterate_bit;
+	_1wire_state.fsm = _fsm_onewire_protocol_send_iterate_bit;
 }
 
-void _fsm_onewire_send_iterate_bit()
+void _fsm_onewire_protocol_send_iterate_bit()
 {
 	_1wire_state.bit_idx++;
 	if (_1wire_state.bit_idx < _1wire_state.count) {
-		_1wire_state.fsm = _fsm_onewire_send_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_send_bit_begin;
 	} else {
 		_configure_timer(SLOT_DELAY_US);
 		_1wire_state.bit_idx = 0;
-		_1wire_state.fsm = _fsm_onewire_read_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_read_bit_begin;
 	}
 }
 
-void _fsm_onewire_read_bit_begin()
+void _fsm_onewire_protocol_read_bit_begin()
 {
 	if (!_1wire_state.need_count) {
-		_1wire_state.fsm = _fsm_onewire_read_iterate_bit;
+		_1wire_state.fsm = _fsm_onewire_protocol_read_iterate_bit;
 		return;
 	}
 
 	_configure_timer(RESET_DATA_DELAY_US);
 	RESET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_read_bit_set;
+	_1wire_state.fsm = _fsm_onewire_protocol_read_bit_set;
 }
 
-void _fsm_onewire_read_bit_set()
+void _fsm_onewire_protocol_read_bit_set()
 {
 	_configure_timer(WAIT_SLAVE_BIT_US);
 	SET_BUS();
 
-	_1wire_state.fsm = _fsm_onewire_read_bit_end;
+	_1wire_state.fsm = _fsm_onewire_protocol_read_bit_end;
 }
 
-void _fsm_onewire_read_bit_end()
+void _fsm_onewire_protocol_read_bit_end()
 {
 	_1wire_state.data[_1wire_state.bit_idx] = READ_BUS();
 
 	_configure_timer(SLOT_DELAY_US);
 
-	_1wire_state.fsm = _fsm_onewire_read_iterate_bit;
+	_1wire_state.fsm = _fsm_onewire_protocol_read_iterate_bit;
 }
 
-void _fsm_onewire_read_iterate_bit()
+void _fsm_onewire_protocol_read_iterate_bit()
 {
 	_1wire_state.bit_idx++;
 	if (_1wire_state.bit_idx < _1wire_state.need_count) {
-		_1wire_state.fsm = _fsm_onewire_read_bit_begin;
+		_1wire_state.fsm = _fsm_onewire_protocol_read_bit_begin;
 	} else {
 		memset((void*)&_1wire_state.data[_1wire_state.need_count], 0, sizeof(_1wire_state.data) - _1wire_state.need_count);
 		_1wire_state.ready      = true;
 		_1wire_state.count      = 0;
 		_1wire_state.need_count = 0;
-		_1wire_state.fsm        = _fsm_onewire_end;
+		_1wire_state.fsm        = _fsm_onewire_protocol_end;
 	}
 	_configure_timer(WAIT_DATA_DELAY_US);
 }
 
-void _fsm_onewire_end()
+void _fsm_onewire_protocol_end()
 {
 	_1wire_state.bit_idx = 0;
-	_1wire_state.fsm     = _fsm_onewire_idle;
+	_1wire_state.fsm     = _fsm_onewire_protocol_idle;
 }

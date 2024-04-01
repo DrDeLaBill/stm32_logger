@@ -246,3 +246,43 @@ private:
 public:
 	void check();
 };
+
+struct OneWireWatcher
+{
+protected:
+	// Events:
+	FSM_CREATE_EVENT(start_e, 0);
+	FSM_CREATE_EVENT(received_e, 0);
+	FSM_CREATE_EVENT(next_e, 0);
+	FSM_CREATE_EVENT(done_e, 0);
+
+	// States:
+	struct _idle_s       { void operator()(); };
+	struct _registrate_s { void operator()(); };
+	struct _end_s        { void operator()(); };
+
+	FSM_CREATE_STATE(idle_s,       _idle_s);
+	FSM_CREATE_STATE(registrate_s, _registrate_s);
+	FSM_CREATE_STATE(end_s,        _end_s);
+
+	// Actions:
+	struct none_a         { void operator()(); };
+	struct start_search_a { void operator()(); };
+	struct next_search_a  { void operator()(); };
+
+	using fsm_table = fsm::TransitionTable<
+		fsm::Transition<idle_s,       start_e, registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, next_e,  registrate_s, next_search_a,  fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, done_e,  end_s,        none_a,         fsm::Guard::NO_GUARD>,
+		fsm::Transition<end_s,        done_e,  idle_s,       none_a,         fsm::Guard::NO_GUARD>
+	>;
+
+	static constexpr char TAG[] = "1WRE";
+
+	static fsm::FiniteStateMachine<fsm_table> fsm;
+	static uint8_t index;
+
+public:
+	void check();
+
+};

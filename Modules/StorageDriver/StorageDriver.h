@@ -19,7 +19,7 @@ private:
 
 #if STORAGE_DRIVER_USE_BUFFER
     static bool     hasBuffer;
-    static uint8_t  bufferPage[Page::PAGE_SIZE];
+    static uint8_t  bufferPage[STORAGE_PAGE_SIZE];
     static uint32_t lastAddress;
 #endif
 

@@ -16,14 +16,14 @@ extern "C" {
 
 // TODO: add most significant byte of version (now it v0.1.4 -.fw.sw)
 #define DEVICE_TYPE ((uint16_t)0x0001)
-#define SW_VERSION  ((uint8_t)0x04)
+#define SW_VERSION  ((uint8_t)0x05)
 #define FW_VERSION  ((uint8_t)0x01)
 #define CF_VERSION  ((uint8_t)0x01)
 
 
 typedef enum _SettingsStatus {
     SETTINGS_OK = 0,
-    SETTINGS__ERROR
+    SETTINGS_ERROR
 } SettingsStatus;
 
 
@@ -59,18 +59,16 @@ typedef struct __attribute__((packed)) _settings_t  {
 	uint16_t modbus1_value_reg[MODBUS_SENS_COUNT];
 	// MODBUS 1 sensor register IDs for setting new sensor ids
 	uint16_t modbus1_id_reg   [MODBUS_SENS_COUNT];
+
+	// 1WIRE sensors
+	// 1WIRE sensors addresses
+	uint64_t _1wire_address[MODBUS_SENS_COUNT];
+	// 1WIRE sensors numbers on the physical bus
+	uint64_t _1wire_number [MODBUS_SENS_COUNT];
 } settings_t;
 
 
 extern settings_t settings;
-
-
-typedef struct _settings_info_t {
-	bool settings_initialized;
-	bool settings_saved;
-	bool settings_updated;
-	uint16_t modbus1_status[MODBUS_SENS_COUNT];
-} settings_info_t;
 
 
 /* copy settings to the target */
@@ -86,15 +84,11 @@ bool settings_check(settings_t* other);
 
 void settings_show();
 
-unsigned settings_get_index(const unsigned index);
+unsigned settings_get_modbus1_index(const unsigned index);
 
-bool is_settings_saved();
-bool is_settings_updated();
-bool is_settings_initialized();
+unsigned settings_modbus1_count();
 
-void set_settings_initialized();
-void set_settings_save_status(bool state);
-void set_settings_update_status(bool state);
+unsigned settings_1wire_count();
 
 
 #ifdef __cplusplus

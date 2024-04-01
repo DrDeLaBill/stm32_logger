@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "hal_defs.h"
 
-#include "onewire.h"
+#include "onewire_prootocl.h"
 
 
 #define _1WIRE_DELAY_MS             ((uint32_t)100)
@@ -76,7 +76,7 @@ void onewire_driver_tick()
 void onewire_driver_clear()
 {
 	_onewire_driver_state_reset();
-	onewire_reset();
+	onewire_protocol_reset();
 }
 
 void onewire_driver_start_search()
@@ -207,7 +207,7 @@ void _fsm_onewire_driver_search_start()
     for (unsigned i = 0; i < sizeof(request) * BITS_IN_BYTE; i++) {
     	data[i] = ((request[i / BITS_IN_BYTE] >> (i % BITS_IN_BYTE)) & 0x01);
     }
-    onewire_send_request(data, sizeof(request) * BITS_IN_BYTE, 2);
+    onewire_protocol_send_request(data, sizeof(request) * BITS_IN_BYTE, 2);
 
 	util_old_timer_start(&driver_state.timer, _1WIRE_DELAY_MS);
 	driver_state.fsm = _fsm_onewire_driver_search_wait_bits;
@@ -219,14 +219,14 @@ void _fsm_onewire_driver_search_wait_bits()
 		driver_state.fsm = _fsm_onewire_driver_error;
 	}
 
-	if (onewire_result_ready()) {
+	if (onewire_protocol_result_ready()) {
 		driver_state.fsm = _fsm_onewire_driver_search_response;
 	}
 }
 
 void _fsm_onewire_driver_search_response()
 {
-	bool* response = onewire_response();
+	bool* response = onewire_protocol_response();
 	uint8_t curr_bit = ((response[0] << 1) | response[1]);
 	driver_state.tree[driver_state.counter] = curr_bit;
 
@@ -270,7 +270,7 @@ void _fsm_onewire_driver_search_confirm_bit_start()
 	if (node == _1WIRE_SEARCH_UNDEFINED_BIT) {
 		bit = (bool)__get_bit(driver_state.tree_mask, cur_counter);
 	}
-	onewire_send_bit(bit);
+	onewire_protocol_send_bit(bit);
 	util_old_timer_start(&driver_state.timer, _1WIRE_DELAY_MS);
 	driver_state.fsm = _fsm_onewire_driver_search_confirm_bit_wait;
 }
@@ -281,7 +281,7 @@ void _fsm_onewire_driver_search_confirm_bit_wait()
 		driver_state.fsm = _fsm_onewire_driver_error;
 	}
 
-	if (onewire_result_ready()) {
+	if (onewire_protocol_result_ready()) {
 		driver_state.fsm = _fsm_onewire_driver_search_iterate;
 	}
 }
@@ -289,7 +289,7 @@ void _fsm_onewire_driver_search_confirm_bit_wait()
 void _fsm_onewire_driver_search_iterate()
 {
 	if (driver_state.counter < _1WIRE_ADDRESS_BIT_SIZE) {
-		onewire_read_bits(2);
+		onewire_protocol_read_bits(2);
 		util_old_timer_start(&driver_state.timer, _1WIRE_DELAY_MS);
 		driver_state.fsm = _fsm_onewire_driver_search_wait_bits;
 	} else {
@@ -307,7 +307,7 @@ void _fsm_onewire_driver_search_end()
 		}
 		buff[i / BITS_IN_BYTE] |= (((uint64_t)bit) << (i % BITS_IN_BYTE));
 	}
-	if (buff[__arr_len(buff) - 1] != onewire_crc8(buff, __arr_len(buff) - 1)) {
+	if (buff[__arr_len(buff) - 1] != onewire_protocol_crc8(buff, __arr_len(buff) - 1)) {
 		driver_state.fsm = _fsm_onewire_driver_error;
 		return;
 	}

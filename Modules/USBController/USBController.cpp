@@ -4,6 +4,8 @@
 
 #include "usbd_cdc_if.h"
 
+#include "soul.h"
+
 #include "CodeStopwatch.h"
 
 
@@ -23,7 +25,7 @@ void USBController::proccess()
 	report_pack_t request = {};
 
 	if (updated && !timer.wait()) {
-		set_settings_update_status(true);
+		set_status(NEED_SAVE_SETTINGS);
 		updated = false;
 	}
 

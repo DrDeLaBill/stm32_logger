@@ -13,62 +13,74 @@ struct SettingsInterface
 
     struct dv_type
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct sw_id
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct fw_id
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct cf_id
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct record_period
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct send_period
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct record_id
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned) { return 0; }
     };
     struct modbus1_status
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
     struct modbus1_value_reg
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
     struct modbus1_id_reg
     {
-        static void set(uint32_t value, unsigned index = 0);
-        static uint32_t get(unsigned index = 0);
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1wire_address
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1wire_number
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
 

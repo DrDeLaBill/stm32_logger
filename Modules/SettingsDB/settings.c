@@ -15,13 +15,6 @@ static const char SETTINGS_TAG[] = "STNG";
 
 settings_t settings = {};
 
-settings_info_t stngs_info = {
-	.settings_initialized = false,
-	.settings_saved       = false,
-	.settings_updated     = false,
-	.modbus1_status       = { 0 }
-};
-
 
 settings_t* settings_get()
 {
@@ -46,6 +39,8 @@ void settings_reset(settings_t* other)
 	memset(other->modbus1_status, SETTINGS_SENSOR_EMPTY, sizeof(other->modbus1_status));
 	memset(other->modbus1_value_reg, 0, sizeof(other->modbus1_value_reg));
 	memset(other->modbus1_id_reg, 0, sizeof(other->modbus1_id_reg));
+	memset(other->_1wire_address, 0, sizeof(other->_1wire_address));
+	memset(other->_1wire_number, 0, sizeof(other->_1wire_number));
 }
 
 uint32_t settings_size()
@@ -87,6 +82,7 @@ void settings_show()
 	printPretty("Send period: %lu msec\n", settings.send_period);
 	printPretty("Record id: %lu\n", settings.record_id);
 	printPretty("\n");
+	printPretty("------------MODBUS-----------\n");
     printPretty("ID\tSTATUS\tVALREG\tIDREG\n");
     unsigned counter = 0;
     for (unsigned i = 0; i < __arr_len(settings.modbus1_id_reg); i++) {
@@ -118,10 +114,28 @@ void settings_show()
     if (!counter) {
     	printPretty("------------EMPTY------------\n");
     }
+	printPretty("-------------1WIRE-----------\n");
+    printPretty("ADDR               NUMBER\n");
+    counter = 0;
+    for (unsigned i = 0; i < __arr_len(settings._1wire_address); i++) {
+    	if (!settings._1wire_address[i]) {
+    		continue;
+    	}
+    	printPretty(
+			"0x%08X%08X %u\n",
+			(unsigned)(settings._1wire_address[i] >> (sizeof(uint32_t) * BITS_IN_BYTE)),
+			(unsigned)(settings._1wire_address[i]),
+			settings._1wire_number[i]
+		);
+    	counter++;
+    }
+    if (!counter) {
+    	printPretty("------------EMPTY------------\n");
+    }
     printPretty("####################SETTINGS####################\n\n");
 }
 
-unsigned settings_get_index(const unsigned index)
+unsigned settings_get_modbus1_index(const unsigned index)
 {
 	unsigned counter = __arr_len(settings.modbus1_status) - 1;
 	for (unsigned i = index; i < __arr_len(settings.modbus1_status); i++) {
@@ -133,38 +147,24 @@ unsigned settings_get_index(const unsigned index)
 	return counter;
 }
 
-bool is_settings_saved()
+unsigned settings_modbus1_count()
 {
-	return stngs_info.settings_saved;
-}
-
-bool is_settings_updated()
-{
-	return stngs_info.settings_updated;
-}
-
-bool is_settings_initialized()
-{
-	return stngs_info.settings_initialized;
-}
-
-void set_settings_initialized()
-{
-	stngs_info.settings_initialized = true;
-}
-
-void set_settings_save_status(bool state)
-{
-	if (state) {
-		stngs_info.settings_updated = false;
+	unsigned counter = 0;
+	for (unsigned i = 0; i < __arr_len(settings.modbus1_status); i++) {
+		if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
+			counter++;
+		}
 	}
-	stngs_info.settings_saved = state;
+	return counter;
 }
 
-void set_settings_update_status(bool state)
+unsigned settings_1wire_count()
 {
-	if (state) {
-		stngs_info.settings_saved = false;
+	unsigned counter = 0;
+	for (unsigned i = 0; i < __arr_len(settings._1wire_address); i++) {
+		if (settings._1wire_address[i] != 0) {
+			counter++;
+		}
 	}
-	stngs_info.settings_updated = state;
+	return counter;
 }
