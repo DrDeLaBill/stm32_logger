@@ -68,14 +68,14 @@ bool InfoWatchdog::loadMaxRecord()
 	if (maxId == 0) {
 		return true;
 	}
-	RecordDB record(maxId - 1);
-	status = record.loadNext();
+	RecordDB record(maxId);
+	status = record.load(false);
 	if (status != RECORD_OK) {
 		return false;
 	}
 	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
-		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.clust, i, record.record->mb1_sens[i].ID - 1);
-		DeviceInfo::modbus1_value::set(sensor->value, sensor->ID - 1);
+		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.record, i);
+		DeviceInfo::modbus1_last_value::set(sensor->value, sensor->ID - 1);
 	}
 
 	return true;
@@ -102,6 +102,7 @@ bool InfoWatchdog::loadRecord()
 
 	status = record.loadNext();
 	if (status == RECORD_NO_LOG) {
+		DeviceInfo::current_id::set(record.record.id + 1);
 		return false;
 	}
 
@@ -111,19 +112,21 @@ bool InfoWatchdog::loadRecord()
 		return false;
 	}
 
-	RecordInterface::id::set(record.record->id);
-	RecordInterface::time::set(record.record->time);
-	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
-		RecordInterface::MODBUS1_ID::set(record.record->mb1_sens[i].ID, i);
-		RecordInterface::MODBUS1_value::set(record.record->mb1_sens[i].value, i);
-	}
-	for (unsigned i = 0; i < record_1wire_sensors_count(&record.clust); i++) {
-		RecordInterface::_1WIRE_ADDR::set(record.record->ow_sens[i].ADDR, i);
-		RecordInterface::_1WIRE_value::set(record.record->ow_sens[i].value, i);
-	}
-	DeviceInfo::current_id::set(record.record->id);
+	DeviceInfo::current_id::set(record.record.id);
 	DeviceInfo::current_mbodbus1_count::set(record.clust.modbus1_count);
 	DeviceInfo::current_1wire_count::set(record.clust._1wire_count);
+	RecordInterface::id::set(record.record.id);
+	RecordInterface::time::set(record.record.time);
+	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
+		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.record, i);
+		RecordInterface::MODBUS1_ID::set(sensor->ID, i);
+		RecordInterface::MODBUS1_value::set(sensor->value, i);
+	}
+	for (unsigned i = 0; i < record_1wire_sensors_count(&record.clust); i++) {
+		_1wire_sensor_t* sensor = get_record_1wire_sensor(&record.record, record_modbus1_sensors_count(&record.clust), i);
+		RecordInterface::_1WIRE_ADDR::set(sensor->ADDR, i);
+		RecordInterface::_1WIRE_value::set(sensor->value, i);
+	}
 
 	return true;
 }

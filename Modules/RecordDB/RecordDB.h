@@ -14,7 +14,7 @@
 class RecordDB
 {
 protected:
-    static constexpr char TAG[]    = "RDC";
+    static constexpr char TAG[]    = "RCDB";
     static constexpr char PREFIX[] = "RDC";
 
     uint32_t       m_targetId;
@@ -25,7 +25,7 @@ protected:
 
 public:
     record_clust_t clust;
-    record_t*      record;
+    record_t       record;
 
     RecordDB(uint32_t targetId = 0);
 
@@ -51,6 +51,8 @@ public:
 
 
 private:
+    void cacheRecord(unsigned index = 0);
+
     static RecordStatus deleteClust(uint32_t address);
     static RecordStatus preLoadClust(const uint32_t address, record_clust_t& clust);
 
@@ -59,6 +61,7 @@ private:
     static utl::circle_buffer<RECORD_CACHED_COUNT, record_cache_t> m_cache;
     static uint32_t m_cacheAfterId;
     static bool m_cacheLoaded;
+    static bool m_recordsExist;
 
     bool checkCachedRecordCLuster();
 

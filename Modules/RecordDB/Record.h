@@ -15,8 +15,8 @@ extern "C" {
 #include "main.h"
 
 
-#define RECORD_BEDUG         (true)
-#define RECORD_CLUST_BEDUG   (true)
+#define RECORD_CLUST_BEDUG   (false)
+#define RECORD_BEDUG         (false)
 
 #define RECORD_ENABLE_CACHE  (true)
 #define RECORD_CACHED_COUNT  (8)
@@ -41,11 +41,13 @@ typedef struct __attribute__((packed)) __1wire_sensor_t {
 	uint16_t value;
 } _1wire_sensor_t;
 
+
+#define RECORD_SENSORS_MAX_SIZE (MODBUS_SENS_COUNT * (sizeof(modbus_sensor_t) + sizeof(_1wire_sensor_t)))
+
 typedef struct __attribute__((packed)) _reocrd_t {
     uint32_t id;                                 // Record ID
     uint32_t time;                               // Record time
-    modbus_sensor_t mb1_sens[MODBUS_SENS_COUNT]; // Record MODDBUS registers values
-    _1wire_sensor_t ow_sens [MODBUS_SENS_COUNT]; // Record 1WIRE registers values
+    uint8_t  sensors[RECORD_SENSORS_MAX_SIZE];   // Record sensors
 } record_t;
 
 
@@ -89,11 +91,21 @@ void      record_show(const record_clust_t* clust, const unsigned index);
 record_t* get_record_by_index(const record_clust_t* clust, const unsigned index);
 
 unsigned         record_modbus1_sensors_count(const record_clust_t* clust);
-modbus_sensor_t* get_record_modbus1_sensor(const record_clust_t* clust, const unsigned record_index, const unsigned sensor_index);
+modbus_sensor_t* get_record_modbus1_sensor(record_t* record, const unsigned sensor_index);
+void set_record_modbus1_measure(
+	record_t*              record,
+	const uint8_t          index,
+	const modbus_sensor_t* measure
+);
 
 unsigned         record_1wire_sensors_count(const record_clust_t* clust);
-_1wire_sensor_t* get_record_1wire_sensor(const record_clust_t* clust, const unsigned record_index, const unsigned sensor_index);
-
+_1wire_sensor_t* get_record_1wire_sensor(record_t* record, const uint8_t modbus1_count, const unsigned sensor_index);
+void set_record_1wire_measure(
+	record_t*              record,
+	const uint8_t          modbus1_count,
+	const uint8_t          index,
+	const _1wire_sensor_t* measure
+);
 
 #ifdef __cplusplus
 }

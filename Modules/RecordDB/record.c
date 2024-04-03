@@ -34,12 +34,13 @@ unsigned record_current_size(const record_clust_t* clust)
 
 unsigned records_current_count(const record_clust_t* clust)
 {
-    if (record_current_size(clust)) {
+    if (!record_current_size(clust)) {
         return 0;
     }
 
     uint32_t payload_clust = STORAGE_PAGE_PAYLOAD_SIZE - record_cluster_meta_size();
-    return (record_current_size(clust) > payload_clust) ? 1 : (payload_clust / record_current_size(clust));
+    uint32_t size = record_current_size(clust);
+    return (size > payload_clust) ? 1 : (payload_clust / size);
 }
 
 unsigned record_cluster_meta_size()
@@ -66,13 +67,16 @@ bool record_cluster_validate(const record_clust_t* clust)
     	return false;
     }
 
-    for (unsigned i = 0; i < records_current_count(clust); i++) {
-    	if (get_record_modbus1_sensor(clust, 0, i)->ID) {
+	record_t* tmpRecord = get_record_by_index(clust, 0);
+    for (unsigned i = 0; i <  record_modbus1_sensors_count(clust); i++) {
+    	if (get_record_modbus1_sensor(tmpRecord, i)->ID) {
     		return true;
     	}
-    	if (get_record_1wire_sensor(clust, 0, i)->ADDR) {
-    		return true;
-    	}
+    }
+    for (unsigned i = 0; i <  record_1wire_sensors_count(clust); i++) {
+    	if (get_record_1wire_sensor(tmpRecord, clust->modbus1_count, i)->ADDR) {
+			return true;
+		}
     }
 
     return false;
@@ -80,7 +84,7 @@ bool record_cluster_validate(const record_clust_t* clust)
 
 bool record_cluster_validate_size(const record_clust_t* source, const record_clust_t* target)
 {
-	return target->modbus1_count && target->_1wire_count &&
+	return (target->modbus1_count || target->_1wire_count) &&
 		   source->modbus1_count == target->modbus1_count &&
            source->_1wire_count == target->_1wire_count;
 }
@@ -92,7 +96,7 @@ void record_create(record_t* record)
 
 void record_cluster_create(record_clust_t* clust)
 {
-	memset((void*)&clust, 0, sizeof(clust));
+	memset((void*)clust, 0, sizeof(record_clust_t));
 
 	clust->dv_type       = settings.dv_type;
 	clust->vr_id         = RECORD_CLUST_VERSION;
@@ -108,9 +112,9 @@ void record_cluster_show(const record_clust_t* clust)
 	RTC_TimeTypeDef time = {0};
 	clock_get_rtc_time(&time);
 
-	printPretty("               %02u-%02u-20%02u\n", date.Date, date.Month, date.Year);
-	printPretty("                %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
-	printPretty("##############RECORD CLUST###############\n");
+	printPretty("                     %02u-%02u-20%02u\n", date.Date, date.Month, date.Year);
+	printPretty("                      %02u:%02u:%02u\n", time.Hours, time.Minutes, time.Seconds);
+	printPretty("####################RECORD CLUST#####################\n");
 	printPretty("Device type: %u\n", clust->dv_type);
 	printPretty("Record version v%02u\n", clust->vr_id);
 	printPretty("MODBUS1 sensors count: %u\n", clust->modbus1_count);
@@ -124,16 +128,16 @@ void record_cluster_show(const record_clust_t* clust)
 		}
 	    printPretty("%03u     %09lu %010lu ", i, record->id, record->time);
 	    for (uint8_t j = 0; j < record_modbus1_sensors_count(clust); j++) {
-	    	modbus_sensor_t* sensPtr = &(record->mb1_sens[j]);
+	    	modbus_sensor_t* sensPtr = get_record_modbus1_sensor(record, j);
 	    	if (j == 0) {
-	    		gprint("%03u            %u\n", sensPtr->ID, sensPtr->value);
+	    		gprint("%03u                %u\n", sensPtr->ID, sensPtr->value);
 	    	} else {
-	    		printPretty("                             %03u            %u\n", sensPtr->ID, sensPtr->value);
+	    		printPretty("                             %03u                %u\n", sensPtr->ID, sensPtr->value);
 	    	}
 	    	counter++;
 	    }
 	    for (uint8_t j = 0; j < record_1wire_sensors_count(clust); j++) {
-	    	_1wire_sensor_t* sensPtr = &(record->ow_sens[j]);
+	    	_1wire_sensor_t* sensPtr = get_record_1wire_sensor(record, counter, j);
 	    	if (j == 0) {
 	    		gprint("0x%08X%08X %u\n", (unsigned)(sensPtr->ADDR >> 32), (unsigned)(sensPtr->ADDR), sensPtr->value);
 	    	} else {
@@ -143,9 +147,9 @@ void record_cluster_show(const record_clust_t* clust)
 	    }
 	}
 	if (!counter) {
-        printPretty("------------------EMPTY------------------\n");
+        printPretty("------------------------EMPTY------------------------\n");
 	}
-	printPretty("##############RECORD CLUST###############\n");
+	printPretty("####################RECORD CLUST#####################\n");
 #endif
 }
 
@@ -159,12 +163,13 @@ void record_show(const record_clust_t* clust, const unsigned index)
     printPretty("Record ID: %lu\n", record->id);
     printPretty("Record time: %lu\n", record->time);;
     printPretty("----------MODBUS1---------\n");
-    printPretty("INDEX ID  VALUE\n");
+    printPretty("INDEX ID            VALUE\n");
     unsigned count = 0;
     while (count < clust->modbus1_count) {
-    	modbus_sensor_t* sensor = get_record_modbus1_sensor(clust, index, count);
+    	record_t* tmp_record = get_record_by_index(clust, index);
+    	modbus_sensor_t* sensor = get_record_modbus1_sensor(tmp_record, count);
     	if (sensor->ID) {
-    		printPretty("%03u   %03u        %u\n", count, sensor->ID, sensor->value);
+    		printPretty("%03u   %03u           %u\n", count, sensor->ID, sensor->value);
     	}
     	count++;
     }
@@ -172,10 +177,11 @@ void record_show(const record_clust_t* clust, const unsigned index)
         printPretty("----------EMPTY-----------\n");
     }
     printPretty("-----------1WIRE----------\n");
-    printPretty("INDEX ID       VALUE\n");
+    printPretty("INDEX ID        VALUE\n");
     count = 0;
     while (count < clust->_1wire_count) {
-    	_1wire_sensor_t* sensor = get_record_1wire_sensor(clust, index, count);
+    	record_t* tmp_record = get_record_by_index(clust, index);
+    	_1wire_sensor_t* sensor = get_record_1wire_sensor(tmp_record, clust->modbus1_count, count);
     	if (sensor->ADDR) {
             printPretty("%03u   0x%08X%08X %u\n", count, (unsigned)(sensor->ADDR >> 32), (unsigned)(sensor->ADDR), sensor->value);
     	}
@@ -199,20 +205,43 @@ unsigned record_modbus1_sensors_count(const record_clust_t* clust)
 {
 	return clust->modbus1_count;
 }
-modbus_sensor_t* get_record_modbus1_sensor(const record_clust_t* clust, const unsigned record_index, const unsigned sensor_index)
+modbus_sensor_t* get_record_modbus1_sensor(record_t* record, const unsigned sensor_index)
 {
-	BEDUG_ASSERT(clust->modbus1_count > 0, "Record sensors count must not be 0");
-	BEDUG_ASSERT(sensor_index < clust->modbus1_count, "Record sensor index is out of range");
-	return &(get_record_by_index(clust, record_index)->mb1_sens[sensor_index]);
+	BEDUG_ASSERT(sensor_index * sizeof(modbus_sensor_t) <= sizeof(record->sensors) - sizeof(modbus_sensor_t), "Record sensor index is out of range");
+	if (sensor_index * sizeof(modbus_sensor_t) > sizeof(record->sensors) - sizeof(modbus_sensor_t)) {
+		return (modbus_sensor_t*)&(record->sensors[0]);
+	}
+	return (modbus_sensor_t*)&(record->sensors[sensor_index * sizeof(modbus_sensor_t)]);
+}
+void set_record_modbus1_measure(
+	record_t*              record,
+	const uint8_t          index,
+	const modbus_sensor_t* measure
+) {
+	modbus_sensor_t* sensor = get_record_modbus1_sensor(record, index);
+	sensor->ID    = measure->ID;
+	sensor->value = measure->value;
 }
 
 unsigned record_1wire_sensors_count(const record_clust_t* clust)
 {
 	return clust->_1wire_count;
 }
-_1wire_sensor_t* get_record_1wire_sensor(const record_clust_t* clust, const unsigned record_index, const unsigned sensor_index)
+_1wire_sensor_t* get_record_1wire_sensor(record_t* record, const uint8_t modbus1_count,  const unsigned sensor_index)
 {
-	BEDUG_ASSERT(clust->_1wire_count > 0, "Record sensors count must not be 0");
-	BEDUG_ASSERT(sensor_index < clust->_1wire_count, "Record sensor index is out of range");
-	return &(get_record_by_index(clust, record_index)->ow_sens[sensor_index]);
+	BEDUG_ASSERT(sensor_index * sizeof(_1wire_sensor_t) <= sizeof(record->sensors) - sizeof(_1wire_sensor_t), "Record sensor index is out of range");
+	if (sensor_index * sizeof(_1wire_sensor_t) > sizeof(record->sensors) - sizeof(_1wire_sensor_t)) {
+		return (_1wire_sensor_t*)&(record->sensors[sizeof(record->sensors) - sizeof(_1wire_sensor_t)]);
+	}
+	return (_1wire_sensor_t*)&(record->sensors[modbus1_count * sizeof(modbus_sensor_t) + sensor_index * sizeof(_1wire_sensor_t)]);
+}
+void set_record_1wire_measure(
+	record_t*              record,
+	const uint8_t          modbus1_count,
+	const uint8_t          index,
+	const _1wire_sensor_t* measure
+) {
+	_1wire_sensor_t* sensor = get_record_1wire_sensor(record, modbus1_count, index);
+	sensor->ADDR  = measure->ADDR;
+	sensor->value = measure->value;
 }

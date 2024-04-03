@@ -78,8 +78,9 @@ private:
 	static void response_packet_handler (modbus_response_t*);
 
 protected:
-	static uint32_t sensIndex;
-	static uint8_t  errorsCount;
+	static uint8_t sensAddress;
+	static uint8_t sensIdx;
+	static uint8_t errorsCount;
 
 	static constexpr char TAG[] = "MSR";
 	static constexpr uint8_t ERRORS_MAX = 10;

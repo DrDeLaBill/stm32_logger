@@ -35,7 +35,7 @@ typedef struct __attribute__((packed)) _report_pack_t {
 	uint8_t  flag;
     uint16_t characteristic_id;
     uint8_t  index;
-    uint8_t  data[sizeof(uint32_t)];
+    uint8_t  data[sizeof(uint64_t)];
     uint16_t crc;
 } report_pack_t;
 
@@ -48,6 +48,8 @@ bool com_send_report(report_pack_t* report);
 #endif
 
 void com_report_show(const report_pack_t* report);
+
+void com_report_set_data(report_pack_t* report, const uint8_t* src_data, const unsigned size);
 
 
 #ifdef __cplusplus

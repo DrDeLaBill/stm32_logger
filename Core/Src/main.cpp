@@ -180,9 +180,10 @@ int main(void)
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
+//    memset((void*)settings._1wire_address, 0, sizeof(settings._1wire_address)); // TODO: remove after tests
+
     utl::Timer timer(SECOND_MS);
-    HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET); // TODO: remove after 1wire test
-	while (1)
+    while (true)
 	{
 		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
 

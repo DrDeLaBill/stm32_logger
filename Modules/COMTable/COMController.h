@@ -4,6 +4,7 @@
 #define HIDCONTROLLER_H
 
 
+#include <cstdint>
 #include <variant>
 #include <cstring>
 #include <unordered_map>
@@ -122,7 +123,7 @@ public:
         }
 
         auto lambda = [&] (auto& tuple) {
-            memcpy(dst, tuple.serialize(index).get(), __min(sizeof(uint32_t), tuple.size()));
+            memcpy(dst, tuple.serialize(index).get(), __min(sizeof(uint64_t), tuple.size()));
         };
 
         std::visit(lambda, it->second);

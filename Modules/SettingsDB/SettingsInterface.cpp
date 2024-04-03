@@ -141,21 +141,3 @@ unsigned SettingsInterface::_1wire_address::index(unsigned index)
 	}
 	return index;
 }
-
-void SettingsInterface::_1wire_number::set(uint64_t value, unsigned index)
-{
-	settings._1wire_number[index] = value;
-}
-
-uint64_t SettingsInterface::_1wire_number::get(unsigned index)
-{
-	return settings._1wire_number[index];
-}
-
-unsigned SettingsInterface::_1wire_number::index(unsigned index)
-{
-	if (index >= __arr_len(settings._1wire_number)) {
-		return __arr_len(settings._1wire_number) - 1;
-	}
-	return index;
-}

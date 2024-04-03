@@ -31,6 +31,16 @@ void PowerWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
 
+	if (is_status(NEED_ENABLE_MODBUS1) || is_status(NEED_ENABLE_1WIRE)) {
+		if (!USBController::connected()) {
+			HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_SET);
+		}
+		HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
+	}
+
 	fsm.proccess();
 }
 

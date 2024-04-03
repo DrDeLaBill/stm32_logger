@@ -19,7 +19,8 @@
 #include "USBController.h"
 
 
-uint32_t Measure::sensIndex  = 0;
+uint8_t Measure::sensAddress = 0;
+uint8_t Measure::sensIdx     = 0;
 uint8_t Measure::errorsCount = 0;
 
 fsm::FiniteStateMachine<Measure::fsm_table> Measure::fsm;
@@ -53,8 +54,8 @@ void Measure::_idle_s::operator ()()
 
 void Measure::_request_s::operator ()()
 {
-	if (settings.modbus1_status[Measure::sensIndex] != SETTINGS_SENSOR_EMPTY) {
-		sensor_request_value(Measure::sensIndex);
+	if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
+		sensor_request_value(Measure::sensAddress);
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_request_s: event-sended_e");
 #endif
@@ -79,7 +80,14 @@ void Measure::_wait_s::operator ()()
 	}
 
 	if (!timer.wait()) {
-		record.record->mb1_sens[sensIndex + 1].value = SENSOR_ERROR_VALUE;
+		modbus_sensor_t measure{};
+		measure.ID    = sensAddress + 1;
+		measure.value = SENSOR_ERROR_VALUE;
+		set_record_modbus1_measure(
+			&(record.record),
+			sensIdx,
+			&measure
+		);
 		sensor_timeout();
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_wait_s: event-timeout_e");
@@ -112,14 +120,12 @@ void Measure::none_a::operator ()() { }
 void Measure::init_sens_a::operator ()()
 {
 	fsm.clear_events();
-	Measure::sensIndex = 0;
+	Measure::sensAddress = 0;
+	Measure::sensIdx     = 0;
 	Measure::errorsCount = 0;
 	record = RecordDB(0);
 	record_cluster_create(&record.clust);
-	if (!USBController::connected()) {
-		HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_SET);
-	}
-	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
+	set_status(NEED_ENABLE_MODBUS1);
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-reset_sens_a: event-no_sens_e");
@@ -163,8 +169,8 @@ void Measure::save_start_a::operator ()()
 void Measure::idle_start_a::operator ()()
 {
 	fsm.clear_events();
-	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
+
+	reset_status(NEED_ENABLE_MODBUS1);
 
 	reset_status(NEED_MEASURE);
 }
@@ -173,13 +179,15 @@ void Measure::iterate_sens_a::operator ()()
 {
 	fsm.clear_events();
 	Measure::errorsCount = 0;
-	while (Measure::sensIndex >= __arr_len(settings.modbus1_status)) {
-		if (settings.modbus1_status[Measure::sensIndex] != SETTINGS_SENSOR_EMPTY) {
+	while (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
+		if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
 			break;
 		}
-		Measure::sensIndex++;
+		Measure::sensAddress++;
 	}
-	if (++Measure::sensIndex >= __arr_len(settings.modbus1_status)) {
+	Measure::sensAddress++;
+	Measure::sensIdx++;
+	if (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
 #endif
@@ -236,6 +244,13 @@ void Measure::response_packet_handler(modbus_response_t* packet)
     gprint("\n");
 #endif
 
-    record.record->mb1_sens[sensIndex + 1].value = packet->response[0];
+	modbus_sensor_t measure{};
+	measure.ID    = sensAddress + 1;
+	measure.value = packet->response[0];
+	set_record_modbus1_measure(
+		&(record.record),
+		sensIdx,
+		&measure
+	);
     fsm.push_event(response_e{});
 }

@@ -63,8 +63,6 @@ typedef struct __attribute__((packed)) _settings_t  {
 	// 1WIRE sensors
 	// 1WIRE sensors addresses
 	uint64_t _1wire_address[MODBUS_SENS_COUNT];
-	// 1WIRE sensors numbers on the physical bus
-	uint64_t _1wire_number [MODBUS_SENS_COUNT];
 } settings_t;
 
 
@@ -89,6 +87,10 @@ unsigned settings_get_modbus1_index(const unsigned index);
 unsigned settings_modbus1_count();
 
 unsigned settings_1wire_count();
+
+bool settings_1wire_sensor_exists(uint64_t address);
+
+
 
 
 #ifdef __cplusplus

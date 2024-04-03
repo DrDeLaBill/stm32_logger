@@ -88,6 +88,7 @@ void USBController::proccess()
 	}
 
 	BEDUG_ASSERT(characteristic_id <= record_controller.maxID(), "HID characteristic ID is out of range");
+	clear();
 }
 
 void USBController::clear()

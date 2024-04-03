@@ -77,7 +77,7 @@ public:
     	static uint64_t get(unsigned index = 0);
     	static unsigned index(unsigned) { return 0; }
     };
-    struct modbus1_value
+    struct modbus1_last_value
     {
         static void set(uint64_t value, unsigned index = 0);
         static uint64_t get(unsigned index = 0);

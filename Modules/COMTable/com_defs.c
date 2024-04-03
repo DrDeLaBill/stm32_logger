@@ -9,6 +9,7 @@
 #endif
 
 #include "log.h"
+#include "utils.h"
 #include "bmacro.h"
 
 
@@ -39,18 +40,7 @@ bool com_get_report(report_pack_t* report)
 		return false;
 	}
 
-	return false; // TODO: remove and bedug
-
-//	USBD_StatusTypeDef status = CDC_Receive_FS((uint8_t*)report, sizeof(report));
-
-//	extern uint8_t UserRxBufferFS; TODO
-//	memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
-
-//	if (status != USBD_OK) {
-//		return false;
-//	}
-//
-//	return report->crc == com_get_crc(report);
+	return false;
 }
 
 
@@ -66,22 +56,24 @@ bool com_send_report(report_pack_t* report)
 
 	return CDC_Transmit_FS((uint8_t*)report, sizeof(report_pack_t)) == USBD_OK;
 }
-
-//void com_report_set_data(report_pack_t* report, const uint8_t* src_data, const unsigned size)
-//{
-//#if COM_TABLE_BEDUG
-//    BEDUG_ASSERT(src_data, "Data must not be null"); // TODO: app and device (throw)
-//#endif
-//
-//    memcpy(report->data, src_data, __min(sizeof(report->data), size));
-//}
 #endif
-
 
 void com_report_show(const report_pack_t* report)
 {
-	(void)report;
+    (void)report;
 #if COM_TABLE_BEDUG
-    printPretty("characteristic_id: %02u[%03u] => { %03u %03u %03u %03u }\n", report->characteristic_id, report->index, report->data[0], report->data[1], report->data[2], report->data[3]);
+    printPretty("characteristic_id: %02u[%03u] => { ", report->characteristic_id, report->index);
+    for (unsigned i = 0; i < __arr_len(report->data); i++) {
+        gprint("%03u ", report->data[i]);
+    }
+    gprint("}\n");
 #endif
+}
+
+void com_report_set_data(report_pack_t* report, const uint8_t* src_data, const unsigned size)
+{
+#if HID_TABLE_BEDUG
+    BEDUG_ASSERT(src_data, "Data must not be null"); // TODO: app and device (throw)
+#endif
+    memcpy(report->data, src_data, __min(sizeof(report->data), size));
 }

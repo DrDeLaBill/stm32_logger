@@ -251,30 +251,34 @@ struct OneWireWatcher
 {
 protected:
 	// Events:
-	FSM_CREATE_EVENT(start_e, 0);
+	FSM_CREATE_EVENT(start_e,    0);
 	FSM_CREATE_EVENT(received_e, 0);
-	FSM_CREATE_EVENT(next_e, 0);
-	FSM_CREATE_EVENT(done_e, 0);
+	FSM_CREATE_EVENT(next_e,     0);
+	FSM_CREATE_EVENT(done_e,     1);
 
 	// States:
 	struct _idle_s       { void operator()(); };
+	struct _start_s      { void operator()(); };
 	struct _registrate_s { void operator()(); };
 	struct _end_s        { void operator()(); };
 
 	FSM_CREATE_STATE(idle_s,       _idle_s);
+	FSM_CREATE_STATE(start_s,      _start_s);
 	FSM_CREATE_STATE(registrate_s, _registrate_s);
 	FSM_CREATE_STATE(end_s,        _end_s);
 
 	// Actions:
-	struct none_a         { void operator()(); };
+	struct done_a         { void operator()(); };
+	struct enable_a       { void operator()(); };
 	struct start_search_a { void operator()(); };
 	struct next_search_a  { void operator()(); };
 
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<idle_s,       start_e, registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,       start_e, start_s,      enable_a,       fsm::Guard::NO_GUARD>,
+		fsm::Transition<start_s,      done_e,  registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<registrate_s, next_e,  registrate_s, next_search_a,  fsm::Guard::NO_GUARD>,
-		fsm::Transition<registrate_s, done_e,  end_s,        none_a,         fsm::Guard::NO_GUARD>,
-		fsm::Transition<end_s,        done_e,  idle_s,       none_a,         fsm::Guard::NO_GUARD>
+		fsm::Transition<registrate_s, done_e,  end_s,        done_a,         fsm::Guard::NO_GUARD>,
+		fsm::Transition<end_s,        done_e,  idle_s,       done_a,         fsm::Guard::NO_GUARD>
 	>;
 
 	static constexpr char TAG[] = "1WRE";

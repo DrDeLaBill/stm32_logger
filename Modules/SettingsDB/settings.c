@@ -40,7 +40,6 @@ void settings_reset(settings_t* other)
 	memset(other->modbus1_value_reg, 0, sizeof(other->modbus1_value_reg));
 	memset(other->modbus1_id_reg, 0, sizeof(other->modbus1_id_reg));
 	memset(other->_1wire_address, 0, sizeof(other->_1wire_address));
-	memset(other->_1wire_number, 0, sizeof(other->_1wire_number));
 }
 
 uint32_t settings_size()
@@ -115,17 +114,17 @@ void settings_show()
     	printPretty("------------EMPTY------------\n");
     }
 	printPretty("-------------1WIRE-----------\n");
-    printPretty("ADDR               NUMBER\n");
+    printPretty("NUMBER     ADDR\n");
     counter = 0;
     for (unsigned i = 0; i < __arr_len(settings._1wire_address); i++) {
     	if (!settings._1wire_address[i]) {
     		continue;
     	}
     	printPretty(
-			"0x%08X%08X %u\n",
+			"%03u        0x%08X%08X\n",
+			i + 1,
 			(unsigned)(settings._1wire_address[i] >> (sizeof(uint32_t) * BITS_IN_BYTE)),
-			(unsigned)(settings._1wire_address[i]),
-			settings._1wire_number[i]
+			(unsigned)(settings._1wire_address[i])
 		);
     	counter++;
     }
@@ -168,3 +167,14 @@ unsigned settings_1wire_count()
 	}
 	return counter;
 }
+
+bool settings_1wire_sensor_exists(uint64_t address)
+{
+	for (unsigned i = 0; i < __arr_len(settings._1wire_address); i++) {
+		if (settings._1wire_address[i] == address) {
+			return true;
+		}
+	}
+	return false;
+}
+

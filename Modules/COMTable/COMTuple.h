@@ -40,7 +40,7 @@ struct COMTuple : COMTupleBase
     }
 #endif
 
-    constexpr unsigned size() const // TODO: find references
+    constexpr unsigned size() const
     {
         return sizeof(type_t);
     }

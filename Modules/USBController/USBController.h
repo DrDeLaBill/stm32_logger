@@ -40,7 +40,8 @@ private:
         COMTuple<uint32_t, SettingsInterface::record_id>,
         COMTuple<uint16_t, SettingsInterface::modbus1_status,    __arr_len(settings_t::modbus1_status)>,
         COMTuple<uint16_t, SettingsInterface::modbus1_value_reg, __arr_len(settings_t::modbus1_value_reg)>,
-        COMTuple<uint16_t, SettingsInterface::modbus1_id_reg,    __arr_len(settings_t::modbus1_id_reg)>
+        COMTuple<uint16_t, SettingsInterface::modbus1_id_reg,    __arr_len(settings_t::modbus1_id_reg)>,
+		COMTuple<uint64_t, SettingsInterface::_1wire_address,    __arr_len(settings_t::_1wire_address)>
     >;
     using settings_controller_t = COMTableWorker<settings_controller_table_t, COM_FIRST_KEY>;
     static settings_controller_t settings_controller;
@@ -50,10 +51,11 @@ private:
 		COMTuple<uint32_t, DeviceInfo::min_id>,
 		COMTuple<uint32_t, DeviceInfo::max_id>,
 		COMTuple<uint32_t, DeviceInfo::current_id>,
-		COMTuple<uint32_t, DeviceInfo::current_mbodbus1_count>,
-		COMTuple<uint32_t, DeviceInfo::current_1wire_count>,
+		COMTuple<uint8_t,  DeviceInfo::current_mbodbus1_count>,
+		COMTuple<uint8_t,  DeviceInfo::current_1wire_count>,
+		COMTuple<uint8_t,  DeviceInfo::need_registrate_1wire>,
 		COMTuple<uint8_t,  DeviceInfo::record_loaded>,
-        COMTuple<uint16_t, DeviceInfo::modbus1_value, MODBUS_SENS_COUNT>
+        COMTuple<uint16_t, DeviceInfo::modbus1_last_value, MODBUS_SENS_COUNT>
     >;
     using info_controller_t = COMTableWorker<info_controller_table_t, settings_controller_t::maxID() + 1>;
     static info_controller_t info_controller;

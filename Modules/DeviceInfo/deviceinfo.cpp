@@ -104,17 +104,17 @@ uint64_t DeviceInfo::need_registrate_1wire::get(unsigned)
 }
 
 
-void DeviceInfo::modbus1_value::set(uint64_t value, unsigned index)
+void DeviceInfo::modbus1_last_value::set(uint64_t value, unsigned index)
 {
 	m_modbus1_value[index] = value;
 }
 
-uint64_t DeviceInfo::modbus1_value::get(unsigned index)
+uint64_t DeviceInfo::modbus1_last_value::get(unsigned index)
 {
     return m_modbus1_value[index];
 }
 
-unsigned DeviceInfo::modbus1_value::index(unsigned index)
+unsigned DeviceInfo::modbus1_last_value::index(unsigned index)
 {
 	return settings_get_modbus1_index(index);
 }

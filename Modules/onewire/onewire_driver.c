@@ -216,7 +216,7 @@ void _fsm_onewire_driver_search_start()
 void _fsm_onewire_driver_search_wait_bits()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
-		driver_state.fsm = _fsm_onewire_driver_error;
+		driver_state.fsm = _fsm_onewire_driver_idle;
 	}
 
 	if (onewire_protocol_result_ready()) {
@@ -242,7 +242,7 @@ void _fsm_onewire_driver_search_response()
 			break;
 		default:
 			printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver error, unacceptable address bit");
-			driver_state.fsm = _fsm_onewire_driver_error;
+			driver_state.fsm = _fsm_onewire_driver_idle;
 			break;
 	}
 }
@@ -251,7 +251,7 @@ void _fsm_onewire_driver_search_empty_bits()
 {
 	if (!driver_state.counter) {
 		printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver error, sensors not found");
-		driver_state.fsm = _fsm_onewire_driver_error;
+		driver_state.fsm = _fsm_onewire_driver_idle;
 		return;
 	}
 
@@ -278,7 +278,7 @@ void _fsm_onewire_driver_search_confirm_bit_start()
 void _fsm_onewire_driver_search_confirm_bit_wait()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
-		driver_state.fsm = _fsm_onewire_driver_error;
+		driver_state.fsm = _fsm_onewire_driver_idle;
 	}
 
 	if (onewire_protocol_result_ready()) {
@@ -308,7 +308,7 @@ void _fsm_onewire_driver_search_end()
 		buff[i / BITS_IN_BYTE] |= (((uint64_t)bit) << (i % BITS_IN_BYTE));
 	}
 	if (buff[__arr_len(buff) - 1] != onewire_protocol_crc8(buff, __arr_len(buff) - 1)) {
-		driver_state.fsm = _fsm_onewire_driver_error;
+		driver_state.fsm = _fsm_onewire_driver_idle;
 		return;
 	}
 	uint8_t tmp = buff[0];

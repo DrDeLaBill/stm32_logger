@@ -10,7 +10,8 @@ struct RecordInterface
 protected:
 	static record_t record;
 
-	static unsigned __get_index(unsigned index);
+	static unsigned __get_modbus1_index(unsigned index);
+	static unsigned __get_1wire_index(unsigned index);
 
 public:
     struct id

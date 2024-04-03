@@ -77,12 +77,6 @@ struct SettingsInterface
         static uint64_t get(unsigned index = 0);
         static unsigned index(unsigned index = 0);
     };
-    struct _1wire_number
-    {
-        static void set(uint64_t value, unsigned index = 0);
-        static uint64_t get(unsigned index = 0);
-        static unsigned index(unsigned index = 0);
-    };
 
 };
 
