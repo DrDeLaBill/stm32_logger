@@ -157,6 +157,18 @@ unsigned settings_modbus1_count()
 	return counter;
 }
 
+unsigned settings_get_1wire_index(const unsigned index)
+{
+	unsigned counter = __arr_len(settings._1wire_address) - 1;
+	for (unsigned i = index; i < __arr_len(settings._1wire_address); i++) {
+		if (settings._1wire_address[i]) {
+			counter = i;
+			break;
+		}
+	}
+	return counter;
+}
+
 unsigned settings_1wire_count()
 {
 	unsigned counter = 0;

@@ -77,6 +77,10 @@ bool InfoWatchdog::loadMaxRecord()
 		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.record, i);
 		DeviceInfo::modbus1_last_value::set(sensor->value, sensor->ID - 1);
 	}
+	for (unsigned i = 0; i < record_1wire_sensors_count(&record.clust); i++) {
+		_1wire_sensor_t* sensor = get_record_1wire_sensor(&record.record, record_modbus1_sensors_count(&record.clust), i);
+		DeviceInfo::_1wire_last_value::set(sensor->value, i);
+	}
 
 	return true;
 }

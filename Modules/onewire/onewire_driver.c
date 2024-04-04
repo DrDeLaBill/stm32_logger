@@ -120,15 +120,18 @@ void onewire_driver_next_search()
 	}
 
 	uint64_t old_mask = driver_state.tree_mask;
+	uint8_t last_bit = 0;
 	for (uint64_t i = __arr_len(driver_state.tree) - 1; i > 0; i--) {
 		if (driver_state.tree[i] == _1WIRE_SEARCH_UNDEFINED_BIT &&
 			!__get_bit(old_mask, i)
 		) {
-			__set_bit(driver_state.tree_mask, i);
-			for (uint64_t j = i + 1; j < _1WIRE_ADDRESS_BIT_SIZE; j++) {
-				__reset_bit(driver_state.tree_mask, j);
-			}
+			last_bit = i;
+			break;
 		}
+	}
+	__set_bit(driver_state.tree_mask, last_bit);
+	for (uint64_t i = last_bit + 1; i < _1WIRE_ADDRESS_BIT_SIZE; i++) {
+		__reset_bit(driver_state.tree_mask, i);
 	}
 	if (old_mask == driver_state.tree_mask) {
 		onewire_driver_start_search();
@@ -136,6 +139,7 @@ void onewire_driver_next_search()
 	}
 
 
+	driver_state.address     = 0;
 	driver_state.counter     = 0;
 	driver_state.need_search = true;
 	driver_state.ready       = false;
@@ -314,6 +318,7 @@ void _fsm_onewire_driver_search_end()
 	uint8_t tmp = buff[0];
 	buff[0] = buff[__arr_len(buff) - 1];
 	buff[__arr_len(buff) - 1] = tmp;
+	driver_state.address = 0;
 	for (unsigned i = 0; i < __arr_len(buff); i++) {
 		driver_state.address |= (((uint64_t)buff[i]) << (i * BITS_IN_BYTE));
 	}

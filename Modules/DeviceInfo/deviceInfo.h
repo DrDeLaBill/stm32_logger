@@ -12,7 +12,8 @@
 class DeviceInfo
 {
 private:
-	static uint16_t m_modbus1_value[MODBUS_SENS_COUNT]; // TODO: add m_1ire_value
+	static uint16_t m_modbus1_value[MODBUS_SENS_COUNT];
+	static uint16_t m_1wire_value[MODBUS_SENS_COUNT];
 
 public:
     typedef struct _info_t {
@@ -78,6 +79,18 @@ public:
     	static unsigned index(unsigned) { return 0; }
     };
     struct modbus1_last_value
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1wire_last_value
+    {
+        static void set(uint64_t value, unsigned index = 0);
+        static uint64_t get(unsigned index = 0);
+        static unsigned index(unsigned index = 0);
+    };
+    struct _1wire_registrate
     {
         static void set(uint64_t value, unsigned index = 0);
         static uint64_t get(unsigned index = 0);

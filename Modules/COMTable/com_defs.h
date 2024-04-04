@@ -25,7 +25,7 @@ extern "C" {
 
 #define COM_DELAY_MS           (25)
 
-#define COM_TABLE_BEDUG        (false)
+#define COM_TABLE_BEDUG        (0)
 
 
 static const char COM_TAG[] = "COM";

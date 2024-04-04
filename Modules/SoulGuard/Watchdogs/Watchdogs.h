@@ -250,11 +250,15 @@ public:
 struct OneWireWatcher
 {
 protected:
+	static constexpr uint32_t TIMEOUT_MS = MINUTE_MS;
+	static constexpr uint32_t DELAY_MS   = 5 * SECOND_MS;
+
 	// Events:
 	FSM_CREATE_EVENT(start_e,    0);
 	FSM_CREATE_EVENT(received_e, 0);
 	FSM_CREATE_EVENT(next_e,     0);
 	FSM_CREATE_EVENT(done_e,     1);
+	FSM_CREATE_EVENT(timeout_e,  2);
 
 	// States:
 	struct _idle_s       { void operator()(); };
@@ -268,23 +272,29 @@ protected:
 	FSM_CREATE_STATE(end_s,        _end_s);
 
 	// Actions:
+	struct timeout_a      { void operator()(); };
 	struct done_a         { void operator()(); };
 	struct enable_a       { void operator()(); };
 	struct start_search_a { void operator()(); };
 	struct next_search_a  { void operator()(); };
 
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<idle_s,       start_e, start_s,      enable_a,       fsm::Guard::NO_GUARD>,
-		fsm::Transition<start_s,      done_e,  registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
-		fsm::Transition<registrate_s, next_e,  registrate_s, next_search_a,  fsm::Guard::NO_GUARD>,
-		fsm::Transition<registrate_s, done_e,  end_s,        done_a,         fsm::Guard::NO_GUARD>,
-		fsm::Transition<end_s,        done_e,  idle_s,       done_a,         fsm::Guard::NO_GUARD>
+		fsm::Transition<idle_s,       start_e,   start_s,      enable_a,       fsm::Guard::NO_GUARD>,
+		fsm::Transition<start_s,      done_e,    registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, next_e,    registrate_s, next_search_a,  fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, start_e,   registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, timeout_e, idle_s,       timeout_a,      fsm::Guard::NO_GUARD>,
+		fsm::Transition<registrate_s, done_e,    end_s,        done_a,         fsm::Guard::NO_GUARD>,
+		fsm::Transition<end_s,        done_e,    idle_s,       done_a,         fsm::Guard::NO_GUARD>
 	>;
 
 	static constexpr char TAG[] = "1WRE";
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
 	static uint8_t index;
+
+	static utl::Timer timeoutTimer;
+	static utl::Timer delayTimer;
 
 public:
 	void check();

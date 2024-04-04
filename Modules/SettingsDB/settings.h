@@ -83,11 +83,10 @@ bool settings_check(settings_t* other);
 void settings_show();
 
 unsigned settings_get_modbus1_index(const unsigned index);
-
 unsigned settings_modbus1_count();
 
+unsigned settings_get_1wire_index(const unsigned index);
 unsigned settings_1wire_count();
-
 bool settings_1wire_sensor_exists(uint64_t address);
 
 

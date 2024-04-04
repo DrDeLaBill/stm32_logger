@@ -151,7 +151,7 @@ int main(void)
 
 	HAL_TIM_Base_Start_IT(&USB_TIM);
 //	HAL_TIM_Base_Start_IT(&LED_TIM);  // TODO: uncomment after 1wire test
-	HAL_GPIO_WritePin(_1WIRE_GPIO_Port, _1WIRE_Pin, GPIO_PIN_RESET); // TODO: remove after 1wire test
+//	HAL_GPIO_WritePin(_1WIRE_GPIO_Port, _1WIRE_Pin, GPIO_PIN_RESET); // TODO: remove after 1wire test
 	HAL_TIM_Base_Start_IT(&_1WIRE_TIM);
 
 	gprint("\n\n\n");
@@ -179,8 +179,6 @@ int main(void)
     }
 
     printTagLog(MAIN_TAG, "The device has been loaded");
-
-//    memset((void*)settings._1wire_address, 0, sizeof(settings._1wire_address)); // TODO: remove after tests
 
     utl::Timer timer(SECOND_MS);
     while (true)

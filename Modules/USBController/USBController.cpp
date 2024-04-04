@@ -60,6 +60,11 @@ void USBController::proccess()
 		characteristic_id = utl::deserialize<uint16_t>(request.data)[0];
 	}
 
+#if COM_TABLE_BEDUG
+	printTagLog(TAG, "USB host request:");
+	com_report_show(&request);
+#endif
+
 	if (characteristic_id <= settings_controller_t::maxID()) {
 #if COM_TABLE_BEDUG
 		printTagLog(TAG, "STNG ID: %u", characteristic_id);
@@ -87,8 +92,8 @@ void USBController::proccess()
 		return;
 	}
 
-	BEDUG_ASSERT(characteristic_id <= record_controller.maxID(), "HID characteristic ID is out of range");
 	clear();
+	BEDUG_ASSERT(characteristic_id <= record_controller.maxID(), "HID characteristic ID is out of range");
 }
 
 void USBController::clear()

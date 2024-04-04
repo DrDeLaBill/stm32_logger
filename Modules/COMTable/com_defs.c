@@ -75,5 +75,6 @@ void com_report_set_data(report_pack_t* report, const uint8_t* src_data, const u
 #if HID_TABLE_BEDUG
     BEDUG_ASSERT(src_data, "Data must not be null"); // TODO: app and device (throw)
 #endif
+    memset(report->data, 0, sizeof(report->data));
     memcpy(report->data, src_data, __min(sizeof(report->data), size));
 }

@@ -5,6 +5,7 @@
 
 
 uint16_t DeviceInfo::m_modbus1_value[MODBUS_SENS_COUNT] = {};
+uint16_t DeviceInfo::m_1wire_value[MODBUS_SENS_COUNT] = {};
 DeviceInfo::info_t DeviceInfo::info = {};
 
 
@@ -117,4 +118,36 @@ uint64_t DeviceInfo::modbus1_last_value::get(unsigned index)
 unsigned DeviceInfo::modbus1_last_value::index(unsigned index)
 {
 	return settings_get_modbus1_index(index);
+}
+
+
+void DeviceInfo::_1wire_last_value::set(uint64_t value, unsigned index)
+{
+	m_1wire_value[index] = value;
+}
+
+uint64_t DeviceInfo::_1wire_last_value::get(unsigned index)
+{
+    return m_1wire_value[index];
+}
+
+unsigned DeviceInfo::_1wire_last_value::index(unsigned index)
+{
+	return settings_get_1wire_index(index);
+}
+
+
+void DeviceInfo::_1wire_registrate::set(uint64_t, unsigned) {}
+
+uint64_t DeviceInfo::_1wire_registrate::get(unsigned index)
+{
+    return settings._1wire_address[index];
+}
+
+unsigned DeviceInfo::_1wire_registrate::index(unsigned index)
+{
+	if (!DeviceInfo::need_registrate_1wire::get()) {
+		return __arr_len(settings._1wire_address) - 1;
+	}
+	return settings_get_1wire_index(index);
 }

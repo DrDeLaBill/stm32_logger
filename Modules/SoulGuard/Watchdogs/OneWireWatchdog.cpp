@@ -13,6 +13,9 @@
 fsm::FiniteStateMachine<OneWireWatcher::fsm_table> OneWireWatcher::fsm;
 uint8_t OneWireWatcher::index = 0;
 
+utl::Timer OneWireWatcher::timeoutTimer(TIMEOUT_MS);
+utl::Timer OneWireWatcher::delayTimer(DELAY_MS);
+
 
 void OneWireWatcher::check()
 {
@@ -21,8 +24,10 @@ void OneWireWatcher::check()
 
 void OneWireWatcher::_idle_s::operator()()
 {
-	if (is_status(NEED_REGISTRATE_1WIRE)) {
+	if (DeviceInfo::need_registrate_1wire::get()) {
 		memset(settings._1wire_address, 0, sizeof(settings._1wire_address));
+		index = 0;
+		timeoutTimer.start();
 		fsm.push_event(start_e{});
 	}
 }
@@ -30,6 +35,7 @@ void OneWireWatcher::_idle_s::operator()()
 void OneWireWatcher::_start_s::operator ()()
 {
 	if (HAL_GPIO_ReadPin(POWER_L2_GPIO_Port, POWER_L2_Pin)) {
+		delayTimer.start();
 		fsm.push_event(done_e{});
 	}
 }
@@ -39,26 +45,41 @@ void OneWireWatcher::_registrate_s::operator()()
 	if (index >= __arr_len(settings._1wire_address)) {
 		fsm.push_event(done_e{});
 	}
-	if (!is_status(NEED_REGISTRATE_1WIRE)) {
+	if (!DeviceInfo::need_registrate_1wire::get()) {
 		fsm.push_event(done_e{});
+	}
+	if (!timeoutTimer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
+	if (!delayTimer.wait()) {
+		onewire_driver_clear();
+		fsm.push_event(start_e{});
 	}
 	if (!onewire_driver_ready()) {
 		return;
 	}
+
 	fsm.push_event(next_e{});
+
 	uint64_t address = get_onewire_driver_address();
-	if (settings_1wire_sensor_exists(address)) {
-		return;
-	}
+
 	printTagLog(
 		TAG,
-		"Address[%03u] 0x%08X%08X added",
+		"Address[%03u] 0x%08X%08X found",
 		index,
 		(unsigned)(get_onewire_driver_address() >> (sizeof(unsigned) * BITS_IN_BYTE)),
 		(unsigned)(get_onewire_driver_address())
 	);
+
+	if (address && settings_1wire_sensor_exists(address)) {
+		return;
+	}
+	timeoutTimer.start();
+
 	settings._1wire_address[index] = address;
 	index++;
+
+	delayTimer.start();
 }
 
 void OneWireWatcher::_end_s::operator()()
@@ -69,9 +90,15 @@ void OneWireWatcher::_end_s::operator()()
 	fsm.push_event(done_e{});
 }
 
+void OneWireWatcher::timeout_a::operator ()()
+{
+	DeviceInfo::need_registrate_1wire::set(0);
+	set_status(NEED_LOAD_SETTINGS);
+	onewire_driver_clear();
+}
+
 void OneWireWatcher::done_a::operator ()()
 {
-	reset_status(NEED_ENABLE_1WIRE);
 	DeviceInfo::need_registrate_1wire::set(0);
 }
 
@@ -83,7 +110,7 @@ void OneWireWatcher::enable_a::operator ()()
 void OneWireWatcher::start_search_a::operator ()()
 {
 	onewire_driver_start_search();
-	index = 0;
+	delayTimer.start();
 }
 
 void OneWireWatcher::next_search_a::operator ()()
