@@ -15,7 +15,7 @@
 #define POWER_WATCHDOG_BEDUG    (true)
 
 
-#define WATCHDOG_TIMEOUT_MS     ((uint32_t)10) // TODO: change to 100
+#define WATCHDOG_TIMEOUT_MS     ((uint32_t)100)
 
 
 /*

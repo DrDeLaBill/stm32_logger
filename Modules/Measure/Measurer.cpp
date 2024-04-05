@@ -13,10 +13,14 @@
 #include "sensor.h"
 #include "hal_defs.h"
 #include "settings.h"
+#include "onewire_driver.h"
 #include "modbus_rtu_master.h"
 
 #include "Record.h"
 #include "USBController.h"
+
+
+#define ONEWIRE_CONVERSION_DELAY_MS ((uint32_t)2000)
 
 
 uint8_t Measure::sensAddress = 0;
@@ -48,12 +52,22 @@ void Measure::_init_s::operator ()()
 void Measure::_idle_s::operator ()()
 {
 	if (is_status(NEED_MEASURE)) {
+		record = RecordDB(0);
+		record_cluster_create(&record.clust);
+		set_status(NEED_ENABLE_MODBUS1);
 		fsm.push_event(need_measure_e{});
 	}
 }
 
-void Measure::_request_s::operator ()()
+void Measure::_mb1_request_s::operator ()()
 {
+	if (!sensors_count()) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-request_s: event-no_sens_e");
+#endif
+		fsm.push_event(Measure::no_sens_e{});
+	}
+
 	if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
 		sensor_request_value(Measure::sensAddress);
 #if MEASURER_BEDUG
@@ -66,9 +80,29 @@ void Measure::_request_s::operator ()()
 #endif
 		fsm.push_event(Measure::skip_e{});
 	}
+
+	timer.changeDelay(GENERAL_TIMEOUT_MS);
 }
 
-void Measure::_wait_s::operator ()()
+void Measure::__1w_request_s::operator ()()
+{
+	if (settings._1wire_address[Measure::sensAddress]) {
+		onewire_driver_start_read(settings._1wire_address[Measure::sensAddress]);
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_request_s: event-sended_e");
+#endif
+		fsm.push_event(Measure::sended_e{});
+	} else {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_request_s: event-skip_e");
+#endif
+		fsm.push_event(Measure::skip_e{});
+	}
+
+	timer.changeDelay(ONEWIRE_CONVERSION_DELAY_MS);
+}
+
+void Measure::_mb1_wait_s::operator ()()
 {
 	if (Measure::errorsCount >= ERRORS_MAX) {
 		// TODO: send sensor error to stng_info
@@ -93,6 +127,48 @@ void Measure::_wait_s::operator ()()
 		printTagLog(TAG, "state-_wait_s: event-timeout_e");
 #endif
 		fsm.push_event(Measure::timeout_e{});
+	}
+}
+
+void Measure::__1w_wait_s::operator ()()
+{
+	if (Measure::errorsCount >= ERRORS_MAX) {
+		// TODO: send sensor error to stng_info
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_wait_s: event-error_e");
+#endif
+		fsm.push_event(Measure::error_e{});
+		return;
+	}
+
+	if (!timer.wait()) {
+		_1wire_sensor_t measure{};
+		measure.ADDR  = settings._1wire_address[Measure::sensAddress];
+		measure.value = SENSOR_ERROR_VALUE;
+		set_record_1wire_measure(
+			&(record.record),
+			record_modbus1_sensors_count(&record.clust),
+			sensIdx,
+			&measure
+		);
+		onewire_driver_clear();
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_wait_s: event-timeout_e");
+#endif
+		fsm.push_event(Measure::timeout_e{});
+	}
+
+	if (onewire_driver_ready()) {
+		_1wire_sensor_t measure{};
+		measure.ADDR  = settings._1wire_address[Measure::sensAddress];
+		measure.value = get_onewire_driver_value();
+		set_record_1wire_measure(
+			&(record.record),
+			record_modbus1_sensors_count(&record.clust),
+			sensIdx,
+			&measure
+		);
+	    fsm.push_event(response_e{});
 	}
 }
 
@@ -123,21 +199,11 @@ void Measure::init_sens_a::operator ()()
 	Measure::sensAddress = 0;
 	Measure::sensIdx     = 0;
 	Measure::errorsCount = 0;
-	record = RecordDB(0);
-	record_cluster_create(&record.clust);
-	set_status(NEED_ENABLE_MODBUS1);
-	if (!sensors_count()) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-reset_sens_a: event-no_sens_e");
-#endif
-		fsm.push_event(Measure::no_sens_e{});
-	}
 }
 
 void Measure::wait_start_a::operator ()()
 {
 	fsm.clear_events();
-	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
 }
 
@@ -171,11 +237,12 @@ void Measure::idle_start_a::operator ()()
 	fsm.clear_events();
 
 	reset_status(NEED_ENABLE_MODBUS1);
+	reset_status(NEED_ENABLE_1WIRE);
 
 	reset_status(NEED_MEASURE);
 }
 
-void Measure::iterate_sens_a::operator ()()
+void Measure::iterate_mb1_sens_a::operator ()()
 {
 	fsm.clear_events();
 	Measure::errorsCount = 0;
@@ -191,6 +258,8 @@ void Measure::iterate_sens_a::operator ()()
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
 #endif
+		reset_status(NEED_ENABLE_MODBUS1);
+		set_status(NEED_ENABLE_1WIRE);
 		fsm.push_event(Measure::sens_end_e{});
 	}
 	if (!sensors_count()) {
@@ -198,6 +267,27 @@ void Measure::iterate_sens_a::operator ()()
 		printTagLog(TAG, "action-iterate_sens_a: event-no_sens_e");
 #endif
 		fsm.push_event(Measure::no_sens_e{});
+	}
+}
+
+void Measure::iterate_1w_sens_a::operator ()()
+{
+	fsm.clear_events();
+	Measure::errorsCount = 0;
+	while (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
+		if (settings._1wire_address[Measure::sensAddress]) {
+			break;
+		}
+		Measure::sensAddress++;
+	}
+	Measure::sensAddress++;
+	Measure::sensIdx++;
+	if (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
+#endif
+		reset_status(NEED_ENABLE_1WIRE);
+		fsm.push_event(Measure::sens_end_e{});
 	}
 }
 

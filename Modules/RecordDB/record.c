@@ -127,22 +127,25 @@ void record_cluster_show(const record_clust_t* clust)
 			break;
 		}
 	    printPretty("%03u     %09lu %010lu ", i, record->id, record->time);
+	    unsigned line_counter = 0;
 	    for (uint8_t j = 0; j < record_modbus1_sensors_count(clust); j++) {
 	    	modbus_sensor_t* sensPtr = get_record_modbus1_sensor(record, j);
-	    	if (j == 0) {
+	    	if (!line_counter) {
 	    		gprint("%03u                %u\n", sensPtr->ID, sensPtr->value);
 	    	} else {
 	    		printPretty("                             %03u                %u\n", sensPtr->ID, sensPtr->value);
 	    	}
+	    	line_counter++;
 	    	counter++;
 	    }
 	    for (uint8_t j = 0; j < record_1wire_sensors_count(clust); j++) {
-	    	_1wire_sensor_t* sensPtr = get_record_1wire_sensor(record, counter, j);
-	    	if (j == 0) {
+	    	_1wire_sensor_t* sensPtr = get_record_1wire_sensor(record, record_modbus1_sensors_count(clust), j);
+	    	if (!line_counter) {
 	    		gprint("0x%08X%08X %u\n", (unsigned)(sensPtr->ADDR >> 32), (unsigned)(sensPtr->ADDR), sensPtr->value);
 	    	} else {
 	    		printPretty("                             0x%08X%08X %u\n", (unsigned)(sensPtr->ADDR >> 32), (unsigned)(sensPtr->ADDR), sensPtr->value);
 	    	}
+	    	line_counter++;
 	    	counter++;
 	    }
 	}
@@ -159,10 +162,10 @@ void record_show(const record_clust_t* clust, const unsigned index)
 	(void)index;
 #if RECORD_BEDUG
 	record_t* record = get_record_by_index(clust, index);
-    printPretty("##########RECORD##########\n")
+    printPretty("############RECORD############\n")
     printPretty("Record ID: %lu\n", record->id);
     printPretty("Record time: %lu\n", record->time);;
-    printPretty("----------MODBUS1---------\n");
+    printPretty("------------MODBUS1-----------\n");
     printPretty("INDEX ID            VALUE\n");
     unsigned count = 0;
     while (count < clust->modbus1_count) {
@@ -174,10 +177,10 @@ void record_show(const record_clust_t* clust, const unsigned index)
     	count++;
     }
     if (!count) {
-        printPretty("----------EMPTY-----------\n");
+        printPretty("------------EMPTY-------------\n");
     }
-    printPretty("-----------1WIRE----------\n");
-    printPretty("INDEX ID        VALUE\n");
+    printPretty("-------------1WIRE------------\n");
+    printPretty("INDEX ID                 VALUE\n");
     count = 0;
     while (count < clust->_1wire_count) {
     	record_t* tmp_record = get_record_by_index(clust, index);
@@ -188,9 +191,9 @@ void record_show(const record_clust_t* clust, const unsigned index)
     	count++;
     }
     if (!count) {
-        printPretty("----------EMPTY-----------\n");
+        printPretty("------------EMPTY-------------\n");
     }
-    printPretty("##########RECORD##########\n");
+    printPretty("############RECORD############\n");
 #endif
 }
 
@@ -227,7 +230,7 @@ unsigned record_1wire_sensors_count(const record_clust_t* clust)
 {
 	return clust->_1wire_count;
 }
-_1wire_sensor_t* get_record_1wire_sensor(record_t* record, const uint8_t modbus1_count,  const unsigned sensor_index)
+_1wire_sensor_t* get_record_1wire_sensor(record_t* record, const uint8_t modbus1_count, const unsigned sensor_index)
 {
 	BEDUG_ASSERT(sensor_index * sizeof(_1wire_sensor_t) <= sizeof(record->sensors) - sizeof(_1wire_sensor_t), "Record sensor index is out of range");
 	if (sensor_index * sizeof(_1wire_sensor_t) > sizeof(record->sensors) - sizeof(_1wire_sensor_t)) {

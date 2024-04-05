@@ -63,14 +63,6 @@ void OneWireWatcher::_registrate_s::operator()()
 
 	uint64_t address = get_onewire_driver_address();
 
-	printTagLog(
-		TAG,
-		"Address[%03u] 0x%08X%08X found",
-		index,
-		(unsigned)(get_onewire_driver_address() >> (sizeof(unsigned) * BITS_IN_BYTE)),
-		(unsigned)(get_onewire_driver_address())
-	);
-
 	if (address && settings_1wire_sensor_exists(address)) {
 		return;
 	}
@@ -80,6 +72,14 @@ void OneWireWatcher::_registrate_s::operator()()
 	index++;
 
 	delayTimer.start();
+
+	printTagLog(
+		TAG,
+		"Address[%03u] 0x%08X%08X added",
+		index,
+		(unsigned)(get_onewire_driver_address() >> (sizeof(unsigned) * BITS_IN_BYTE)),
+		(unsigned)(get_onewire_driver_address())
+	);
 }
 
 void OneWireWatcher::_end_s::operator()()

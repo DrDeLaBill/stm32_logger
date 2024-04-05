@@ -18,6 +18,7 @@ void    onewire_protocol_proccess();
 void    onewire_protocol_send_request(bool* data, uint16_t bitCount, uint16_t needBitCount);
 void    onewire_protocol_read_bits(uint8_t count);
 void    onewire_protocol_send_bit(uint8_t bit);
+void    onewire_protocol_send_byte(uint8_t byte);
 bool    onewire_protocol_result_ready();
 bool*   onewire_protocol_response();
 void    onewire_protocol_reset();

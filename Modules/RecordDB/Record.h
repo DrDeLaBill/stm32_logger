@@ -38,7 +38,7 @@ typedef struct __attribute__((packed)) _modbus_sensor_t {
 
 typedef struct __attribute__((packed)) __1wire_sensor_t {
 	uint64_t ADDR;
-	uint16_t value;
+	int16_t  value;
 } _1wire_sensor_t;
 
 

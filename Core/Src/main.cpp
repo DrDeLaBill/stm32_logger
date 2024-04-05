@@ -150,8 +150,7 @@ int main(void)
 	exitTimer.start();
 
 	HAL_TIM_Base_Start_IT(&USB_TIM);
-//	HAL_TIM_Base_Start_IT(&LED_TIM);  // TODO: uncomment after 1wire test
-//	HAL_GPIO_WritePin(_1WIRE_GPIO_Port, _1WIRE_Pin, GPIO_PIN_RESET); // TODO: remove after 1wire test
+	HAL_TIM_Base_Start_IT(&LED_TIM);
 	HAL_TIM_Base_Start_IT(&_1WIRE_TIM);
 
 	gprint("\n\n\n");

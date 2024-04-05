@@ -10,7 +10,7 @@
 #include "bmacro.h"
 #include "hal_defs.h"
 
-#define COMMAND_MAX_LENGTH   (10 * BITS_IN_BYTE) // TODO: too big
+#define COMMAND_MAX_LENGTH   (10 * BITS_IN_BYTE)
 
 #define IDLE_DELAY_US        ((uint16_t)100)
 #define START_DELAY_US       ((uint16_t)100)
@@ -31,6 +31,7 @@
 
 typedef struct _onewire_protocol_t {
 	void (*fsm) (void);
+	bool     need_clear;
 	bool     need_reset;
 	bool     ready;
 	uint16_t value;
@@ -92,12 +93,10 @@ onewire_protocol_t _1wire_state = {
 
 void onewire_protocol_proccess()
 {
-	if (_1wire_state.need_reset || !_1wire_state.fsm) {
+	if (_1wire_state.need_clear || !_1wire_state.fsm) {
 		_onewire_protocol_state_reset();
 	}
-	LED_GPIO_Port->ODR |= LED_Pin; // TODO: remove after 1wire test
 	_1wire_state.fsm();
-	LED_GPIO_Port->ODR &= ~LED_Pin; // TODO: remove after 1wire test
 }
 
 void onewire_protocol_read_bits(uint8_t count)
@@ -108,8 +107,10 @@ void onewire_protocol_read_bits(uint8_t count)
 	}
 
 	memset(_1wire_state.data, 0, sizeof(_1wire_state.data));
+	_1wire_state.count      = 0;
 	_1wire_state.need_count = count;
-	_1wire_state.ready = false;
+	_1wire_state.ready      = false;
+	_1wire_state.need_reset = false;
 }
 
 void onewire_protocol_send_bit(uint8_t bit)
@@ -120,9 +121,28 @@ void onewire_protocol_send_bit(uint8_t bit)
 	}
 
 	memset(_1wire_state.data, 0, sizeof(_1wire_state.data));
-	_1wire_state.data[0] = (bool)bit;
-	_1wire_state.count = 1;
-	_1wire_state.ready = false;
+	_1wire_state.data[0]    = (bool)bit;
+	_1wire_state.count      = 1;
+	_1wire_state.need_count = 0;
+	_1wire_state.ready      = false;
+	_1wire_state.need_reset = false;
+}
+
+void onewire_protocol_send_byte(uint8_t byte)
+{
+	if (_onewire_protocol_busy()) {
+		BEDUG_ASSERT(false, "1WIRE is already busy");
+		return;
+	}
+
+	memset(_1wire_state.data, 0, sizeof(_1wire_state.data));
+    for (unsigned i = 0; i < sizeof(byte) * BITS_IN_BYTE; i++) {
+    	_1wire_state.data[i] = ((byte >> (i % BITS_IN_BYTE)) & 0x01);
+    }
+	_1wire_state.count      = BITS_IN_BYTE;
+	_1wire_state.need_count = 0;
+	_1wire_state.ready      = false;
+	_1wire_state.need_reset = false;
 }
 
 void onewire_protocol_send_request(bool* data, uint16_t bitCount, uint16_t needBitCount)
@@ -145,9 +165,10 @@ void onewire_protocol_send_request(bool* data, uint16_t bitCount, uint16_t needB
 	for (unsigned i = 0; i < bitCount; i++) {
 		_1wire_state.data[i] = data[i];
 	}
-	_1wire_state.count = bitCount;
+	_1wire_state.count      = bitCount;
 	_1wire_state.need_count = needBitCount;
-	_1wire_state.ready = false;
+	_1wire_state.ready      = false;
+	_1wire_state.need_reset = true;
 }
 
 bool onewire_protocol_result_ready()
@@ -162,7 +183,7 @@ bool* onewire_protocol_response()
 
 void onewire_protocol_reset()
 {
-	_1wire_state.need_reset = true;
+	_1wire_state.need_clear = true;
 }
 
 uint8_t onewire_protocol_crc8(uint8_t* data, uint8_t len)
@@ -206,14 +227,14 @@ void _fsm_onewire_protocol_init()
 
 void _fsm_onewire_protocol_idle()
 {
-	if (_1wire_state.count == 1) {
-		SET_BUS();
-		_configure_timer(WAIT_DATA_DELAY_US);
-		_1wire_state.fsm = _fsm_onewire_protocol_send_bit_begin;
-	} else if (_1wire_state.count > 0) {
+	if (_1wire_state.count > 0 && _1wire_state.need_reset) {
 		SET_BUS();
 		_configure_timer(START_DELAY_US);
 		_1wire_state.fsm = _fsm_onewire_protocol_write_reset_start;
+	} else if (_1wire_state.count > 0) {
+		SET_BUS();
+		_configure_timer(WAIT_DATA_DELAY_US);
+		_1wire_state.fsm = _fsm_onewire_protocol_send_bit_begin;
 	} else if (_1wire_state.need_count > 0) {
 		SET_BUS();
 		_configure_timer(START_DELAY_US);
