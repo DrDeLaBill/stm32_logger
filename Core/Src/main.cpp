@@ -271,6 +271,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			set_status(NEED_STANDBY);
 		}
 	} else if(htim->Instance == LED_TIM.Instance) {
+#ifdef DEBUG
 		static utl::Timer timer(SECOND_MS / 10);
 		static utl::Timer errTimer(SECOND_MS);
 		static bool errEnabled = false;
@@ -292,6 +293,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			timer.changeDelay(SECOND_MS / 10);
 			errEnabled = false;
 		}
+#endif
 	}
 }
 

@@ -38,7 +38,11 @@ RecordDB::RecordDB(uint32_t targetId):
 	m_targetId(targetId), m_address(0), clust({}), record({})
 {
 	record_cluster_create(&clust);
-	cacheRecord(0);
+	if (clust.modbus1_count || clust._1wire_count) {
+		cacheRecord(0);
+	} else {
+		memset(reinterpret_cast<void*>(&record), 0, sizeof(record));
+	}
 }
 
 RecordDB::RecordDB(const RecordDB& other)
@@ -121,13 +125,15 @@ RecordStatus RecordDB::load(bool validateSize)
 
 	bool recordFound = false;
     unsigned id;
-    for (unsigned i = 0; i < records_current_count(&clust); i++) {
+    unsigned i = 0;
+    while (i < records_current_count(&clust)) {
     	record_t* tmp_record = get_record_by_index(&clust, i);
         if (tmp_record->id == this->m_targetId) {
             recordFound = true;
             id = i;
             break;
         }
+        i++;
     }
     if (!recordFound) {
 #if RECORD_BEDUG

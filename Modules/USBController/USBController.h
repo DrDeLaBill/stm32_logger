@@ -67,7 +67,7 @@ private:
 		COMTuple<uint32_t, RecordInterface::time>,
 		COMTuple<uint8_t,  RecordInterface::MODBUS1_ID,    __arr_len(settings_t::modbus1_status)>,
 		COMTuple<uint16_t, RecordInterface::MODBUS1_value, __arr_len(settings_t::modbus1_status)>,
-		COMTuple<uint8_t,  RecordInterface::_1WIRE_ADDR,   __arr_len(settings_t::_1wire_address)>,
+		COMTuple<uint64_t, RecordInterface::_1WIRE_ADDR,   __arr_len(settings_t::_1wire_address)>,
 		COMTuple<uint16_t, RecordInterface::_1WIRE_value,  __arr_len(settings_t::_1wire_address)>
 	>;
     using record_controller_t = COMTableWorker<record_controller_table_t, info_controller_t::maxID() + 1>;
