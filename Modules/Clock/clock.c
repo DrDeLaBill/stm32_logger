@@ -185,7 +185,7 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	uint32_t hours = minutes / MINUTES_PER_HOUR;
 
 	time->Hours = (uint8_t)(hours % HOURS_PER_DAY);
-	uint32_t days = hours / HOURS_PER_DAY;
+	uint32_t days = 1 + hours / HOURS_PER_DAY;
 
 	uint8_t year  = 0;
 	uint8_t month = 1;
