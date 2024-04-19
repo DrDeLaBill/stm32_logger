@@ -7,6 +7,9 @@
 #include "settings.h"
 
 
+SettingsInterface::info_t SettingsInterface::info = {};
+
+
 // TODO: add values check for all parameters
 void SettingsInterface::dv_type::set(uint64_t, unsigned)
 {
@@ -140,4 +143,34 @@ unsigned SettingsInterface::_1wire_address::index(unsigned index)
 		return __arr_len(settings._1wire_address) - 1;
 	}
 	return index;
+}
+
+
+void SettingsInterface::mb1_last_id::set(uint8_t value, unsigned)
+{
+    info.mb1_last_id = value;
+}
+uint8_t SettingsInterface::mb1_last_id::get(unsigned)
+{
+    return info.mb1_last_id;
+}
+
+
+void SettingsInterface::mb1_new_id::set(uint8_t value, unsigned)
+{
+    info.mb1_new_id = value;
+}
+uint8_t SettingsInterface::mb1_new_id::get(unsigned)
+{
+    return info.mb1_new_id;
+}
+
+
+void SettingsInterface::need_mb1_id_update::set(uint8_t value, unsigned)
+{
+    info.need_mb1_id_update = value;
+}
+uint8_t SettingsInterface::need_mb1_id_update::get(unsigned)
+{
+    return info.need_mb1_id_update;
 }

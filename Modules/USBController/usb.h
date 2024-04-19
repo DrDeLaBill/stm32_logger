@@ -1,0 +1,23 @@
+/* Copyright © 2024 Georgy E. All rights reserved. */
+
+#ifndef _USB_H_
+#define _USB_H_
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#include <stdbool.h>
+
+
+bool usb_connected();
+
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#endif

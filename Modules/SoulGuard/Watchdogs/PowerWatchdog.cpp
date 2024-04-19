@@ -4,9 +4,11 @@
 
 #include <limits>
 
+#include "usb.h"
 #include "log.h"
 #include "main.h"
 #include "soul.h"
+#include "sensor.h"
 #include "hal_defs.h"
 
 #include "Timer.h"
@@ -32,13 +34,9 @@ void PowerWatchdog::check()
 	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
 
 	if (is_status(NEED_ENABLE_MODBUS1) || is_status(NEED_ENABLE_1WIRE)) {
-		if (!USBController::connected()) {
-			HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_SET);
-		}
-		HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
+		sensors_enable();
 	} else {
-		HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
+		sensors_disable();
 	}
 
 	fsm.proccess();
@@ -52,7 +50,7 @@ void PowerWatchdog::_init_s::operator ()()
 
 void PowerWatchdog::_wait_s::operator ()()
 {
-	if (USBController::connected()) {
+	if (usb_connected()) {
 		reset_error(POWER_ERROR);
 		return;
 	}
@@ -73,7 +71,7 @@ void PowerWatchdog::start_DMA_a::operator ()()
 
 void PowerWatchdog::check_power_a::operator ()()
 {
-	if (USBController::connected()) {
+	if (usb_connected()) {
 		reset_error(POWER_ERROR);
 		fsm.push_event(success_e{});
 		return;

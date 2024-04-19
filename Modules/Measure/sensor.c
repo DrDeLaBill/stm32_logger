@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "usb.h"
 #include "log.h"
 #include "soul.h"
 #include "main.h"
@@ -88,20 +89,28 @@ void sensor_request_value(uint8_t id)
 
 void sensor_send_new_id(uint8_t old_id, uint8_t new_id)
 {
-	BEDUG_ASSERT(old_id < __arr_len(settings.modbus1_status), "The index of MODBUS register is out of range");
-	BEDUG_ASSERT(new_id < __arr_len(settings.modbus1_status), "The index of MODBUS register is out of range");
+	if (old_id == new_id) {
+		return;
+	}
 
-	modbus_master_preset_single_register(old_id + 1, settings.modbus1_value_reg[old_id], new_id + 1);
+	BEDUG_ASSERT(old_id > 0 && old_id < __arr_len(settings.modbus1_status), "The index of MODBUS register is out of range");
+	BEDUG_ASSERT(new_id > 0 && new_id < __arr_len(settings.modbus1_status), "The index of MODBUS register is out of range");
 
-	settings.modbus1_status[new_id] = settings.modbus1_status[old_id];
-	settings.modbus1_id_reg[new_id] = settings.modbus1_id_reg[old_id];
-	settings.modbus1_value_reg[new_id] = settings.modbus1_value_reg[old_id];
+	modbus_master_preset_single_register(old_id, settings.modbus1_id_reg[new_id - 1], new_id);
+}
 
-	settings.modbus1_status[old_id] = SETTINGS_SENSOR_EMPTY;
-	settings.modbus1_id_reg[old_id] = 0;
-	settings.modbus1_value_reg[old_id] = 0;
+void sensors_enable()
+{
+	if (!usb_connected()) {
+		HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_SET);
+	}
+	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_SET);
+}
 
-	set_status(NEED_SAVE_SETTINGS);
+void sensors_disable()
+{
+	HAL_GPIO_WritePin(STEPUP_5V_ON_GPIO_Port, STEPUP_5V_ON_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(POWER_L2_GPIO_Port, POWER_L2_Pin, GPIO_PIN_RESET);
 }
 
 void _request_data_sender(uint8_t* data, uint32_t len)

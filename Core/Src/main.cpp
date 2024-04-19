@@ -31,6 +31,7 @@
 /* USER CODE BEGIN Includes */
 #include "bedug.h"
 
+#include "usb.h"
 #include "log.h"
 #include "w25qxx.h"
 #include "hal_defs.h"
@@ -269,7 +270,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (!has_errors()) {
 			exitTimer.start();
 			usbc.proccess();
-		} else if (!exitTimer.wait() && !USBController::connected()) {
+		} else if (!exitTimer.wait() && !usb_connected()) {
 			set_status(NEED_STANDBY);
 		}
 	} else if(htim->Instance == LED_TIM.Instance) {

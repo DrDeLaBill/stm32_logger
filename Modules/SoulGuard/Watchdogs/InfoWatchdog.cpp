@@ -3,6 +3,7 @@
 #include "Watchdogs.h"
 
 #include "soul.h"
+#include "sensor.h"
 
 #include "RecordDB.h"
 #include "deviceInfo.h"
@@ -17,7 +18,8 @@ void InfoWatchdog::check()
 
 	if (!is_status(NEED_LOAD_MAX_RECORD) &&
 		!is_status(NEED_LOAD_MIN_RECORD) &&
-		DeviceInfo::record_loaded::get()
+		DeviceInfo::record_loaded::get() &&
+		!SettingsInterface::need_mb1_id_update::get()
 	) {
 #if RECORD_ENABLE_CACHE
 		if (DeviceInfo::current_id::get() >= DeviceInfo::max_id::get()) {
@@ -51,6 +53,23 @@ void InfoWatchdog::check()
 		} else {
 			DeviceInfo::record_loaded::set(0);
 		}
+	}
+
+	if (SettingsInterface::need_mb1_id_update::get()) {
+		if (is_status(NEED_ENABLE_MODBUS1)) {
+			return;
+		}
+		set_status(NEED_ENABLE_MODBUS1);
+		sensors_enable();
+		HAL_Delay(100); // TODO: remove?
+		sensor_send_new_id(
+			SettingsInterface::mb1_last_id::get(),
+			SettingsInterface::mb1_new_id::get()
+		);
+		SettingsInterface::need_mb1_id_update::set(0);
+		HAL_Delay(100); // TODO: remove?
+		sensors_disable();
+		reset_status(NEED_ENABLE_MODBUS1);
 	}
 }
 

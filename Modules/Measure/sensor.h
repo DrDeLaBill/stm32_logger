@@ -37,6 +37,9 @@ void sensor_timeout();
 void sensor_request_value(uint8_t id);
 void sensor_send_new_id(uint8_t old_id, uint8_t new_id);
 
+void sensors_enable();
+void sensors_disable();
+
 
 #ifdef __cplusplus
 }

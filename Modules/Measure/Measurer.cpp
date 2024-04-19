@@ -52,12 +52,18 @@ void Measure::_init_s::operator ()()
 
 void Measure::_idle_s::operator ()()
 {
-	if (is_status(NEED_MEASURE)) {
-		record = RecordDB(0);
-		record_cluster_create(&record.clust);
-		set_status(NEED_ENABLE_MODBUS1);
-		fsm.push_event(need_measure_e{});
+	if (!is_status(NEED_MEASURE)) {
+		return;
 	}
+
+	if (is_status(NEED_ENABLE_MODBUS1)) {
+		return;
+	}
+
+	record = RecordDB(0);
+	record_cluster_create(&record.clust);
+	set_status(NEED_ENABLE_MODBUS1);
+	fsm.push_event(need_measure_e{});
 }
 
 void Measure::_mb1_request_s::operator ()()

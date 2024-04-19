@@ -2,6 +2,7 @@
 
 #include "Watchdogs.h"
 
+#include "usb.h"
 #include "log.h"
 #include "main.h"
 #include "soul.h"
@@ -215,7 +216,7 @@ void StandbyWatchdog::startRTCAlarm(uint32_t seconds)
 
 bool StandbyWatchdog::needEnterStandby()
 {
-	if (!USBController::connected() && !timer.wait() && has_errors()) {
+	if (!usb_connected() && !timer.wait() && has_errors()) {
 		return true;
 	}
 
@@ -228,7 +229,7 @@ bool StandbyWatchdog::needEnterStandby()
 	}
 
 #if USE_WKUP_PA0
-	if (USBController::connected()) {
+	if (usb_connected()) {
 		return false;
 	}
 #endif
@@ -286,7 +287,7 @@ void StandbyWatchdog::check_last_alarm_a::operator ()()
 
 	timer.start();
 
-	if (USBController::connected() && hasWokenUp()) {
+	if (usb_connected() && hasWokenUp()) {
 		clearPWRFlags();
 #if STANDBY_W_BEDUG
 		printTagLog(TAG, "The device has exited the standby mode by USB connection.");

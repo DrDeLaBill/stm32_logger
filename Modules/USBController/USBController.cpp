@@ -100,8 +100,3 @@ void USBController::clear()
 {
 	memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
 }
-
-bool USBController::connected()
-{
-	return HAL_GPIO_ReadPin(WKUP_GPIO_Port, WKUP_Pin);
-}

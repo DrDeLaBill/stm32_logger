@@ -41,7 +41,10 @@ private:
         COMTuple<uint16_t, SettingsInterface::modbus1_status,    __arr_len(settings_t::modbus1_status)>,
         COMTuple<uint16_t, SettingsInterface::modbus1_value_reg, __arr_len(settings_t::modbus1_value_reg)>,
         COMTuple<uint16_t, SettingsInterface::modbus1_id_reg,    __arr_len(settings_t::modbus1_id_reg)>,
-		COMTuple<uint64_t, SettingsInterface::_1wire_address,    __arr_len(settings_t::_1wire_address)>
+		COMTuple<uint64_t, SettingsInterface::_1wire_address,    __arr_len(settings_t::_1wire_address)>,
+		COMTuple<uint8_t,  SettingsInterface::mb1_last_id>,
+		COMTuple<uint8_t,  SettingsInterface::mb1_new_id>,
+		COMTuple<uint8_t,  SettingsInterface::need_mb1_id_update>
     >;
     using settings_controller_t = COMTableWorker<settings_controller_table_t, COM_FIRST_KEY>;
     static settings_controller_t settings_controller;
@@ -104,8 +107,6 @@ private:
 
 public:
     void proccess();
-
-    static bool connected();
 
 };
 
