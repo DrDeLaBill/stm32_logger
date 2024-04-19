@@ -171,9 +171,7 @@ void record_show(const record_clust_t* clust, const unsigned index)
     while (count < clust->modbus1_count) {
     	record_t* tmp_record = get_record_by_index(clust, index);
     	modbus_sensor_t* sensor = get_record_modbus1_sensor(tmp_record, count);
-    	if (sensor->ID) {
-    		printPretty("%03u   %03u           %u\n", count, sensor->ID, sensor->value);
-    	}
+		printPretty("%03u   %03u           %u\n", count, sensor->ID, sensor->value);
     	count++;
     }
     if (!count) {
@@ -185,9 +183,7 @@ void record_show(const record_clust_t* clust, const unsigned index)
     while (count < clust->_1wire_count) {
     	record_t* tmp_record = get_record_by_index(clust, index);
     	_1wire_sensor_t* sensor = get_record_1wire_sensor(tmp_record, clust->modbus1_count, count);
-    	if (sensor->ADDR) {
-            printPretty("%03u   0x%08X%08X %u\n", count, (unsigned)(sensor->ADDR >> 32), (unsigned)(sensor->ADDR), sensor->value);
-    	}
+		printPretty("%03u   0x%08X%08X %u\n", count, (unsigned)(sensor->ADDR >> 32), (unsigned)(sensor->ADDR), sensor->value);
     	count++;
     }
     if (!count) {

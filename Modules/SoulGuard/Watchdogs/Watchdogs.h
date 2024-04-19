@@ -5,6 +5,7 @@
 
 #include <cstdint>
 
+#include "record.h"
 #include "hal_defs.h"
 
 #include "Timer.h"
@@ -241,7 +242,7 @@ struct InfoWatchdog
 private:
 	bool loadMaxRecord();
 	bool loadMinRecord();
-	bool loadRecord();
+	RecordStatus loadRecord();
 
 public:
 	void check();

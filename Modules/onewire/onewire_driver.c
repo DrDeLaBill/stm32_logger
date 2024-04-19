@@ -10,6 +10,7 @@
 
 
 #define _1WIRE_DELAY_MS             ((uint32_t)100)
+#define _1WIRE_CONVERT_DELAY_MS     ((uint32_t)20000)
 #define _1WIRE_DS18B20_DELAY_MS     ((uint32_t)2000)
 #define _1WIRE_ADDRESS_BIT_SIZE     (sizeof(uint64_t) * BITS_IN_BYTE)
 
@@ -49,6 +50,7 @@ typedef struct _driver_state_t {
 	void     (*fsm) (void);
 	bool     need_search;
 	bool     need_value;
+	bool     need_convert;
 	bool     ready;
 
 	bool     tree_found;
@@ -61,6 +63,7 @@ typedef struct _driver_state_t {
 	uint8_t  value_address[_1WIRE_ADDRESS_BIT_SIZE / BITS_IN_BYTE];
 
 	util_old_timer_t timer;
+	util_old_timer_t convert_timer;
 } driver_state_t;
 
 
@@ -237,10 +240,20 @@ void _fsm_onewire_driver_idle()
 {
 	if (driver_state.need_search) {
 		driver_state.counter = 0;
-		driver_state.fsm = _fsm_onewire_driver_search_start;
+		driver_state.fsm     = _fsm_onewire_driver_search_start;
 	} else if (driver_state.need_value) {
+		memset(&driver_state.tree, 0, sizeof(driver_state.tree));
+		driver_state.tree_found = false;
+		driver_state.tree_mask  = 0;
+		driver_state.counter    = 0;
+		driver_state.ready      = false;
+		driver_state.fsm        = _fsm_onewire_driver_search_start;
+	} else if (driver_state.need_convert) {
 		driver_state.counter = 0;
-		driver_state.fsm = _fsm_onewire_driver_convert_start;
+		driver_state.fsm     = _fsm_onewire_driver_convert_start;
+	}
+	if (!util_old_timer_wait(&(driver_state.convert_timer))) {
+		driver_state.need_convert = true;
 	}
 }
 
@@ -430,14 +443,11 @@ void _fsm_onewire_driver_convert_wait_read()
 	}
 
 	if (onewire_protocol_response()[0]) {
-		memset(&driver_state.tree, 0, sizeof(driver_state.tree));
-		driver_state.tree_found       = false;
-		driver_state.tree_mask        = 0;
-		driver_state.counter          = 0;
-		driver_state.ready            = false;
-		driver_state.fsm              = _fsm_onewire_driver_search_start;
+		driver_state.need_convert = false;
+		util_old_timer_start(&(driver_state.convert_timer), _1WIRE_CONVERT_DELAY_MS);
+		driver_state.fsm = _fsm_onewire_driver_idle;
 	} else {
-		driver_state.fsm              = _fsm_onewire_driver_convert_read;
+		driver_state.fsm = _fsm_onewire_driver_convert_read;
 	}
 }
 

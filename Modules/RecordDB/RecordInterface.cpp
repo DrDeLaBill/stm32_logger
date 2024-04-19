@@ -33,29 +33,29 @@ unsigned RecordInterface::__get_1wire_index(unsigned index)
 }
 
 
-void RecordInterface::id::set(uint64_t value, unsigned)
+void RecordInterface::id::set(uint32_t value, unsigned)
 {
 	record.id = value;
 }
 
-uint64_t RecordInterface::id::get(unsigned)
+uint32_t RecordInterface::id::get(unsigned)
 {
     return record.id;
 }
 
 
-void RecordInterface::time::set(uint64_t value, unsigned)
+void RecordInterface::time::set(uint32_t value, unsigned)
 {
 	record.time = value;
 }
 
-uint64_t RecordInterface::time::get(unsigned)
+uint32_t RecordInterface::time::get(unsigned)
 {
     return record.time;
 }
 
 
-void RecordInterface::MODBUS1_ID::set(uint64_t value, unsigned index)
+void RecordInterface::MODBUS1_ID::set(uint8_t value, unsigned index)
 {
 	uint8_t count = DeviceInfo::current_mbodbus1_count::get();
 	if (index >= count) {
@@ -64,7 +64,7 @@ void RecordInterface::MODBUS1_ID::set(uint64_t value, unsigned index)
 	get_record_modbus1_sensor(&record, index)->ID = value;
 }
 
-uint64_t RecordInterface::MODBUS1_ID::get(unsigned index)
+uint8_t RecordInterface::MODBUS1_ID::get(unsigned index)
 {
 	uint8_t count = DeviceInfo::current_mbodbus1_count::get();
 	if (index >= count) {
@@ -79,16 +79,16 @@ unsigned RecordInterface::MODBUS1_ID::index(unsigned index)
 }
 
 
-void RecordInterface::MODBUS1_value::set(uint64_t value, unsigned index)
+void RecordInterface::MODBUS1_value::set(int16_t value, unsigned index)
 {
 	uint8_t count = DeviceInfo::current_mbodbus1_count::get();
 	if (index >= count) {
 		return;
 	}
-	get_record_modbus1_sensor(&record, index)->value = value;
+	get_record_modbus1_sensor(&record, index)->value = static_cast<int16_t>(value);
 }
 
-uint64_t RecordInterface::MODBUS1_value::get(unsigned index)
+int16_t RecordInterface::MODBUS1_value::get(unsigned index)
 {
 	uint8_t count = DeviceInfo::current_mbodbus1_count::get();
 	if (index >= count) {
@@ -135,7 +135,7 @@ unsigned RecordInterface::_1WIRE_ADDR::index(unsigned index)
 }
 
 
-void RecordInterface::_1WIRE_value::set(uint64_t value, unsigned index)
+void RecordInterface::_1WIRE_value::set(int16_t value, unsigned index)
 {
 	uint8_t count = DeviceInfo::current_1wire_count::get();
 	if (index >= count) {
@@ -148,7 +148,7 @@ void RecordInterface::_1WIRE_value::set(uint64_t value, unsigned index)
 	)->value = value;
 }
 
-uint64_t RecordInterface::_1WIRE_value::get(unsigned index)
+int16_t RecordInterface::_1WIRE_value::get(unsigned index)
 {
 	uint8_t count = DeviceInfo::current_1wire_count::get();
 	if (index >= count) {

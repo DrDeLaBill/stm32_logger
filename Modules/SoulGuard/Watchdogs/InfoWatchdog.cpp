@@ -45,7 +45,8 @@ void InfoWatchdog::check()
 	}
 
 	if (!DeviceInfo::record_loaded::get()) {
-		if (loadRecord()) {
+		RecordStatus status = loadRecord();
+		if (status != RECORD_ERROR) {
 			DeviceInfo::record_loaded::set(1);
 		} else {
 			DeviceInfo::record_loaded::set(0);
@@ -98,7 +99,7 @@ bool InfoWatchdog::loadMinRecord()
 	return false;
 }
 
-bool InfoWatchdog::loadRecord()
+RecordStatus InfoWatchdog::loadRecord()
 {
 	RecordStatus status = RECORD_OK;
 
@@ -107,13 +108,13 @@ bool InfoWatchdog::loadRecord()
 	status = record.loadNext();
 	if (status == RECORD_NO_LOG) {
 		DeviceInfo::current_id::set(record.record.id + 1);
-		return false;
+		return status;
 	}
 
 	DeviceInfo::current_id::set(0);
 
 	if (status != RECORD_OK) {
-		return false;
+		return status;
 	}
 
 	DeviceInfo::current_id::set(record.record.id);
@@ -132,5 +133,5 @@ bool InfoWatchdog::loadRecord()
 		RecordInterface::_1WIRE_value::set(sensor->value, i);
 	}
 
-	return true;
+	return status;
 }

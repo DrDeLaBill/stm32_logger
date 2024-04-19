@@ -70,14 +70,13 @@ private:
 		fsm::Transition<mb1_request_s, sens_end_e,     _1w_request_s, init_sens_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_request_s, no_sens_e,      _1w_request_s, init_sens_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_request_s, skip_e,         mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
-
 		fsm::Transition<mb1_wait_s,    response_e,     mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_wait_s,    timeout_e,      mb1_request_s, count_error_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_wait_s,    error_e,        mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<_1w_request_s, sended_e,       _1w_wait_s,    wait_start_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_request_s, sens_end_e,     save_s,        save_start_a,       fsm::Guard::NO_GUARD>,
-		fsm::Transition<_1w_request_s, no_sens_e,      save_s,        idle_start_a,       fsm::Guard::NO_GUARD>,
+		fsm::Transition<_1w_request_s, no_sens_e,      save_s,        save_start_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_request_s, skip_e,         _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_wait_s,    response_e,     _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_wait_s,    timeout_e,      _1w_request_s, count_error_a,      fsm::Guard::NO_GUARD>,

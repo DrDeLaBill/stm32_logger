@@ -15,13 +15,13 @@ extern "C" {
 #include "main.h"
 
 
-#define RECORD_CLUST_BEDUG   (false)
-#define RECORD_BEDUG         (false)
+#define RECORD_CLUST_BEDUG   (true)
+#define RECORD_BEDUG         (true)
 
 #define RECORD_ENABLE_CACHE  (true)
 #define RECORD_CACHED_COUNT  (8)
 
-#define RECORD_CLUST_VERSION (5)
+#define RECORD_CLUST_VERSION (6)
 
 
 typedef enum _RecordStatus {
@@ -33,7 +33,7 @@ typedef enum _RecordStatus {
 
 typedef struct __attribute__((packed)) _modbus_sensor_t {
     uint8_t  ID;
-    uint16_t value;
+    int16_t  value;
 } modbus_sensor_t;
 
 typedef struct __attribute__((packed)) __1wire_sensor_t {

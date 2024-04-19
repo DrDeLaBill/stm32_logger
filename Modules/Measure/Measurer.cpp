@@ -2,6 +2,7 @@
 
 #include "Measure.h"
 
+#include <limits>
 #include <cstring>
 
 #include "log.h"
@@ -87,8 +88,6 @@ void Measure::_mb1_request_s::operator ()()
 #endif
 		fsm.push_event(Measure::skip_e{});
 	}
-
-	timer.changeDelay(GENERAL_TIMEOUT_MS);
 }
 
 void Measure::__1w_request_s::operator ()()
@@ -111,8 +110,6 @@ void Measure::__1w_request_s::operator ()()
 #endif
 		fsm.push_event(Measure::skip_e{});
 	}
-
-	timer.changeDelay(ONEWIRE_CONVERSION_DELAY_MS);
 }
 
 void Measure::_mb1_wait_s::operator ()()
@@ -129,7 +126,7 @@ void Measure::_mb1_wait_s::operator ()()
 	if (!timer.wait()) {
 		modbus_sensor_t measure{};
 		measure.ID    = sensAddress + 1;
-		measure.value = SENSOR_ERROR_VALUE;
+		measure.value = std::numeric_limits<int16_t>::max();
 		set_record_modbus1_measure(
 			&(record.record),
 			sensIdx,
@@ -157,7 +154,7 @@ void Measure::__1w_wait_s::operator ()()
 	if (!timer.wait()) {
 		_1wire_sensor_t measure{};
 		measure.ADDR  = settings._1wire_address[Measure::sensAddress];
-		measure.value = SENSOR_ERROR_VALUE;
+		measure.value = std::numeric_limits<int16_t>::max();
 		set_record_1wire_measure(
 			&(record.record),
 			record_modbus1_sensors_count(&record.clust),
@@ -217,6 +214,7 @@ void Measure::init_sens_a::operator ()()
 void Measure::wait_start_a::operator ()()
 {
 	fsm.clear_events();
+	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
 }
 
@@ -259,13 +257,11 @@ void Measure::iterate_mb1_sens_a::operator ()()
 {
 	fsm.clear_events();
 	Measure::errorsCount = 0;
-	while (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
-		if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
+	while (Measure::sensAddress < __arr_len(settings.modbus1_status)) {
+		if (settings.modbus1_status[++Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
 			break;
 		}
-		Measure::sensAddress++;
 	}
-	Measure::sensAddress++;
 	Measure::sensIdx++;
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
@@ -279,13 +275,11 @@ void Measure::iterate_1w_sens_a::operator ()()
 {
 	fsm.clear_events();
 	Measure::errorsCount = 0;
-	while (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
-		if (settings._1wire_address[Measure::sensAddress]) {
+	while (Measure::sensAddress < __arr_len(settings._1wire_address)) {
+		if (settings._1wire_address[++Measure::sensAddress]) {
 			break;
 		}
-		Measure::sensAddress++;
 	}
-	Measure::sensAddress++;
 	Measure::sensIdx++;
 }
 
@@ -334,7 +328,7 @@ void Measure::response_packet_handler(modbus_response_t* packet)
 
 	modbus_sensor_t measure{};
 	measure.ID    = sensAddress + 1;
-	measure.value = packet->response[0];
+	measure.value = static_cast<int16_t>(packet->response[0]);
 	set_record_modbus1_measure(
 		&(record.record),
 		sensIdx,
