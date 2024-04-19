@@ -68,7 +68,14 @@ void Measure::_mb1_request_s::operator ()()
 		fsm.push_event(Measure::no_sens_e{});
 	}
 
-	if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
+	if (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "state-_request_s: event-sens_end_e");
+#endif
+		reset_status(NEED_ENABLE_MODBUS1);
+		set_status(NEED_ENABLE_1WIRE);
+		fsm.push_event(Measure::sens_end_e{});
+	} else if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
 		sensor_request_value(Measure::sensAddress);
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_request_s: event-sended_e");
@@ -86,7 +93,13 @@ void Measure::_mb1_request_s::operator ()()
 
 void Measure::__1w_request_s::operator ()()
 {
-	if (settings._1wire_address[Measure::sensAddress]) {
+	if (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
+#if MEASURER_BEDUG
+		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
+#endif
+		reset_status(NEED_ENABLE_1WIRE);
+		fsm.push_event(Measure::sens_end_e{});
+	} else if (settings._1wire_address[Measure::sensAddress]) {
 		onewire_driver_start_read(settings._1wire_address[Measure::sensAddress]);
 #if MEASURER_BEDUG
 		printTagLog(TAG, "state-_request_s: event-sended_e");
@@ -254,14 +267,6 @@ void Measure::iterate_mb1_sens_a::operator ()()
 	}
 	Measure::sensAddress++;
 	Measure::sensIdx++;
-	if (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
-#endif
-		reset_status(NEED_ENABLE_MODBUS1);
-		set_status(NEED_ENABLE_1WIRE);
-		fsm.push_event(Measure::sens_end_e{});
-	}
 	if (!sensors_count()) {
 #if MEASURER_BEDUG
 		printTagLog(TAG, "action-iterate_sens_a: event-no_sens_e");
@@ -282,13 +287,6 @@ void Measure::iterate_1w_sens_a::operator ()()
 	}
 	Measure::sensAddress++;
 	Measure::sensIdx++;
-	if (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
-#endif
-		reset_status(NEED_ENABLE_1WIRE);
-		fsm.push_event(Measure::sens_end_e{});
-	}
 }
 
 void Measure::count_error_a::operator ()()

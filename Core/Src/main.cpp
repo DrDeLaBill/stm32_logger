@@ -161,7 +161,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-	while (has_errors()) hardwareSoulGuard.defend();
+	while (has_errors()) {
+		hardwareSoulGuard.defend();
+	}
 
     flash_w25qxx_init();
     storage = new StorageAT(
@@ -301,7 +303,11 @@ void system_fault_handler()
 {
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	set_error(INTERNAL_ERROR);
+#ifdef DEBUG
+	while (1);
+#else
 	NVIC_SystemReset();
+#endif
 }
 
 /* USER CODE END 4 */
@@ -316,7 +322,11 @@ void Error_Handler(void)
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	set_error(INTERNAL_ERROR);
+#ifdef DEBUG
 	while (1);
+#else
+	NVIC_SystemReset();
+#endif
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -334,7 +344,11 @@ void assert_failed(uint8_t *file, uint32_t line)
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	b_assert((char*)file, line, "Wrong parameters value");
 	set_error(INTERNAL_ERROR);
+#ifdef DEBUG
 	while (1);
+#else
+	NVIC_SystemReset();
+#endif
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
