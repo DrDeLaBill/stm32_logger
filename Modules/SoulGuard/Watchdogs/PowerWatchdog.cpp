@@ -33,7 +33,7 @@ void PowerWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
 
-	if (is_status(NEED_ENABLE_MODBUS1) || is_status(NEED_ENABLE_1WIRE)) {
+	if (is_status(NEED_ENABLE_SENSORS)) {
 		sensors_enable();
 	} else {
 		sensors_disable();

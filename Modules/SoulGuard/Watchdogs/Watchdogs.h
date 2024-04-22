@@ -240,8 +240,8 @@ public:
 struct InfoWatchdog
 {
 private:
-	bool loadMaxRecord();
-	bool loadMinRecord();
+	RecordStatus loadMaxRecord();
+	RecordStatus loadMinRecord();
 	RecordStatus loadRecord();
 
 public:
@@ -281,11 +281,15 @@ protected:
 
 	using fsm_table = fsm::TransitionTable<
 		fsm::Transition<idle_s,       start_e,   start_s,      enable_a,       fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<start_s,      done_e,    registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<start_s,      timeout_e, idle_s,       timeout_a,      fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<registrate_s, next_e,    registrate_s, next_search_a,  fsm::Guard::NO_GUARD>,
 		fsm::Transition<registrate_s, start_e,   registrate_s, start_search_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<registrate_s, timeout_e, idle_s,       timeout_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<registrate_s, done_e,    end_s,        done_a,         fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<end_s,        done_e,    idle_s,       done_a,         fsm::Guard::NO_GUARD>
 	>;
 

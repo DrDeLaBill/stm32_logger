@@ -16,10 +16,12 @@ extern "C" {
 void     onewire_driver_tick();
 
 bool     onewire_driver_ready();
+bool     onewire_driver_has_response();
 void     onewire_driver_clear();
 
 void     onewire_driver_start_search();
 void     onewire_driver_next_search();
+void     onewire_driver_start_convert();
 void     onewire_driver_start_read(uint64_t address);
 int16_t  get_onewire_driver_value();
 uint64_t get_onewire_driver_address();

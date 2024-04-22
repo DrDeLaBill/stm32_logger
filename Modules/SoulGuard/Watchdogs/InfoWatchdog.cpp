@@ -30,36 +30,42 @@ void InfoWatchdog::check()
 		return;
 	}
 
+	RecordStatus status = RECORD_OK;
 	if (is_status(NEED_LOAD_MAX_RECORD)) {
-		if (loadMaxRecord()) {
+		status = loadMaxRecord();
+		if (status != RECORD_ERROR) {
 			reset_status(NEED_LOAD_MAX_RECORD);
 		} else {
 			set_status(NEED_LOAD_MAX_RECORD);
 		}
+		return;
 	}
 
 	if (is_status(NEED_LOAD_MIN_RECORD)) {
-		if (loadMinRecord()) {
+		status = loadMinRecord();
+		if (status != RECORD_ERROR) {
 			reset_status(NEED_LOAD_MIN_RECORD);
 		} else {
 			set_status(NEED_LOAD_MIN_RECORD);
 		}
+		return;
 	}
 
 	if (!DeviceInfo::record_loaded::get()) {
-		RecordStatus status = loadRecord();
+		status = loadRecord();
 		if (status != RECORD_ERROR) {
 			DeviceInfo::record_loaded::set(1);
 		} else {
 			DeviceInfo::record_loaded::set(0);
 		}
+		return;
 	}
 
 	if (SettingsInterface::need_mb1_id_update::get()) {
-		if (is_status(NEED_ENABLE_MODBUS1)) {
+		if (is_status(NEED_ENABLE_SENSORS)) {
 			return;
 		}
-		set_status(NEED_ENABLE_MODBUS1);
+		set_status(NEED_ENABLE_SENSORS);
 		sensors_enable();
 		HAL_Delay(100); // TODO: remove?
 		sensor_send_new_id(
@@ -69,11 +75,12 @@ void InfoWatchdog::check()
 		SettingsInterface::need_mb1_id_update::set(0);
 		HAL_Delay(100); // TODO: remove?
 		sensors_disable();
-		reset_status(NEED_ENABLE_MODBUS1);
+		reset_status(NEED_ENABLE_SENSORS);
+		return;
 	}
 }
 
-bool InfoWatchdog::loadMaxRecord()
+RecordStatus InfoWatchdog::loadMaxRecord()
 {
 	uint32_t maxId = DeviceInfo::max_id::get();
 
@@ -81,17 +88,17 @@ bool InfoWatchdog::loadMaxRecord()
 
 	status = RecordDB::getMaxId(&maxId);
 	if (status != RECORD_OK) {
-		return false;
+		return status;
 	}
 	DeviceInfo::max_id::set(maxId);
 
 	if (maxId == 0) {
-		return true;
+		return RECORD_NO_LOG;
 	}
 	RecordDB record(maxId);
 	status = record.load(false);
 	if (status != RECORD_OK) {
-		return false;
+		return status;
 	}
 	for (unsigned i = 0; i < record_modbus1_sensors_count(&record.clust); i++) {
 		modbus_sensor_t* sensor = get_record_modbus1_sensor(&record.record, i);
@@ -102,20 +109,19 @@ bool InfoWatchdog::loadMaxRecord()
 		DeviceInfo::_1wire_last_value::set(sensor->value, i);
 	}
 
-	return true;
+	return status;
 }
 
-bool InfoWatchdog::loadMinRecord()
+RecordStatus InfoWatchdog::loadMinRecord()
 {
 	uint32_t minId = DeviceInfo::min_id::get();
 
 	RecordStatus status = RecordDB::getMinId(&minId);
 	if (status == RECORD_OK) {
 		DeviceInfo::min_id::set(minId);
-		return true;
 	}
 
-	return false;
+	return status;
 }
 
 RecordStatus InfoWatchdog::loadRecord()

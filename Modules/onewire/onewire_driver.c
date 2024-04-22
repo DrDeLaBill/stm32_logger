@@ -10,7 +10,6 @@
 
 
 #define _1WIRE_DELAY_MS             ((uint32_t)100)
-#define _1WIRE_CONVERT_DELAY_MS     ((uint32_t)20000)
 #define _1WIRE_DS18B20_DELAY_MS     ((uint32_t)2000)
 #define _1WIRE_ADDRESS_BIT_SIZE     (sizeof(uint64_t) * BITS_IN_BYTE)
 
@@ -52,6 +51,7 @@ typedef struct _driver_state_t {
 	bool     need_value;
 	bool     need_convert;
 	bool     ready;
+	bool     has_response;
 
 	bool     tree_found;
 	uint8_t  tree[_1WIRE_ADDRESS_BIT_SIZE]; // TODO: change to two 64-bit vars
@@ -63,11 +63,11 @@ typedef struct _driver_state_t {
 	uint8_t  value_address[_1WIRE_ADDRESS_BIT_SIZE / BITS_IN_BYTE];
 
 	util_old_timer_t timer;
-	util_old_timer_t convert_timer;
 } driver_state_t;
 
 
 void _onewire_driver_state_reset();
+void _onewire_driver_start_idle();
 bool _onewire_driver_busy();
 
 void _fsm_onewire_driver_init();
@@ -128,7 +128,6 @@ void onewire_driver_start_search()
 	driver_state.address          = 0;
 	driver_state.counter          = 0;
 	driver_state.ready            = false;
-	driver_state.fsm              = _fsm_onewire_driver_idle;
 }
 
 void onewire_driver_next_search()
@@ -174,16 +173,28 @@ void onewire_driver_next_search()
 	}
 
 
-	driver_state.address     = 0;
-	driver_state.counter     = 0;
-	driver_state.need_search = true;
-	driver_state.ready       = false;
-	driver_state.fsm         = _fsm_onewire_driver_idle;
+	driver_state.address      = 0;
+	driver_state.need_search  = true;
+}
+
+void onewire_driver_start_convert()
+{
+	if (_onewire_driver_busy()) {
+		printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver is busy, unable to start convert");
+		return;
+	}
+
+	driver_state.need_convert = true;
 }
 
 bool onewire_driver_ready()
 {
 	return driver_state.ready;
+}
+
+bool onewire_driver_has_response()
+{
+	return driver_state.has_response;
 }
 
 uint64_t get_onewire_driver_address()
@@ -197,9 +208,9 @@ void onewire_driver_start_read(uint64_t address)
 		printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver is busy, unable to read value");
 		return;
 	}
-	driver_state.need_value = true;
-	driver_state.address = address;
-	driver_state.ready = false;
+	driver_state.need_value   = true;
+	driver_state.address      = address;
+	driver_state.ready        = false;
 
 	uint64_t tmp_address = address;
 	for (unsigned i = 0; i < _1WIRE_ADDRESS_BIT_SIZE; i++) {
@@ -223,7 +234,7 @@ int16_t get_onewire_driver_value()
 void _onewire_driver_state_reset()
 {
 	memset((void*)&driver_state, 0, sizeof(driver_state));
-	driver_state.fsm = _fsm_onewire_driver_init;
+	_onewire_driver_start_idle();
 }
 
 bool _onewire_driver_busy()
@@ -231,29 +242,39 @@ bool _onewire_driver_busy()
 	return driver_state.need_value || driver_state.need_search;
 }
 
+void _onewire_driver_start_idle()
+{
+	driver_state.counter      = 0;
+	driver_state.need_value   = false;
+	driver_state.need_search  = false;
+	driver_state.need_convert = false;
+	driver_state.ready        = true;
+	driver_state.fsm          = _fsm_onewire_driver_idle;
+}
+
 void _fsm_onewire_driver_init()
 {
-	driver_state.fsm = _fsm_onewire_driver_idle;
+	_onewire_driver_start_idle();
+	driver_state.need_convert = true;
 }
 
 void _fsm_onewire_driver_idle()
 {
-	if (driver_state.need_search) {
-		driver_state.counter = 0;
-		driver_state.fsm     = _fsm_onewire_driver_search_start;
+	if (driver_state.need_convert) {
+		driver_state.ready        = false;
+		driver_state.has_response = false;
+		driver_state.fsm          = _fsm_onewire_driver_convert_start;
+	} else if (driver_state.need_search) {
+		driver_state.ready        = false;
+		driver_state.has_response = false;
+		driver_state.fsm          = _fsm_onewire_driver_search_start;
 	} else if (driver_state.need_value) {
 		memset(&driver_state.tree, 0, sizeof(driver_state.tree));
-		driver_state.tree_found = false;
-		driver_state.tree_mask  = 0;
-		driver_state.counter    = 0;
-		driver_state.ready      = false;
-		driver_state.fsm        = _fsm_onewire_driver_search_start;
-	} else if (driver_state.need_convert) {
-		driver_state.counter = 0;
-		driver_state.fsm     = _fsm_onewire_driver_convert_start;
-	}
-	if (!util_old_timer_wait(&(driver_state.convert_timer))) {
-		driver_state.need_convert = true;
+		driver_state.tree_found   = false;
+		driver_state.tree_mask    = 0;
+		driver_state.ready        = false;
+		driver_state.has_response = false;
+		driver_state.fsm          = _fsm_onewire_driver_search_start;
 	}
 }
 
@@ -278,7 +299,9 @@ void _fsm_onewire_driver_search_start()
 void _fsm_onewire_driver_search_wait_bits()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
+		return;
 	}
 
 	if (onewire_protocol_result_ready()) {
@@ -304,7 +327,8 @@ void _fsm_onewire_driver_search_response()
 			break;
 		default:
 			printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver error, unacceptable address bit");
-			driver_state.fsm = _fsm_onewire_driver_idle;
+			_onewire_driver_start_idle();
+			driver_state.has_response = false;
 			break;
 	}
 }
@@ -313,17 +337,20 @@ void _fsm_onewire_driver_search_empty_bits()
 {
 	if (!driver_state.counter) {
 		printTagLog(_1WIRE_DRIVER_TAG, "1WIRE driver error, sensors not found");
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
 
-	driver_state.need_search = false;
+	driver_state.need_search  = false;
+	driver_state.has_response = false;
+	driver_state.fsm          = _fsm_onewire_driver_idle;
 
 	if (!driver_state.need_value) {
 		onewire_driver_next_search();
+	} else {
+		_onewire_driver_start_idle();
 	}
-
-	driver_state.fsm = _fsm_onewire_driver_idle;
 }
 
 void _fsm_onewire_driver_search_confirm_bit_start()
@@ -332,7 +359,10 @@ void _fsm_onewire_driver_search_confirm_bit_start()
 	uint8_t node = driver_state.tree[cur_counter];
 	bool bit = (bool)__get_bit(node, 1);
 	if (driver_state.need_value) {
-		bit = (bool)__get_bit(driver_state.value_address[cur_counter / BITS_IN_BYTE], cur_counter % BITS_IN_BYTE);
+		bit = (bool)__get_bit(
+			driver_state.value_address[cur_counter / BITS_IN_BYTE],
+			(cur_counter % BITS_IN_BYTE)
+		);
 	} else if (node == _1WIRE_SEARCH_UNDEFINED_BIT) {
 		bit = (bool)__get_bit(driver_state.tree_mask, cur_counter);
 	}
@@ -344,7 +374,9 @@ void _fsm_onewire_driver_search_confirm_bit_start()
 void _fsm_onewire_driver_search_confirm_bit_wait()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
+		return;
 	}
 
 	if (onewire_protocol_result_ready()) {
@@ -379,9 +411,11 @@ void _fsm_onewire_driver_search_end()
 		buff[i / BITS_IN_BYTE] |= (((uint64_t)bit) << (i % BITS_IN_BYTE));
 	}
 	if (buff[__arr_len(buff) - 1] != onewire_protocol_crc8(buff, __arr_len(buff) - 1)) {
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
+
 	uint8_t tmp = buff[0];
 	buff[0] = buff[__arr_len(buff) - 1];
 	buff[__arr_len(buff) - 1] = tmp;
@@ -390,11 +424,10 @@ void _fsm_onewire_driver_search_end()
 		driver_state.address |= (((uint64_t)buff[i]) << (i * BITS_IN_BYTE));
 	}
 
-	driver_state.need_search = false;
 	driver_state.tree_found  = true;
-	driver_state.ready       = true;
+	driver_state.has_response = true;
 
-	driver_state.fsm = _fsm_onewire_driver_idle;
+	_onewire_driver_start_idle();
 }
 
 void _fsm_onewire_driver_convert_start()
@@ -414,7 +447,8 @@ void _fsm_onewire_driver_convert_wait_send()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
 		onewire_protocol_reset();
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
 
@@ -434,7 +468,8 @@ void _fsm_onewire_driver_convert_wait_read()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
 		onewire_protocol_reset();
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
 
@@ -443,9 +478,8 @@ void _fsm_onewire_driver_convert_wait_read()
 	}
 
 	if (onewire_protocol_response()[0]) {
-		driver_state.need_convert = false;
-		util_old_timer_start(&(driver_state.convert_timer), _1WIRE_CONVERT_DELAY_MS);
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = true;
 	} else {
 		driver_state.fsm = _fsm_onewire_driver_convert_read;
 	}
@@ -463,7 +497,7 @@ void _fsm_onewire_driver_read_wait()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
 		onewire_protocol_reset();
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
 		return;
 	}
 
@@ -484,7 +518,8 @@ void _fsm_onewire_driver_read_recieve_wait()
 {
 	if (!util_old_timer_wait(&driver_state.timer)) {
 		onewire_protocol_reset();
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
 
@@ -497,7 +532,8 @@ void _fsm_onewire_driver_read_recieve_wait()
 		buff[i / BITS_IN_BYTE] |= ((onewire_protocol_response()[i]) << (i % BITS_IN_BYTE));
 	}
 	if (buff[__arr_len(buff) - 1] != onewire_protocol_crc8(buff, __arr_len(buff) - 1)) {
-		driver_state.fsm = _fsm_onewire_driver_idle;
+		_onewire_driver_start_idle();
+		driver_state.has_response = false;
 		return;
 	}
 
@@ -511,16 +547,15 @@ void _fsm_onewire_driver_read_recieve_wait()
 		driver_state.value *= -1;
 	}
 
-//	printTagLog("OWd", "value %d.%d", driver_state.value / 10, __abs(driver_state.value % 10));
+	printTagLog("OWd", "value %d.%d", driver_state.value / 10, __abs(driver_state.value % 10));
 
 	driver_state.fsm = _fsm_onewire_driver_read_end;
 }
 
 void _fsm_onewire_driver_read_end()
 {
-	driver_state.need_value = false;
-	driver_state.ready      = true;
-	driver_state.fsm        = _fsm_onewire_driver_idle;
+	_onewire_driver_start_idle();
+	driver_state.has_response = true;
 }
 
 

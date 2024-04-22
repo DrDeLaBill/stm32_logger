@@ -21,7 +21,9 @@
 #include "USBController.h"
 
 
-#define ONEWIRE_CONVERSION_DELAY_MS ((uint32_t)2000)
+#define MEASURE_VALUE_DELAY_MS      ((uint32_t)500)
+#define MEASURE_WAIT_POWER_DELAY_MS ((uint32_t)10000)
+#define ONEWIRE_CONVERSION_DELAY_MS ((uint32_t)20000)
 
 
 uint8_t Measure::sensAddress = 0;
@@ -43,78 +45,46 @@ void Measure::process()
 	fsm.proccess();
 }
 
-void Measure::_init_s::operator ()()
-{
-	if (is_status(SETTINGS_INITIALIZED)) {
-		fsm.push_event(Measure::ready_e{});
-	}
-}
-
 void Measure::_idle_s::operator ()()
 {
+	if (!is_status(SETTINGS_INITIALIZED)) {
+		return;
+	}
+
 	if (!is_status(NEED_MEASURE)) {
 		return;
 	}
 
-	if (is_status(NEED_ENABLE_MODBUS1)) {
+	if (is_status(NEED_ENABLE_SENSORS)) {
 		return;
 	}
 
 	record = RecordDB(0);
 	record_cluster_create(&record.clust);
-	set_status(NEED_ENABLE_MODBUS1);
+	set_status(NEED_ENABLE_SENSORS);
 	fsm.push_event(need_measure_e{});
+}
+
+void Measure::_wait_start_s::operator ()()
+{
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
 }
 
 void Measure::_mb1_request_s::operator ()()
 {
 	if (!sensors_count()) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-request_s: event-no_sens_e");
-#endif
-		fsm.push_event(Measure::no_sens_e{});
+		fsm.push_event(end_e{});
 	}
 
 	if (Measure::sensAddress >= __arr_len(settings.modbus1_status)) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_request_s: event-sens_end_e");
-#endif
-		reset_status(NEED_ENABLE_MODBUS1);
-		set_status(NEED_ENABLE_1WIRE);
-		fsm.push_event(Measure::sens_end_e{});
+		fsm.push_event(end_e{});
 	} else if (settings.modbus1_status[Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
-		sensor_request_value(Measure::sensAddress);
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_request_s: event-sended_e");
-#endif
-		fsm.push_event(Measure::sended_e{});
+		sensor_request_value(sensAddress);
+		fsm.push_event(success_e{});
 	} else {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_request_s: event-skip_e");
-#endif
-		fsm.push_event(Measure::skip_e{});
-	}
-}
-
-void Measure::__1w_request_s::operator ()()
-{
-	if (Measure::sensAddress >= __arr_len(settings._1wire_address)) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-iterate_sens_a: event-sens_end_e");
-#endif
-		reset_status(NEED_ENABLE_1WIRE);
-		fsm.push_event(Measure::sens_end_e{});
-	} else if (settings._1wire_address[Measure::sensAddress]) {
-		onewire_driver_start_read(settings._1wire_address[Measure::sensAddress]);
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_request_s: event-sended_e");
-#endif
-		fsm.push_event(Measure::sended_e{});
-	} else {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_request_s: event-skip_e");
-#endif
-		fsm.push_event(Measure::skip_e{});
+		fsm.push_event(skip_e{});
 	}
 }
 
@@ -122,10 +92,7 @@ void Measure::_mb1_wait_s::operator ()()
 {
 	if (Measure::errorsCount >= ERRORS_MAX) {
 		// TODO: send sensor error to stng_info
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_wait_s: event-error_e");
-#endif
-		fsm.push_event(Measure::error_e{});
+		fsm.push_event(error_e{});
 		return;
 	}
 
@@ -139,27 +106,44 @@ void Measure::_mb1_wait_s::operator ()()
 			&measure
 		);
 		sensor_timeout();
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_wait_s: event-timeout_e");
-#endif
 		fsm.push_event(Measure::timeout_e{});
+	}
+}
+
+void Measure::__1w_delay_s::operator ()()
+{
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
+
+	if (onewire_driver_ready()) {
+		fsm.push_event(success_e{});
+	}
+}
+
+void Measure::__1w_request_s::operator ()()
+{
+	if (sensAddress >= __arr_len(settings._1wire_address)) {
+		fsm.push_event(end_e{});
+	} else if (settings._1wire_address[sensAddress]) {
+		onewire_driver_start_read(settings._1wire_address[sensAddress]);
+		fsm.push_event(success_e{});
+	} else {
+		fsm.push_event(skip_e{});
 	}
 }
 
 void Measure::__1w_wait_s::operator ()()
 {
-	if (Measure::errorsCount >= ERRORS_MAX) {
+	if (errorsCount >= ERRORS_MAX) {
 		// TODO: send sensor error to stng_info
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_wait_s: event-error_e");
-#endif
-		fsm.push_event(Measure::error_e{});
+		fsm.push_event(error_e{});
 		return;
 	}
 
 	if (!timer.wait()) {
 		_1wire_sensor_t measure{};
-		measure.ADDR  = settings._1wire_address[Measure::sensAddress];
+		measure.ADDR  = settings._1wire_address[sensAddress];
 		measure.value = std::numeric_limits<int16_t>::max();
 		set_record_1wire_measure(
 			&(record.record),
@@ -168,15 +152,12 @@ void Measure::__1w_wait_s::operator ()()
 			&measure
 		);
 		onewire_driver_clear();
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_wait_s: event-timeout_e");
-#endif
-		fsm.push_event(Measure::timeout_e{});
+		fsm.push_event(timeout_e{});
 	}
 
-	if (onewire_driver_ready()) {
+	if (onewire_driver_has_response()) {
 		_1wire_sensor_t measure{};
-		measure.ADDR  = settings._1wire_address[Measure::sensAddress];
+		measure.ADDR  = settings._1wire_address[sensAddress];
 		measure.value = get_onewire_driver_value();
 		set_record_1wire_measure(
 			&(record.record),
@@ -192,35 +173,26 @@ void Measure::_save_s::operator ()()
 {
 	if (Measure::errorsCount >= ERRORS_MAX) {
 		// TODO: send save error to errors list
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_save_s: event-error_e");
-#endif
 		fsm.push_event(Measure::error_e{});
 		return;
 	}
 
 	if (!timer.wait()) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "state-_save_s: event-timeout_e");
-#endif
 		fsm.push_event(Measure::timeout_e{});
 	}
-}
-
-void Measure::none_a::operator ()() { }
-
-void Measure::init_sens_a::operator ()()
-{
-	fsm.clear_events();
-	Measure::sensAddress = 0;
-	Measure::sensIdx     = 0;
-	Measure::errorsCount = 0;
 }
 
 void Measure::wait_start_a::operator ()()
 {
 	fsm.clear_events();
-	timer.changeDelay(GENERAL_TIMEOUT_MS);
+	timer.changeDelay(MEASURE_WAIT_POWER_DELAY_MS);
+	timer.start();
+}
+
+void Measure::wait_response_a::operator ()()
+{
+	fsm.clear_events();
+	timer.changeDelay(MEASURE_VALUE_DELAY_MS);
 	timer.start();
 }
 
@@ -228,19 +200,10 @@ void Measure::save_start_a::operator ()()
 {
 	set_status(WAIT_LOAD);
 	fsm.clear_events();
-#if MEASURER_BEDUG
-	printTagLog(TAG, "Save new record begin");
-#endif
 	if (record.save() == RECORD_OK) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-save_start_a: event-saved_e");
-#endif
-		fsm.push_event(Measure::saved_e{});
+		fsm.push_event(success_e{});
 	} else {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-save_start_a: event-error_e");
-#endif
-		fsm.push_event(Measure::timeout_e{});
+		fsm.push_event(timeout_e{});
 	}
 
 	Measure::errorsCount = 0;
@@ -253,40 +216,80 @@ void Measure::idle_start_a::operator ()()
 {
 	fsm.clear_events();
 
-	reset_status(NEED_ENABLE_MODBUS1);
-	reset_status(NEED_ENABLE_1WIRE);
-
+	reset_status(NEED_ENABLE_SENSORS);
 	reset_status(NEED_MEASURE);
+}
+
+void Measure::init_mb1_sens_a::operator ()()
+{
+	fsm.clear_events();
+	errorsCount = 0;
+	sensAddress = 0;
+	sensIdx     = 0;
+
+	while (sensAddress < __arr_len(settings.modbus1_status)) {
+		if (settings.modbus1_status[sensAddress] != SETTINGS_SENSOR_EMPTY) {
+			break;
+		}
+		sensAddress++;
+	}
+	if (sensAddress >= __arr_len(settings.modbus1_status)) {
+		fsm.push_event(end_e{});
+	}
+	if (!sensors_count()) {
+		fsm.push_event(end_e{});
+	}
 }
 
 void Measure::iterate_mb1_sens_a::operator ()()
 {
 	fsm.clear_events();
-	Measure::errorsCount = 0;
-	while (Measure::sensAddress < __arr_len(settings.modbus1_status)) {
-		if (settings.modbus1_status[++Measure::sensAddress] != SETTINGS_SENSOR_EMPTY) {
+	errorsCount = 0;
+	while (sensAddress < __arr_len(settings.modbus1_status)) {
+		if (settings.modbus1_status[++sensAddress] != SETTINGS_SENSOR_EMPTY) {
+			sensIdx++;
 			break;
 		}
 	}
-	Measure::sensIdx++;
+	if (sensAddress >= __arr_len(settings.modbus1_status)) {
+		fsm.push_event(end_e{});
+	}
 	if (!sensors_count()) {
-#if MEASURER_BEDUG
-		printTagLog(TAG, "action-iterate_sens_a: event-no_sens_e");
-#endif
-		fsm.push_event(Measure::no_sens_e{});
+		fsm.push_event(end_e{});
+	}
+}
+
+void Measure::init_1w_sens_a::operator ()()
+{
+	fsm.clear_events();
+	errorsCount = 0;
+	sensAddress = 0;
+	sensIdx     = 0;
+
+	while (sensAddress < __arr_len(settings._1wire_address)) {
+		if (settings._1wire_address[sensAddress]) {
+			break;
+		}
+		sensAddress++;
+	}
+	if (sensAddress >= __arr_len(settings._1wire_address)) {
+		fsm.push_event(end_e{});
 	}
 }
 
 void Measure::iterate_1w_sens_a::operator ()()
 {
 	fsm.clear_events();
-	Measure::errorsCount = 0;
-	while (Measure::sensAddress < __arr_len(settings._1wire_address)) {
-		if (settings._1wire_address[++Measure::sensAddress]) {
+	errorsCount = 0;
+	while (sensAddress < __arr_len(settings._1wire_address)) {
+		if (settings._1wire_address[++sensAddress]) {
+			sensIdx++;
 			break;
 		}
 	}
-	Measure::sensIdx++;
+	if (sensAddress >= __arr_len(settings._1wire_address)) {
+		fsm.push_event(end_e{});
+	}
 }
 
 void Measure::count_error_a::operator ()()
@@ -300,7 +303,15 @@ void Measure::register_error_a::operator ()()
 	// TODO: send measure error to errors list
 	fsm.clear_events();
 
+	reset_status(NEED_ENABLE_SENSORS);
 	reset_status(NEED_MEASURE);
+}
+
+void Measure::start_delay_a::operator ()()
+{
+	onewire_driver_start_convert();
+	timer.changeDelay(ONEWIRE_CONVERSION_DELAY_MS);
+	timer.start();
 }
 
 void Measure::response_packet_handler(modbus_response_t* packet)

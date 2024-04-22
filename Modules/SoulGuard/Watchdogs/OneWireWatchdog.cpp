@@ -24,16 +24,25 @@ void OneWireWatcher::check()
 
 void OneWireWatcher::_idle_s::operator()()
 {
+	if (!onewire_driver_ready()) {
+		return;
+	}
 	if (DeviceInfo::need_registrate_1wire::get()) {
 		memset(settings._1wire_address, 0, sizeof(settings._1wire_address));
 		index = 0;
 		timeoutTimer.start();
+		set_status(NEED_ENABLE_SENSORS);
+
 		fsm.push_event(start_e{});
 	}
 }
 
 void OneWireWatcher::_start_s::operator ()()
 {
+	if (!timeoutTimer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
+
 	if (HAL_GPIO_ReadPin(POWER_L2_GPIO_Port, POWER_L2_Pin)) {
 		delayTimer.start();
 		fsm.push_event(done_e{});
@@ -55,7 +64,7 @@ void OneWireWatcher::_registrate_s::operator()()
 		onewire_driver_clear();
 		fsm.push_event(start_e{});
 	}
-	if (!onewire_driver_ready()) {
+	if (!onewire_driver_has_response()) {
 		return;
 	}
 
@@ -93,6 +102,7 @@ void OneWireWatcher::_end_s::operator()()
 void OneWireWatcher::timeout_a::operator ()()
 {
 	DeviceInfo::need_registrate_1wire::set(0);
+	reset_status(NEED_ENABLE_SENSORS);
 	set_status(NEED_LOAD_SETTINGS);
 	onewire_driver_clear();
 }
@@ -100,11 +110,12 @@ void OneWireWatcher::timeout_a::operator ()()
 void OneWireWatcher::done_a::operator ()()
 {
 	DeviceInfo::need_registrate_1wire::set(0);
+	reset_status(NEED_ENABLE_SENSORS);
 }
 
 void OneWireWatcher::enable_a::operator ()()
 {
-	set_status(NEED_ENABLE_1WIRE);
+	set_status(NEED_ENABLE_SENSORS);
 }
 
 void OneWireWatcher::start_search_a::operator ()()

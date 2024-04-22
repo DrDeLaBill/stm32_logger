@@ -16,7 +16,7 @@ extern "C" {
 
 
 #define RECORD_CLUST_BEDUG   (false)
-#define RECORD_BEDUG         (false)
+#define RECORD_BEDUG         (true)
 
 #define RECORD_ENABLE_CACHE  (true)
 #define RECORD_CACHED_COUNT  (8)
