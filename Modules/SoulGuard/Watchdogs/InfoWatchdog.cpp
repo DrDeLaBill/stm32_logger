@@ -2,6 +2,7 @@
 
 #include "Watchdogs.h"
 
+#include "usb.h"
 #include "soul.h"
 #include "sensor.h"
 
@@ -15,6 +16,10 @@
 void InfoWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("INFw", WATCHDOG_TIMEOUT_MS);
+
+	if (!usb_connected()) {
+		return;
+	}
 
 	if (!is_status(NEED_LOAD_MAX_RECORD) &&
 		!is_status(NEED_LOAD_MIN_RECORD) &&
