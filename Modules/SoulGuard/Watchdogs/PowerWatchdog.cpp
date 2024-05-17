@@ -45,7 +45,7 @@ void PowerWatchdog::check()
 void PowerWatchdog::_init_s::operator ()()
 {
 	set_error(POWER_ERROR);
-	fsm.push_event(started_e{});
+	fsm.push_event(success_e{});
 }
 
 void PowerWatchdog::_wait_s::operator ()()
@@ -56,7 +56,7 @@ void PowerWatchdog::_wait_s::operator ()()
 	}
 
 	if (!timer.wait()) {
-		fsm.push_event(timeout_e{});
+		fsm.push_event(error_e{});
 	}
 }
 
@@ -71,14 +71,8 @@ void PowerWatchdog::start_DMA_a::operator ()()
 
 void PowerWatchdog::check_power_a::operator ()()
 {
-	if (usb_connected()) {
-		reset_error(POWER_ERROR);
-		fsm.push_event(success_e{});
-		return;
-	}
-
 	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * adcLevel) / ADC_MAX);
-	if (vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) {
+	if ((vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) && !usb_connected()) {
 		fsm.push_event(error_e{});
 	} else {
 		reset_error(POWER_ERROR);
@@ -96,5 +90,5 @@ void PowerWatchdog::none_a::operator ()() { }
 void PowerWatchdog::stopDMA()
 {
 	HAL_ADC_Stop_DMA(&POWER_ADC);
-	fsm.push_event(done_e{});
+	fsm.push_event(success_e{});
 }

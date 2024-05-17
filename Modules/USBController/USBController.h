@@ -54,6 +54,7 @@ private:
 		COMTuple<uint32_t, DeviceInfo::min_id>,
 		COMTuple<uint32_t, DeviceInfo::max_id>,
 		COMTuple<uint32_t, DeviceInfo::current_id>,
+        COMTuple<uint8_t,  DeviceInfo::next_record>,
 		COMTuple<uint8_t,  DeviceInfo::current_mbodbus1_count>,
 		COMTuple<uint8_t,  DeviceInfo::current_1wire_count>,
 		COMTuple<uint8_t,  DeviceInfo::need_registrate_1wire>,

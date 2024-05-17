@@ -15,11 +15,11 @@ extern "C" {
 #include "main.h"
 
 
-#define RECORD_CLUST_BEDUG   (false)
-#define RECORD_BEDUG         (true)
+#define RECORD_CLUST_BEDUG   (0)
+#define RECORD_BEDUG         (1)
 
-#define RECORD_ENABLE_CACHE  (true)
-#define RECORD_CACHED_COUNT  (8)
+#define RECORD_ENABLE_CACHE  (0)
+#define RECORD_CACHED_COUNT  (16)
 
 #define RECORD_CLUST_VERSION (6)
 

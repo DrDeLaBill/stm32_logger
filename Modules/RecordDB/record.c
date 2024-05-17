@@ -166,12 +166,12 @@ void record_show(const record_clust_t* clust, const unsigned index)
     printPretty("Record ID: %lu\n", record->id);
     printPretty("Record time: %lu\n", record->time);;
     printPretty("------------MODBUS1-----------\n");
-    printPretty("INDEX ID            VALUE\n");
+    printPretty("INDEX ID                 VALUE\n");
     unsigned count = 0;
     while (count < clust->modbus1_count) {
     	record_t* tmp_record = get_record_by_index(clust, index);
     	modbus_sensor_t* sensor = get_record_modbus1_sensor(tmp_record, count);
-		printPretty("%03u   %03u           %u\n", count, sensor->ID, sensor->value);
+		printPretty("%03u   %03u                %u\n", count, sensor->ID, sensor->value);
     	count++;
     }
     if (!count) {

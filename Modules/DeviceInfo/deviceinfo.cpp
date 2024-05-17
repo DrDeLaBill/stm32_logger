@@ -53,6 +53,16 @@ uint64_t DeviceInfo::current_id::get(unsigned)
 }
 
 
+void DeviceInfo::next_record::set(uint64_t value, unsigned)
+{
+    info.next_record = value;
+}
+uint64_t DeviceInfo::next_record::get(unsigned)
+{
+    return info.next_record;
+}
+
+
 void DeviceInfo::current_mbodbus1_count::set(uint64_t value, unsigned)
 {
     info.current_mbodbus1_count = value;

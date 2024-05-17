@@ -38,16 +38,14 @@ public:
     RecordStatus save();
     // TODO: RecordStatus erase(uint32_t address); with w25xx.h _flash_erase_data
 
-    static uint32_t getMinID(const record_clust_t& clust);
-    static uint32_t getMaxID(const record_clust_t& clust);
-    static bool     hasID(const record_clust_t& clust, uint32_t ID);
+    static uint32_t getClustMinId(const record_clust_t& clust);
+    static uint32_t getClustMaxId(const record_clust_t& clust);
+    static bool     clustHasID(const record_clust_t& clust, uint32_t ID);
 
     static RecordStatus getLastTime(uint32_t* time);
     static RecordStatus getMaxId(uint32_t* maxId);
     static RecordStatus getMinId(uint32_t* minId);
-#if RECORD_ENABLE_CACHE
     static RecordStatus updateCache(uint32_t cacheAfterId);
-#endif
 
 
 private:

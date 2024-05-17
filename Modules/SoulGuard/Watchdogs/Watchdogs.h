@@ -70,28 +70,23 @@ protected:
 	struct state_load   {void operator()(void) const;};
 
 	struct action_check {void operator()(void) const;};
-	struct action_reset {void operator()(void) const;};
 
 	FSM_CREATE_STATE(init_s, state_init);
 	FSM_CREATE_STATE(idle_s, state_idle);
 	FSM_CREATE_STATE(save_s, state_save);
 	FSM_CREATE_STATE(load_s, state_load);
 
-	FSM_CREATE_EVENT(event_saved, 0);
-	FSM_CREATE_EVENT(event_loaded, 0);
-	FSM_CREATE_EVENT(event_updated, 0);
-	FSM_CREATE_EVENT(event_not_valid, 1);
+	FSM_CREATE_EVENT(saved_e,   0);
+	FSM_CREATE_EVENT(updated_e, 0);
 
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s, event_loaded,    idle_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<init_s, event_saved,     idle_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s, updated_e,   idle_s, action_check, fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<idle_s, event_saved,     load_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s, event_updated,   save_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s, event_not_valid, save_s, action_reset, fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s, saved_e,     load_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s, updated_e,   save_s, action_check, fsm::Guard::NO_GUARD>,
 
-		fsm::Transition<load_s, event_loaded,    idle_s, action_check, fsm::Guard::NO_GUARD>,
-		fsm::Transition<save_s, event_saved,     idle_s, action_check, fsm::Guard::NO_GUARD>
+		fsm::Transition<load_s, updated_e,   idle_s, action_check, fsm::Guard::NO_GUARD>,
+		fsm::Transition<save_s, saved_e,     idle_s, action_check, fsm::Guard::NO_GUARD>
 	>;
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
@@ -167,10 +162,12 @@ protected:
 	using fsm_table = fsm::TransitionTable<
 		fsm::Transition<init_s,  loaded_e,             idle_s,  check_last_alarm_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<init_s,  need_standby_e,       init_s,  enter_standby_a,    fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<idle_s,  need_restart_alarm_e, start_s, restart_alarm_a,    fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,  need_start_alarm_e,   start_s, start_alarm_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,  alarm_e,              start_s, start_alarm_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,  need_standby_e,       idle_s,  enter_standby_a,    fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<start_s, started_e,            idle_s,  check_alarm_a,      fsm::Guard::NO_GUARD>
 	>;
 
@@ -199,11 +196,8 @@ private:
 
 protected:
 	// Events:
-	FSM_CREATE_EVENT(started_e, 0);
-	FSM_CREATE_EVENT(done_e,    0);
-	FSM_CREATE_EVENT(timeout_e, 0);
 	FSM_CREATE_EVENT(success_e, 0);
-	FSM_CREATE_EVENT(error_e,   0);
+	FSM_CREATE_EVENT(error_e,   1);
 
 	// States:
 	struct _init_s   { void operator()(); };
@@ -221,9 +215,11 @@ protected:
 	struct set_error_a   { void operator()(); };
 
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,  started_e, wait_s,  start_DMA_a,   fsm::Guard::NO_GUARD>,
-		fsm::Transition<wait_s,  done_e,    check_s, check_power_a, fsm::Guard::NO_GUARD>,
-		fsm::Transition<wait_s,  timeout_e, init_s,  none_a,        fsm::Guard::NO_GUARD>,
+		fsm::Transition<init_s,  success_e, wait_s,  start_DMA_a,   fsm::Guard::NO_GUARD>,
+
+		fsm::Transition<wait_s,  success_e, check_s, check_power_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<wait_s,  error_e,   init_s,  none_a,        fsm::Guard::NO_GUARD>,
+
 		fsm::Transition<check_s, success_e, wait_s,  start_DMA_a,   fsm::Guard::NO_GUARD>,
 		fsm::Transition<check_s, error_e,   init_s,  set_error_a,   fsm::Guard::NO_GUARD>
 	>;

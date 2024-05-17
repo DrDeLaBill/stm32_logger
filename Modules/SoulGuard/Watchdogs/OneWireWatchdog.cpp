@@ -51,10 +51,9 @@ void OneWireWatcher::_start_s::operator ()()
 
 void OneWireWatcher::_registrate_s::operator()()
 {
-	if (index >= __arr_len(settings._1wire_address)) {
-		fsm.push_event(done_e{});
-	}
-	if (!DeviceInfo::need_registrate_1wire::get()) {
+	if (index >= __arr_len(settings._1wire_address) ||
+		!DeviceInfo::need_registrate_1wire::get()
+	) {
 		fsm.push_event(done_e{});
 	}
 	if (!timeoutTimer.wait()) {

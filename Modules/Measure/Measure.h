@@ -17,13 +17,11 @@ class Measure
 {
 protected:
 	// Events:
-	FSM_CREATE_EVENT(timeout_e,      0);
 	FSM_CREATE_EVENT(success_e,      0);
-	FSM_CREATE_EVENT(need_measure_e, 0);
-	FSM_CREATE_EVENT(response_e,     1);
-	FSM_CREATE_EVENT(skip_e,         1);
-	FSM_CREATE_EVENT(end_e,          2);
-	FSM_CREATE_EVENT(error_e,        3);
+	FSM_CREATE_EVENT(timeout_e,      1);
+	FSM_CREATE_EVENT(iterate_e,      2);
+	FSM_CREATE_EVENT(end_e,          3);
+	FSM_CREATE_EVENT(error_e,        4);
 
 private:
 	// States:
@@ -60,26 +58,24 @@ private:
 
 	// FSM table:
 	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<idle_s,        need_measure_e, wait_start_s,  wait_start_a,       fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,        success_e, wait_start_s,  wait_start_a,       fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<wait_start_s,  timeout_e,      mb1_request_s, init_mb1_sens_a,    fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<mb1_request_s, success_e,      mb1_wait_s,    wait_response_a,    fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_request_s, end_e,          _1w_delay_s,   start_delay_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<mb1_request_s, skip_e,         mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
-		fsm::Transition<mb1_wait_s,    response_e,     mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<mb1_request_s, iterate_e,      mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
+		fsm::Transition<mb1_wait_s,    iterate_e,      mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<mb1_wait_s,    timeout_e,      mb1_request_s, count_error_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<mb1_wait_s,    error_e,        mb1_request_s, iterate_mb1_sens_a, fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<_1w_delay_s,   success_e,      _1w_request_s, init_1w_sens_a,     fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_delay_s,   timeout_e,      save_s,        save_start_a,       fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<_1w_request_s, success_e,      _1w_wait_s,    wait_response_a,    fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_request_s, end_e,          save_s,        save_start_a,       fsm::Guard::NO_GUARD>,
-		fsm::Transition<_1w_request_s, skip_e,         _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
-		fsm::Transition<_1w_wait_s,    response_e,     _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
+		fsm::Transition<_1w_request_s, iterate_e,      _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
+		fsm::Transition<_1w_wait_s,    iterate_e,      _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
 		fsm::Transition<_1w_wait_s,    timeout_e,      _1w_request_s, count_error_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<_1w_wait_s,    error_e,        _1w_request_s, iterate_1w_sens_a,  fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<save_s,        success_e,      idle_s,        idle_start_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<save_s,        timeout_e,      save_s,        count_error_a,      fsm::Guard::NO_GUARD>,

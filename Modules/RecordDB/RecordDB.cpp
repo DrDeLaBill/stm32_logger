@@ -92,9 +92,95 @@ void RecordDB::cacheRecord(unsigned index)
 
 RecordStatus RecordDB::loadNext()
 {
-    m_targetId += 1;
+	uint32_t address = 0;
+    record_clust_t tmpClust = {};
 
-    return this->load(false);
+#if RECORD_ENABLE_CACHE
+	bool cacheFound = false;
+	for (unsigned i = 0; i < m_cache.count(); i++) {
+		if (clustHasID(m_cache.back().cluster, m_targetId)) {
+			memcpy(
+				reinterpret_cast<void*>(&tmpClust),
+				reinterpret_cast<void*>(const_cast<record_clust_t*>(&m_cache.back().cluster)),
+				record_cluster_size(&m_cache.back().cluster)
+			);
+			m_address  = m_cache.back().address;
+			address    = m_cache.back().address;
+			cacheFound = true;
+			m_cache.pop_back();
+			break;
+		} else {
+			m_cache.pop_back();
+		}
+	}
+#endif
+
+	StorageStatus storageStatus = STORAGE_OK;
+#if RECORD_ENABLE_CACHE
+	if (!cacheFound) {
+#endif
+		storageStatus = storage->find(FIND_MODE_NEXT, &address, PREFIX, m_targetId);
+		if (storageStatus == STORAGE_NOT_FOUND) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "No NEXT log");
+#endif
+			return RECORD_NO_LOG;
+		}
+		if (storageStatus != STORAGE_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Unable to find a NEXT cluster");
+#endif
+			return RECORD_ERROR;
+		}
+
+		RecordStatus recordStatus = preLoadClust(address, tmpClust);
+		if (recordStatus != RECORD_OK) {
+#if RECORD_CLUST_BEDUG
+			printTagLog(TAG, "Preload record cluster error=%u", recordStatus);
+#endif
+			return recordStatus;
+		}
+#if RECORD_ENABLE_CACHE
+	}
+#endif
+
+#if RECORD_CLUST_BEDUG
+	printTagLog(TAG, "Cluster loaded");
+    record_cluster_show(&clust);
+#endif
+
+    memcpy(
+		reinterpret_cast<void*>(&clust),
+		reinterpret_cast<void*>(&tmpClust),
+		sizeof(clust)
+	);
+
+	bool recordFound = false;
+    unsigned idx = 0;
+    while (idx < records_current_count(&tmpClust)) {
+    	record_t* tmp_record = get_record_by_index(&tmpClust, idx);
+        if (tmp_record->id > this->m_targetId) {
+            recordFound = true;
+            break;
+        }
+        idx++;
+    }
+    if (!recordFound) {
+#if RECORD_BEDUG
+        printTagLog(TAG, "Record not found");
+#endif
+        return RECORD_NO_LOG;
+    }
+
+    cacheRecord(idx);
+
+#if RECORD_BEDUG
+    printTagLog(TAG, "Record loaded (cluster index=%u)", idx);
+    record_cluster_show(&tmpClust);
+    record_show(&tmpClust, idx);
+#endif
+
+    return RECORD_OK;
 }
 
 RecordStatus RecordDB::load(bool validateSize)
@@ -356,7 +442,7 @@ bool RecordDB::checkCachedRecordCLuster()
 	}
 
 	for (unsigned i = 0; i < m_cache.size(); i++) {
-		if (hasID(m_cache[i].cluster, m_targetId)) {
+		if (clustHasID(m_cache[i].cluster, m_targetId)) {
 			return true;
 		}
 	}
@@ -381,7 +467,7 @@ bool RecordDB::loadExist(bool validateSize)
         printTagLog(TAG, "Use cached cluster");
 #	endif
     	for (unsigned i = 0; i < m_cache.size(); i++) {
-    		if (hasID(m_cache[i].cluster, m_targetId)) {
+    		if (clustHasID(m_cache[i].cluster, m_targetId)) {
     			memcpy(
 					reinterpret_cast<void*>(&tmpClust),
 					reinterpret_cast<void*>(&m_cache[i].cluster),
@@ -526,7 +612,7 @@ RecordStatus RecordDB::getMaxId(uint32_t* maxId)
 		return recordStatus;
 	}
 
-    *maxId = getMaxID(tmpClust);
+    *maxId = getClustMaxId(tmpClust);
 
 #if RECORD_CLUST_BEDUG
     printTagLog(TAG, "MAX ID received from address=%lu id=%lu", address, *maxId);
@@ -566,7 +652,7 @@ RecordStatus RecordDB::getMinId(uint32_t* minId)
 		return recordStatus;
 	}
 
-    *minId = getMinID(tmpClust);
+    *minId = getClustMinId(tmpClust);
 
 #if RECORD_CLUST_BEDUG
     printTagLog(TAG, "MIN ID received from address=%lu id=%lu", address, *minId);
@@ -575,15 +661,21 @@ RecordStatus RecordDB::getMinId(uint32_t* minId)
     return RECORD_OK;
 }
 
-#if RECORD_ENABLE_CACHE
 
-RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
+RecordStatus RecordDB::updateCache(
+#if RECORD_ENABLE_CACHE
+	uint32_t cacheAfterId
+#else
+	uint32_t
+#endif
+)
 {
+#if RECORD_ENABLE_CACHE
 	if (!m_recordsExist) {
 		return RECORD_NO_LOG;
 	}
 
-	if (hasID(m_cache[0].cluster, cacheAfterId + 1)) {
+	if (clustHasID(m_cache[0].cluster, cacheAfterId + 1)) {
 		return RECORD_OK;
 	}
 
@@ -591,7 +683,7 @@ RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
 	uint32_t maxID = 0;
 	bool maxIDFound = false;
 	for (unsigned i = 0; i < m_cache.size(); i++) {
-		if (hasID(m_cache[i].cluster, cacheAfterId + 1)) {
+		if (clustHasID(m_cache[i].cluster, cacheAfterId + 1)) {
 			maxIDFound = true;
 			break;
 		}
@@ -609,7 +701,7 @@ RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
 	if (maxIDFound) {
 		m_cache.pop_front();
 		for (unsigned i = 0; i < m_cache.size() - index; i++) {
-			maxID = getMaxID(m_cache[i].cluster);
+			maxID = getClustMaxId(m_cache[i].cluster);
 		}
 #if RECORD_CLUST_BEDUG
 		printTagLog(TAG, "Remove cache index=[%u->%u)", 0, index);
@@ -654,7 +746,7 @@ RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
 		tmpCache.address    = address;
 		m_cache.push_back(tmpCache);
 
-		maxID = getMaxID(tmpClust);
+		maxID = getClustMaxId(tmpClust);
 
 #if RECORD_CLUST_BEDUG
 		printTagLog(TAG, "Cache updated");
@@ -664,11 +756,13 @@ RecordStatus RecordDB::updateCache(uint32_t cacheAfterId)
 	m_cacheLoaded = true;
 
 	return RECORD_OK;
+#else
+	return RECORD_ERROR;
+#endif
 }
 
-#endif
 
-uint32_t RecordDB::getMinID(const record_clust_t& clust)
+uint32_t RecordDB::getClustMinId(const record_clust_t& clust)
 {
 	if (!record_cluster_validate(&clust)) {
 		return 0;
@@ -683,7 +777,7 @@ uint32_t RecordDB::getMinID(const record_clust_t& clust)
 	return minId;
 }
 
-uint32_t RecordDB::getMaxID(const record_clust_t& clust)
+uint32_t RecordDB::getClustMaxId(const record_clust_t& clust)
 {
 	if (!record_cluster_validate(&clust)) {
 		return 0;
@@ -698,10 +792,10 @@ uint32_t RecordDB::getMaxID(const record_clust_t& clust)
 	return maxId;
 }
 
-bool RecordDB::hasID(const record_clust_t& clust, uint32_t ID)
+bool RecordDB::clustHasID(const record_clust_t& clust, uint32_t ID)
 {
 	if (!record_cluster_validate(&clust)) {
 		return false;
 	}
-	return getMinID(clust) <= ID && ID <= getMaxID(clust);
+	return getClustMinId(clust) <= ID && ID <= getClustMaxId(clust);
 }

@@ -21,16 +21,17 @@ void InfoWatchdog::check()
 		return;
 	}
 
+	RecordDB::updateCache(DeviceInfo::current_id::get());
+
 	if (!is_status(NEED_LOAD_MAX_RECORD) &&
 		!is_status(NEED_LOAD_MIN_RECORD) &&
-		DeviceInfo::record_loaded::get() &&
+		!DeviceInfo::next_record::get() &&
 		!SettingsInterface::need_mb1_id_update::get()
 	) {
 #if RECORD_ENABLE_CACHE
 		if (DeviceInfo::current_id::get() >= DeviceInfo::max_id::get()) {
 			DeviceInfo::current_id::set(0);
 		}
-		RecordDB::updateCache(DeviceInfo::current_id::get());
 #endif
 		return;
 	}
@@ -56,10 +57,11 @@ void InfoWatchdog::check()
 		return;
 	}
 
-	if (!DeviceInfo::record_loaded::get()) {
+	if (DeviceInfo::next_record::get()) {
 		status = loadRecord();
 		if (status != RECORD_ERROR) {
 			DeviceInfo::record_loaded::set(1);
+			DeviceInfo::next_record::set(0);
 		} else {
 			DeviceInfo::record_loaded::set(0);
 		}
@@ -140,10 +142,8 @@ RecordStatus InfoWatchdog::loadRecord()
 		DeviceInfo::current_id::set(record.record.id + 1);
 		return status;
 	}
-
-	DeviceInfo::current_id::set(0);
-
 	if (status != RECORD_OK) {
+		DeviceInfo::current_id::set(0);
 		return status;
 	}
 

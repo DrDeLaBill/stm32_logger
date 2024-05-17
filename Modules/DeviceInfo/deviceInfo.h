@@ -21,6 +21,7 @@ public:
         uint64_t min_id;
         uint64_t max_id;
         uint64_t current_id;
+        uint8_t  next_record;
         uint64_t current_mbodbus1_count;
         uint64_t current_1wire_count;
         uint8_t  record_loaded;
@@ -49,6 +50,12 @@ public:
     	static unsigned index(unsigned) { return 0; }
     };
     struct current_id
+    {
+    	static void set(uint64_t value, unsigned index = 0);
+    	static uint64_t get(unsigned index = 0);
+    	static unsigned index(unsigned) { return 0; }
+    };
+    struct next_record
     {
     	static void set(uint64_t value, unsigned index = 0);
     	static uint64_t get(unsigned index = 0);

@@ -303,6 +303,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void system_fault_handler()
 {
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    b_assert(__FILE__, __LINE__, "System fault");
 	set_error(INTERNAL_ERROR);
 #ifdef DEBUG
 	while (1);
