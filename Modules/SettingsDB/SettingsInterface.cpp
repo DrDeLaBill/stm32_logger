@@ -2,8 +2,8 @@
 
 #include "SettingsInterface.h"
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "settings.h"
 
 

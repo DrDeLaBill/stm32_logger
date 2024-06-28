@@ -5,7 +5,7 @@
 #include <limits>
 
 #include "usb.h"
-#include "log.h"
+#include "glog.h"
 #include "main.h"
 #include "soul.h"
 #include "sensor.h"
@@ -71,7 +71,7 @@ void PowerWatchdog::start_DMA_a::operator ()()
 
 void PowerWatchdog::check_power_a::operator ()()
 {
-	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * adcLevel) / ADC_MAX);
+	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * adcLevel) / STM_ADC_MAX);
 	if ((vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) && !usb_connected()) {
 		fsm.push_event(error_e{});
 	} else {

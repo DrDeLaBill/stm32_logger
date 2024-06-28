@@ -2,8 +2,8 @@
 
 #include "onewire_driver.h"
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "hal_defs.h"
 
 #include "onewire_prootocl.h"

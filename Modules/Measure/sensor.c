@@ -6,10 +6,10 @@
 #include <stdbool.h>
 
 #include "usb.h"
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
 #include "main.h"
-#include "utils.h"
+#include "gutils.h"
 #include "gtime.h"
 #include "bmacro.h"
 #include "hal_defs.h"

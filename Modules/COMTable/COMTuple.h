@@ -11,7 +11,7 @@
 #ifdef USE_HAL_DRIVER
 #	include "com_defs.h"
 
-#	include "log.h"
+#	include "glog.h"
 #   include "bmacro.h"
 #   include "variables.h"
 #else

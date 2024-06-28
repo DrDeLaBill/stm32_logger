@@ -6,9 +6,9 @@
 #include <cstring>
 #include <stdint.h>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "clock.h"
 #include "w25qxx.h"
 #include "bmacro.h"

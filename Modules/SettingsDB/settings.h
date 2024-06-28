@@ -46,7 +46,7 @@ typedef enum _sensor_status_t {
 
 typedef struct __attribute__((packed)) _settings_t  {
 	 // Device type
-	uint16_t  dv_type;
+	uint16_t dv_type;
 	 // Software version
     uint8_t  sw_id;
     // Firmware version

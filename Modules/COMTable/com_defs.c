@@ -8,8 +8,8 @@
 #   include "usbd_cdc_if.h"
 #endif
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "bmacro.h"
 
 

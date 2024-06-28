@@ -6,8 +6,8 @@
 
 #include <cstdint>
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "com_defs.h"
 
 #include "Timer.h"

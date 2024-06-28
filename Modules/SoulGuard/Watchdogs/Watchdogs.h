@@ -31,6 +31,7 @@ struct StackWatchdog
 private:
 	static constexpr char TAG[] = "STCK";
 	static unsigned lastFree;
+	static utl::Timer timer;
 
 public:
 	void check();

@@ -9,13 +9,13 @@
 #include <cstring>
 #include <unordered_map>
 
-#include "utils.h"
+#include "gutils.h"
 #include "com_defs.h"
 #include "COMTable.h"
 #include "COMTuple.h"
 
 #ifdef USE_HAL_DRIVER
-#	include "log.h"
+#	include "glog.h"
 #	include "bmacro.h"
 #else
 #	include "app_exception.h"

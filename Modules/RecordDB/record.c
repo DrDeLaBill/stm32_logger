@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include "log.h"
+#include "glog.h"
 #include "clock.h"
 #include "bmacro.h"
 #include "settings.h"

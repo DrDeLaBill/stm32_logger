@@ -32,7 +32,7 @@
 #include "bedug.h"
 
 #include "usb.h"
-#include "log.h"
+#include "glog.h"
 #include "w25qxx.h"
 #include "hal_defs.h"
 #include "settings.h"

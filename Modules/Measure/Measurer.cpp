@@ -5,10 +5,10 @@
 #include <limits>
 #include <cstring>
 
-#include "log.h"
+#include "glog.h"
 #include "main.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "sensor.h"
 #include "bmacro.h"
 #include "sensor.h"
