@@ -2,19 +2,61 @@
 
 #include "Watchdogs.h"
 
+#include <random>
+
 #include "main.h"
 #include "soul.h"
+#include "w25qxx.h"
+#include "system.h"
+#include "hal_defs.h"
 
-#include "StorageDriver.h"
-#include "CodeStopwatch.h"
+
+#define ERRORS_MAX (5)
 
 
-utl::Timer MemoryWatchdog::timer(SECOND_MS);
-
+MemoryWatchdog::MemoryWatchdog():
+	errorTimer(TIMEOUT_MS), timer(SECOND_MS), errors(0), timerStarted(false)
+	{}
 
 void MemoryWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("MEMw", WATCHDOG_TIMEOUT_MS);
+	if (timer.wait()) {
+		return;
+	}
+	timer.start();
 
-	// TODO: if device has MEMORY_ERROR: check memory every 1000 ms
+	uint8_t data = 0;
+	flash_status_t status = FLASH_OK;
+	if (is_status(MEMORY_READ_FAULT) ||
+		is_status(MEMORY_WRITE_FAULT) ||
+		is_error(MEMORY_ERROR)
+	) {
+		uint32_t address = static_cast<uint32_t>(rand()) % (flash_w25qxx_get_pages_count() * FLASH_W25_PAGE_SIZE);
+
+		status = flash_w25qxx_read(address, &data, sizeof(data));
+		if (status == FLASH_OK) {
+			reset_status(MEMORY_READ_FAULT);
+			status = flash_w25qxx_write(address, &data, sizeof(data));
+		} else {
+			errors++;
+		}
+		if (status == FLASH_OK) {
+			reset_status(MEMORY_WRITE_FAULT);
+			timerStarted = false;
+			errors = 0;
+		} else {
+			errors++;
+		}
+	}
+
+	(errors > ERRORS_MAX) ? set_error(MEMORY_ERROR) : reset_error(MEMORY_ERROR);
+
+	if (!timerStarted && is_error(MEMORY_ERROR)) {
+		timerStarted = true;
+		errorTimer.start();
+	}
+
+	if (timerStarted && !errorTimer.wait()) {
+		system_error_handler(MEMORY_ERROR);
+	}
 }

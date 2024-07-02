@@ -90,7 +90,7 @@ void      record_cluster_show(const record_clust_t* clust);
 void      record_show(const record_clust_t* clust, const unsigned index);
 record_t* get_record_by_index(const record_clust_t* clust, const unsigned index);
 
-unsigned         record_modbus1_sensors_count(const record_clust_t* clust);
+uint8_t record_modbus1_sensors_count(const record_clust_t* clust);
 modbus_sensor_t* get_record_modbus1_sensor(record_t* record, const unsigned sensor_index);
 void set_record_modbus1_measure(
 	record_t*              record,
@@ -98,7 +98,7 @@ void set_record_modbus1_measure(
 	const modbus_sensor_t* measure
 );
 
-unsigned         record_1wire_sensors_count(const record_clust_t* clust);
+uint8_t record_1wire_sensors_count(const record_clust_t* clust);
 _1wire_sensor_t* get_record_1wire_sensor(record_t* record, const uint8_t modbus1_count, const unsigned sensor_index);
 void set_record_1wire_measure(
 	record_t*              record,

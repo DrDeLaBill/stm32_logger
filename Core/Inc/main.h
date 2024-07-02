@@ -90,6 +90,8 @@ int _write(int, uint8_t *ptr, int len);
 #define POWER_L3_GPIO_Port GPIOC
 #define POWER_L2_Pin GPIO_PIN_9
 #define POWER_L2_GPIO_Port GPIOC
+#define SD_CS_Pin GPIO_PIN_9
+#define SD_CS_GPIO_Port GPIOA
 #define STEPUP_5V_ON_Pin GPIO_PIN_12
 #define STEPUP_5V_ON_GPIO_Port GPIOC
 #define MODBUS_EN_Pin GPIO_PIN_5
@@ -106,46 +108,47 @@ int _write(int, uint8_t *ptr, int len);
 /* USER CODE BEGIN Private defines */
 
 // General settings
-#define GENERAL_TIMEOUT_MS ((uint32_t)100)
+#define GENERAL_TIMEOUT_MS    ((uint32_t)100)
+#define LOGGER_REF_VOLTAGEx10 ((uint32_t)18)
 
-// SD card
-extern SPI_HandleTypeDef   hspi1;
-#define FLASH_SPI          (hspi1)
+// FLASH
+extern SPI_HandleTypeDef      hspi1;
+#define FLASH_SPI             (hspi1)
+
+// FLASH
+extern SPI_HandleTypeDef      hspi1;
+#define SD_HSPI               (hspi1)
 
 // MODBUS
-#define MODBUS_TIMEOUS_MS  ((uint32_t)70)
-#define MODBUS_SENS_COUNT  ((uint8_t)127)
+#define MODBUS_TIMEOUS_MS     ((uint32_t)70)
+#define MODBUS_SENS_COUNT     ((uint8_t)127)
 
 // MODBUS 1
-extern UART_HandleTypeDef  huart1;
-#define MODBUS1_UART       (huart1)
+extern UART_HandleTypeDef     huart1;
+#define MODBUS1_UART          (huart1)
 
 // MODBUS 2
-extern UART_HandleTypeDef  huart6;
-#define MODBUS2_UART       (huart6)
+extern UART_HandleTypeDef     huart6;
+#define MODBUS2_UART          (huart6)
 
 // Bedug UART
-extern UART_HandleTypeDef  huart2;
-#define BEDUG_UART         (huart2)
-
-// USB TIM
-extern TIM_HandleTypeDef   htim4;
-#define USB_TIM            (htim4)
+extern UART_HandleTypeDef     huart2;
+#define BEDUG_UART            (huart2)
 
 // 1WIRE TIM
-extern TIM_HandleTypeDef   htim5;
-#define _1WIRE_TIM         (htim5)
+extern TIM_HandleTypeDef      htim5;
+#define _1WIRE_TIM            (htim5)
 
 // USB & LED TIM
-extern TIM_HandleTypeDef   htim9;
-#define LED_TIM            (htim9)
+extern TIM_HandleTypeDef      htim9;
+#define LED_TIM               (htim9)
 
 // Power supply
-extern ADC_HandleTypeDef   hadc1;
-#define POWER_ADC          (hadc1)
+extern ADC_HandleTypeDef      hadc1;
+#define POWER_ADC             (hadc1)
 
-
-void system_fault_handler();
+// RTC
+extern RTC_HandleTypeDef      hrtc;
 
 
 /* USER CODE END Private defines */

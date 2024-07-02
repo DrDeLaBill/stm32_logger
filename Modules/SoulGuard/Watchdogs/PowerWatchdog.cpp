@@ -9,16 +9,15 @@
 #include "main.h"
 #include "soul.h"
 #include "sensor.h"
+#include "system.h"
 #include "hal_defs.h"
 
 #include "Timer.h"
 #include "CodeStopwatch.h"
-#include "USBController.h"
 
 
 fsm::FiniteStateMachine<PowerWatchdog::fsm_table> PowerWatchdog::fsm;
 utl::Timer PowerWatchdog::timer(PowerWatchdog::TIMEOUT_MS);
-uint32_t PowerWatchdog::adcLevel = 0;
 
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
@@ -65,13 +64,11 @@ void PowerWatchdog::_check_s::operator ()() { }
 void PowerWatchdog::start_DMA_a::operator ()()
 {
 	timer.start();
-
-	HAL_ADC_Start_DMA(&POWER_ADC, &adcLevel, 1);
 }
 
 void PowerWatchdog::check_power_a::operator ()()
 {
-	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * adcLevel) / STM_ADC_MAX);
+	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * SYSTEM_ADC_VOLTAGE) / STM_ADC_MAX);
 	if ((vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) && !usb_connected()) {
 		fsm.push_event(error_e{});
 	} else {

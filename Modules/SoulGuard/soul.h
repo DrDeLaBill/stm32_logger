@@ -3,7 +3,6 @@
 #ifndef __SOUL_H
 #define __SOUL_H
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,21 +19,29 @@ typedef enum _SOUK_STATUS {
 	/* Device statuses start */
 	STATUSES_START = 0,
 
-	WAIT_LOAD,
-	NEED_INIT_RECORD_TMP,
-	NEED_SAVE_RECORD,
+	LOADING,
+	WORKING,
+	RCC_FAULT,
+	MEMORY_READ_FAULT,
+	MEMORY_WRITE_FAULT,
 	NEED_MEASURE,
 	NEED_STANDBY,
-	NEED_LOAD_MIN_RECORD,
-	NEED_LOAD_MAX_RECORD,
 	SETTINGS_INITIALIZED,
 	NEED_LOAD_SETTINGS,
 	NEED_SAVE_SETTINGS,
-	NEED_REGISTRATE_1WIRE,
-	NEED_ENABLE_SENSORS,
+	NO_SENSOR,
+	MANUAL_NEED_VALVE_UP,
+	MANUAL_NEED_VALVE_DOWN,
+	AUTO_NEED_VALVE_UP,
+	AUTO_NEED_VALVE_DOWN,
 	MODBUS_FAULT,
 	PUMP_FAULT,
 	RTC_FAULT,
+	CAN_FAULT,
+	NO_BIGSKI,
+
+	NEED_REGISTRATE_1WIRE,
+	NEED_ENABLE_SENSORS,
 
 	/* Device statuses end */
 	STATUSES_END,
@@ -42,14 +49,28 @@ typedef enum _SOUK_STATUS {
 	/* Device errors start */
 	ERRORS_START,
 
-	SETTINGS_LOAD_ERROR,
-	INTERNAL_ERROR,
-	MEMORY_ERROR,
+	MCU_ERROR,
+	RCC_ERROR,
+	RTC_ERROR,
 	POWER_ERROR,
+	MEMORY_ERROR,
 	STACK_ERROR,
-	LOAD_ERROR,
 	RAM_ERROR,
 	USB_ERROR,
+	SETTINGS_LOAD_ERROR,
+	APP_MODE_ERROR,
+	VALVE_ERROR,
+	LOAD_ERROR,
+
+	NON_MASKABLE_INTERRUPT,
+	HARD_FAULT,
+	MEM_MANAGE,
+	BUS_FAULT,
+	USAGE_FAULT,
+
+	ASSERT_ERROR,
+	ERROR_HANDLER_CALLED,
+	INTERNAL_ERROR,
 
 	/* Device errors end */
 	ERRORS_END,
@@ -60,21 +81,24 @@ typedef enum _SOUK_STATUS {
 
 
 typedef struct _soul_t {
-	uint8_t errors[__div_up(SOUL_STATUSES_END - 1, BITS_IN_BYTE)];
+	unsigned last_err;
+	uint8_t statuses[__div_up(SOUL_STATUSES_END - 1, BITS_IN_BYTE)];
 } soul_t;
 
+
+unsigned get_last_error();
+void set_last_error(SOUL_STATUS error);
 
 bool has_errors();
 
 bool is_error(SOUL_STATUS error);
 void set_error(SOUL_STATUS error);
 void reset_error(SOUL_STATUS error);
+unsigned get_first_error();
 
 bool is_status(SOUL_STATUS status);
 void set_status(SOUL_STATUS status);
 void reset_status(SOUL_STATUS status);
-
-void restart_i2c_errata();
 
 
 #ifdef __cplusplus

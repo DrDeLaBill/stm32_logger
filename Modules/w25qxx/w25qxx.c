@@ -377,7 +377,7 @@ flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len)
 			return status;
     	}
 
-    	uint8_t page_buf[FLASH_W25_PAGE_SIZE] = {};
+    	uint8_t page_buf[FLASH_W25_PAGE_SIZE] = {0};
 		status = flash_w25qxx_read(addr + cur_len, page_buf, write_len);
     	if (status != FLASH_OK) {
 #if FLASH_BEDUG
@@ -568,7 +568,7 @@ flash_status_t _flash_data_cmp(uint32_t addr, uint8_t* data, uint32_t len, bool*
 			needed_len = len - cur_len;
 		}
 
-		uint8_t read_data[FLASH_W25_PAGE_SIZE] = {};
+		uint8_t read_data[FLASH_W25_PAGE_SIZE] = {0};
 		flash_status_t status = flash_w25qxx_read(addr + cur_len, read_data, needed_len);
 		if (status != FLASH_OK) {
 #if FLASH_DEBUG
@@ -594,7 +594,7 @@ flash_status_t flash_w25qxx_erase_data(uint32_t addr, uint32_t len)
 
 	for (uint32_t cur_sector_idx = addr / FLASH_W25_SECTOR_SIZE; cur_sector_idx < end_sector_idx; cur_sector_idx++) {
 		uint32_t sector_addr = cur_sector_idx * FLASH_W25_SECTOR_SIZE;
-		uint8_t  sector_buf[FLASH_W25_SECTOR_SIZE] = {};
+		uint8_t  sector_buf[FLASH_W25_SECTOR_SIZE] = {0};
 
 		/* Read target sector BEGIN */
 		flash_status_t status = flash_w25qxx_read(sector_addr, sector_buf, sizeof(sector_buf));

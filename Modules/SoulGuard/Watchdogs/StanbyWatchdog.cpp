@@ -21,11 +21,6 @@
 #define USE_WKUP_RTC_ALARM (true)
 
 
-#if USE_WKUP_PA0
-#	include "USBController.h"
-#endif
-
-
 #if USE_WKUP_RTC_ALARM
 extern RTC_HandleTypeDef hrtc;
 #endif
@@ -224,7 +219,7 @@ bool StandbyWatchdog::needEnterStandby()
 		return true;
 	}
 
-	if (is_status(WAIT_LOAD)) {
+	if (is_status(LOADING)) {
 		return false;
 	}
 
@@ -249,7 +244,7 @@ uint32_t StandbyWatchdog::sleepTimeSec()
 
 void StandbyWatchdog::_init_s::operator()()
 {
-	if (!is_status(WAIT_LOAD)) {
+	if (!is_status(LOADING)) {
 		fsm.push_event(loaded_e{});
 	} else if (is_status(NEED_STANDBY)) {
 		fsm.push_event(need_standby_e{});

@@ -2,12 +2,11 @@
 
 #include "Watchdogs.h"
 
+#include "app.h"
 #include "glog.h"
 #include "soul.h"
 #include "settings.h"
 #include "onewire_driver.h"
-
-#include "deviceInfo.h"
 
 
 fsm::FiniteStateMachine<OneWireWatcher::fsm_table> OneWireWatcher::fsm;
@@ -27,7 +26,7 @@ void OneWireWatcher::_idle_s::operator()()
 	if (!onewire_driver_ready()) {
 		return;
 	}
-	if (DeviceInfo::need_registrate_1wire::get()) {
+	if (app_info.need_registrate_1wire) {
 		memset(settings._1wire_address, 0, sizeof(settings._1wire_address));
 		index = 0;
 		timeoutTimer.start();
@@ -52,7 +51,7 @@ void OneWireWatcher::_start_s::operator ()()
 void OneWireWatcher::_registrate_s::operator()()
 {
 	if (index >= __arr_len(settings._1wire_address) ||
-		!DeviceInfo::need_registrate_1wire::get()
+		!app_info.need_registrate_1wire
 	) {
 		fsm.push_event(done_e{});
 	}
@@ -100,7 +99,7 @@ void OneWireWatcher::_end_s::operator()()
 
 void OneWireWatcher::timeout_a::operator ()()
 {
-	DeviceInfo::need_registrate_1wire::set(0);
+	app_info.need_registrate_1wire = 0;
 	reset_status(NEED_ENABLE_SENSORS);
 	set_status(NEED_LOAD_SETTINGS);
 	onewire_driver_clear();
@@ -108,7 +107,7 @@ void OneWireWatcher::timeout_a::operator ()()
 
 void OneWireWatcher::done_a::operator ()()
 {
-	DeviceInfo::need_registrate_1wire::set(0);
+	app_info.need_registrate_1wire = 0;
 	reset_status(NEED_ENABLE_SENSORS);
 }
 

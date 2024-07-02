@@ -286,7 +286,7 @@ void _fsm_onewire_driver_error()
 void _fsm_onewire_driver_search_start()
 {
 	uint8_t request[] = { _1WIRE_SEARCH_ROM };
-	bool data[sizeof(request) * BITS_IN_BYTE] = {};
+	bool data[sizeof(request) * BITS_IN_BYTE] = {0};
     for (unsigned i = 0; i < sizeof(request) * BITS_IN_BYTE; i++) {
     	data[i] = ((request[i / BITS_IN_BYTE] >> (i % BITS_IN_BYTE)) & 0x01);
     }
@@ -402,7 +402,7 @@ void _fsm_onewire_driver_search_end()
 		return;
 	}
 
-	uint8_t buff[sizeof(driver_state.address)] = {};
+	uint8_t buff[sizeof(driver_state.address)] = {0};
 	for (unsigned i = 0; i < _1WIRE_ADDRESS_BIT_SIZE; i++) {
 		bool bit = (driver_state.tree[i] == _1WIRE_SEARCH_UNIT_BIT) ? 1 : 0;
 		if (__get_bit(driver_state.tree_mask, i) > 0) {
@@ -433,7 +433,7 @@ void _fsm_onewire_driver_search_end()
 void _fsm_onewire_driver_convert_start()
 {
 	uint8_t request[] = { _1WIRE_SKIP_ROM, _1WIRE_DS18B20_CONVERT };
-	bool data[sizeof(request) * BITS_IN_BYTE] = {};
+	bool data[sizeof(request) * BITS_IN_BYTE] = {0};
     for (unsigned i = 0; i < sizeof(request) * BITS_IN_BYTE; i++) {
     	data[i] = ((request[i / BITS_IN_BYTE] >> (i % BITS_IN_BYTE)) & 0x01);
     }
@@ -527,7 +527,7 @@ void _fsm_onewire_driver_read_recieve_wait()
 		return;
 	}
 
-	uint8_t buff[_1WIRE_DS18B20_BITS_COUNT / BITS_IN_BYTE] = {};
+	uint8_t buff[_1WIRE_DS18B20_BITS_COUNT / BITS_IN_BYTE] = {0};
 	for (unsigned i = 0; i < _1WIRE_DS18B20_BITS_COUNT; i++) {
 		buff[i / BITS_IN_BYTE] |= ((onewire_protocol_response()[i]) << (i % BITS_IN_BYTE));
 	}

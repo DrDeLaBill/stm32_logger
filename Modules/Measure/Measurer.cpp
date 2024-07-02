@@ -18,7 +18,6 @@
 #include "modbus_rtu_master.h"
 
 #include "Record.h"
-#include "USBController.h"
 
 
 #define MEASURE_VALUE_DELAY_MS      ((uint32_t)500)
@@ -198,7 +197,7 @@ void Measure::wait_response_a::operator ()()
 
 void Measure::save_start_a::operator ()()
 {
-	set_status(WAIT_LOAD);
+	set_status(LOADING);
 	fsm.clear_events();
 	if (record.save() == RECORD_OK) {
 		fsm.push_event(success_e{});
@@ -209,7 +208,7 @@ void Measure::save_start_a::operator ()()
 	Measure::errorsCount = 0;
 	timer.changeDelay(GENERAL_TIMEOUT_MS);
 	timer.start();
-	reset_status(WAIT_LOAD);
+	reset_status(LOADING);
 }
 
 void Measure::idle_start_a::operator ()()

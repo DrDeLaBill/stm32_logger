@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "rtc.h"
 #include "spi.h"
 #include "tim.h"
@@ -31,9 +32,11 @@
 /* USER CODE BEGIN Includes */
 #include "bedug.h"
 
+#include "app.h"
 #include "usb.h"
 #include "glog.h"
 #include "w25qxx.h"
+#include "system.h"
 #include "hal_defs.h"
 #include "settings.h"
 #include "onewire_driver.h"
@@ -41,12 +44,12 @@
 #include "Timer.h"
 #include "Record.h"
 #include "Measure.h"
+#include "gprotocol.h"
 #include "Watchdogs.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
 #include "StorageDriver.h"
 #include "CodeStopwatch.h"
-#include "USBController.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,7 +77,6 @@ static constexpr char MAIN_TAG[] = "MAIN";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -83,8 +85,6 @@ StorageDriver storageDriver;
 StorageAT* storage;
 
 utl::Timer exitTimer(10000);
-
-USBController usbc;
 /* USER CODE END 0 */
 
 /**
@@ -94,6 +94,7 @@ USBController usbc;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	system_pre_load();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,13 +103,18 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  if (is_error(RCC_ERROR)) {
+	  system_clock_hsi_config();
+  } else {
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  }
 
+#ifdef DEBUG
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -121,38 +127,51 @@ int main(void)
   MX_USART6_UART_Init();
   MX_USB_DEVICE_Init();
   MX_RTC_Init();
-  MX_TIM4_Init();
   MX_TIM5_Init();
   MX_TIM9_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-	// TODO: RAM analyzer & crystal check & clock check & modbus check & reload controller
+#else
+
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_ADC1_Init();
+  MX_SPI1_Init();
+  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
+  MX_USART6_UART_Init();
+  MX_USB_DEVICE_Init();
+  MX_RTC_Init();
+  MX_TIM5_Init();
+  MX_FATFS_Init();
+
+#endif
+
 	SoulGuard<
 		RestartWatchdog,
 		PowerWatchdog,
 		MemoryWatchdog,
 		StackWatchdog,
-		StandbyWatchdog
-	> hardwareSoulGuard;
-	SoulGuard<
+		StandbyWatchdog,
 		SettingsWatchdog,
 		OneWireWatcher,
-		InfoWatchdog,
 		RTCWatchdog
-	> softwareSoulGuard;
+	> soulGuard;
 	Measure measure;
 
-	set_status(WAIT_LOAD);
+	set_status(LOADING);
 	set_error(POWER_ERROR);
-//	set_error(MEMORY_ERROR); // TODO
 	set_error(STACK_ERROR);
 
 	HAL_Delay(100);
 
 	exitTimer.start();
 
-	HAL_TIM_Base_Start_IT(&USB_TIM);
 	HAL_TIM_Base_Start_IT(&LED_TIM);
 	HAL_TIM_Base_Start_IT(&_1WIRE_TIM);
+
+	// DIO_SPI
+	DIO_SPI_Delay_cb = &HAL_Delay;
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
@@ -161,10 +180,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-	while (has_errors()) {
-		hardwareSoulGuard.defend();
-	}
+	// Start USB
+//    gpCounter++;
 
     flash_w25qxx_init();
     storage = new StorageAT(
@@ -172,30 +189,44 @@ int main(void)
 		&storageDriver
 	);
 
-    set_status(NEED_LOAD_MIN_RECORD);
-    set_status(NEED_LOAD_MAX_RECORD);
+    system_rtc_test();
 
-    while (is_status(WAIT_LOAD)) {
-    	hardwareSoulGuard.defend();
-    	softwareSoulGuard.defend();
+	while (has_errors() || is_status(LOADING)) {
+    	soulGuard.defend();
     }
+
+    system_post_load();
+
+    bool foundError = false;
+    utl::Timer errTimer(30 * SECOND_MS);
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
-    utl::Timer timer(SECOND_MS);
-    while (true)
+	set_status(WORKING);
+    while (1)
 	{
-		utl::CodeStopwatch stopwatch(MAIN_TAG, GENERAL_TIMEOUT_MS);
+		utl::CodeStopwatch stopwatch(MAIN_TAG, 3 * GENERAL_TIMEOUT_MS);
 
-		hardwareSoulGuard.defend();
-		softwareSoulGuard.defend();
+		soulGuard.defend();
 
-		if (has_errors() || is_status(WAIT_LOAD)) {
+		app_proccess();
+
+		if (foundError && !errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error());
+		}
+
+		if (has_errors() || is_status(LOADING)) {
+			if (!foundError) {
+				foundError = true;
+				errTimer.start();
+			}
 			continue;
 		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		usb_proccess();
+
 		onewire_driver_tick();
 
 		measure.process();
@@ -209,44 +240,44 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-	RCC_OscInitTypeDef RCC_OscInitStruct = {};
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
 
-	/** Configure the main internal regulator output voltage
-	*/
-	__HAL_RCC_PWR_CLK_ENABLE();
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
-	/** Initializes the RCC Oscillators according to the specified parameters
-	* in the RCC_OscInitTypeDef structure.
-	*/
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 4;
-	RCC_OscInitStruct.PLL.PLLN = 168;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-	RCC_OscInitStruct.PLL.PLLQ = 7;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Initializes the CPU, AHB and APB buses clocks
-	*/
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-								 |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-	{
-		Error_Handler();
-	}
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */
@@ -266,14 +297,7 @@ int _write(int, uint8_t *ptr, int len) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if (htim->Instance == USB_TIM.Instance) {
-		if (!has_errors()) {
-			exitTimer.start();
-			usbc.proccess();
-		} else if (!exitTimer.wait() && !usb_connected()) {
-			set_status(NEED_STANDBY);
-		}
-	} else if(htim->Instance == LED_TIM.Instance) {
+	if(htim->Instance == LED_TIM.Instance) {
 #ifdef DEBUG
 		static utl::Timer timer(SECOND_MS / 10);
 		static utl::Timer errTimer(SECOND_MS);
@@ -289,7 +313,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			errEnabled = !errEnabled;
 			errTimer.start();
 		} else if (has_errors()) {
-		} else if (is_status(WAIT_LOAD)) {
+		} else if (is_status(LOADING)) {
 			timer.changeDelay(SECOND_MS / 50);
 			errEnabled = false;
 		} else if (!has_errors()) {
@@ -298,18 +322,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 #endif
 	}
-}
-
-void system_fault_handler()
-{
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-    b_assert(__FILE__, __LINE__, "System fault");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
 }
 
 /* USER CODE END 4 */
@@ -321,14 +333,9 @@ void system_fault_handler()
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ERROR_HANDLER_CALLED;
+	system_error_handler(err);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -343,14 +350,9 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	b_assert((char*)file, line, "Wrong parameters value");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ASSERT_ERROR;
+	system_error_handler(err);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

@@ -16,7 +16,6 @@
 
 #include "record.h"
 #include "StorageAT.h"
-#include "deviceInfo.h"
 #include "StorageDriver.h"
 #include "CodeStopwatch.h"
 
@@ -241,8 +240,6 @@ RecordStatus RecordDB::load(bool validateSize)
 
 RecordStatus RecordDB::save()
 {
-	DeviceInfo::record_loaded::set(0);
-
 #if RECORD_ENABLE_CACHE
 	m_recordsExist = true;
 #endif
@@ -351,8 +348,6 @@ RecordStatus RecordDB::save()
 #endif
 
     if (recordStatus == RECORD_OK) {
-    	set_status(NEED_LOAD_MIN_RECORD);
-    	set_status(NEED_LOAD_MAX_RECORD);
 #ifdef RECORD_BEDUG
         record_cluster_show(&clust);
     	record_show(&clust, emptyIndex);
@@ -567,7 +562,6 @@ bool RecordDB::createNew()
 
     if (findMode == FIND_MODE_MIN) {
         storageStatus = storage->clearAddress(address);
-        set_status(NEED_LOAD_MIN_RECORD);
     }
 	if (findMode == FIND_MODE_MIN && storageStatus != STORAGE_OK) {
 		BEDUG_ASSERT((storageStatus == STORAGE_OK), "Unable to erase memory for log record");

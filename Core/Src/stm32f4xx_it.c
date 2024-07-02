@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "main.h"
+#include "soul.h"
+#include "system.h"
 #include "onewire_prootocl.h"
 /* USER CODE END Includes */
 
@@ -59,7 +61,6 @@
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 extern DMA_HandleTypeDef hdma_adc1;
 extern RTC_HandleTypeDef hrtc;
-extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern TIM_HandleTypeDef htim9;
 extern UART_HandleTypeDef huart1;
@@ -77,7 +78,8 @@ extern UART_HandleTypeDef huart6;
 void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-
+	system_error_handler(NON_MASKABLE_INTERRUPT);
+	return;
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
    while (1)
@@ -92,8 +94,8 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-	NVIC_SystemReset(); // TODO: normal reset for all fault handlers
-	system_fault_handler();
+	system_error_handler(HARD_FAULT);
+	return;
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -108,8 +110,8 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-	NVIC_SystemReset(); // TODO: normal reset for all fault handlers
-	system_fault_handler();
+	system_error_handler(MEM_MANAGE);
+	return;
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -124,8 +126,8 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-	NVIC_SystemReset(); // TODO: normal reset for all fault handlers
-	system_fault_handler();
+	system_error_handler(BUS_FAULT);
+	return;
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -140,8 +142,8 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-	NVIC_SystemReset(); // TODO: normal reset for all fault handlers
-	system_fault_handler();
+	system_error_handler(USAGE_FAULT);
+	return;
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {
@@ -222,20 +224,6 @@ void TIM1_BRK_TIM9_IRQHandler(void)
   /* USER CODE BEGIN TIM1_BRK_TIM9_IRQn 1 */
 
   /* USER CODE END TIM1_BRK_TIM9_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM4 global interrupt.
-  */
-void TIM4_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM4_IRQn 0 */
-
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
-
-  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**

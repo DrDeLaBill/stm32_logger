@@ -9,10 +9,8 @@ extern "C" {
 #endif
 
 
-#include <stdbool.h>
-
-
 bool usb_connected();
+void usb_proccess();
 
 
 #ifdef __cplusplus

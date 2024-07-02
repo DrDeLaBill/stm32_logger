@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "soul.h"
 #include "glog.h"
 #include "clock.h"
 #include "gutils.h"
@@ -13,7 +14,7 @@
 
 static const char SETTINGS_TAG[] = "STNG";
 
-settings_t settings = {};
+settings_t settings = {0};
 
 
 settings_t* settings_get()
@@ -62,11 +63,28 @@ bool settings_check(settings_t* other)
 	return true;
 }
 
+void settings_repair(settings_t* other)
+{
+	set_status(NEED_SAVE_SETTINGS);
+
+	if (other->fw_id != FW_VERSION) {
+		other->fw_id = FW_VERSION;
+	}
+
+	if (other->sw_id == SW_VERSION) {
+		return;
+	}
+
+	// TODO: for new versions
+
+	settings_reset(&settings);
+}
+
 void settings_show()
 {
-	RTC_DateTypeDef date = {};
+	RTC_DateTypeDef date = {0};
 	clock_get_rtc_date(&date);
-	RTC_TimeTypeDef time = {};
+	RTC_TimeTypeDef time = {0};
 	clock_get_rtc_time(&time);
 
 	printPretty("\n");

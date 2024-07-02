@@ -105,9 +105,16 @@ public:
 struct MemoryWatchdog
 {
 private:
-	static utl::Timer timer;
+	static constexpr uint32_t TIMEOUT_MS = 15000;
+
+	utl::Timer errorTimer;
+	utl::Timer timer;
+	uint8_t errors;
+	bool timerStarted;
 
 public:
+	MemoryWatchdog();
+
 	void check();
 };
 
@@ -192,7 +199,6 @@ private:
 	static constexpr uint32_t TIMEOUT_MS = 100;
 	static constexpr char TAG[] = "PWRw";
 
-	static uint32_t adcLevel;
 	static utl::Timer timer;
 
 protected:

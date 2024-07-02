@@ -106,6 +106,7 @@ void record_cluster_create(record_clust_t* clust)
 
 void record_cluster_show(const record_clust_t* clust)
 {
+	(void)clust;
 #if RECORD_CLUST_BEDUG
 	RTC_DateTypeDef date = {0};
 	clock_get_rtc_date(&date);
@@ -200,7 +201,7 @@ record_t* get_record_by_index(const record_clust_t* clust, const unsigned index)
 	return (record_t*)&(clust->records[index * record_current_size(clust)]);
 }
 
-unsigned record_modbus1_sensors_count(const record_clust_t* clust)
+uint8_t record_modbus1_sensors_count(const record_clust_t* clust)
 {
 	return clust->modbus1_count;
 }
@@ -222,7 +223,7 @@ void set_record_modbus1_measure(
 	sensor->value = measure->value;
 }
 
-unsigned record_1wire_sensors_count(const record_clust_t* clust)
+uint8_t record_1wire_sensors_count(const record_clust_t* clust)
 {
 	return clust->_1wire_count;
 }

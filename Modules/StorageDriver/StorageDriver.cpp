@@ -4,11 +4,17 @@
 
 #include "glog.h"
 #include "soul.h"
-#include "w25qxx.h"
 #include "bmacro.h"
+#include "w25qxx.h"
 
 #include "StorageType.h"
 
+
+#define ERROR_TIMEOUT_MS ((uint32_t)200)
+
+
+bool StorageDriver::hasError = false;
+utl::Timer StorageDriver::timer(ERROR_TIMEOUT_MS);
 
 #if STORAGE_DRIVER_USE_BUFFER
 
@@ -20,7 +26,7 @@ uint32_t StorageDriver::lastAddress = 0;
 
 
 StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len) {
-	if (is_error(POWER_ERROR)) {
+	if (is_error(POWER_ERROR) || is_status(MEMORY_ERROR)) {
 
 #if STORAGE_DRIVER_BEDUG
 		printTagLog(TAG, "Error power", address);
@@ -53,10 +59,18 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 	}
 
 #endif
-	BEDUG_ASSERT((status != FLASH_BUSY), "Storage is busy");
-	if (status != FLASH_OK) {
-    	set_error(MEMORY_ERROR);
+	if (hasError && !timer.wait()) {
+		set_status(MEMORY_READ_FAULT);
 	}
+	if (!hasError && status != FLASH_OK) {
+		hasError = true;
+		timer.start();
+	}
+#if STORAGE_DRIVER_BEDUG
+    if (status != FLASH_OK) {
+		printTagLog(TAG, "Read %lu address error=%u", address, status);
+    }
+#endif
     if (status == FLASH_BUSY) {
         return STORAGE_BUSY;
     }
@@ -81,13 +95,14 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 	printTagLog(TAG, "Read %lu address success", address);
 #endif
 
-	reset_error(MEMORY_ERROR);
+	hasError = false;
+	reset_status(MEMORY_READ_FAULT);
     return STORAGE_OK;
 }
 ;
 
 StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len) {
-	if (is_error(POWER_ERROR)) {
+	if (is_error(POWER_ERROR) || is_status(MEMORY_ERROR)) {
 
 #if STORAGE_DRIVER_BEDUG
 		printTagLog(TAG, "Error power", address);
@@ -110,10 +125,18 @@ StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len
 
 #endif
 
-	BEDUG_ASSERT((status != FLASH_BUSY), "Storage is busy");
-	if (status != FLASH_OK) {
-    	set_error(MEMORY_ERROR);
+	if (hasError && !timer.wait()) {
+    	set_status(MEMORY_WRITE_FAULT);
 	}
+	if (!hasError && status != FLASH_OK) {
+		hasError = true;
+		timer.start();
+	}
+#if STORAGE_DRIVER_BEDUG
+    if (status != FLASH_OK) {
+		printTagLog(TAG, "Write %lu address error=%u", address, status);
+    }
+#endif
     if (status == FLASH_BUSY) {
         return STORAGE_BUSY;
     }
@@ -128,6 +151,7 @@ StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len
 	printTagLog(TAG, "Write %lu address success", address);
 #endif
 
-	reset_error(MEMORY_ERROR);
+	hasError = false;
+	reset_status(MEMORY_WRITE_FAULT);
     return STORAGE_OK;
 }

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 
+#include "Timer.h"
 #include "StorageAT.h"
 
 
@@ -16,6 +17,9 @@ struct StorageDriver: public IStorageDriver
 {
 private:
 	static constexpr char TAG[] = "DRVR";
+
+	static bool hasError;
+	static utl::Timer timer;
 
 #if STORAGE_DRIVER_USE_BUFFER
     static bool     hasBuffer;
