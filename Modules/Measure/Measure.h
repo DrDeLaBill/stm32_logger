@@ -5,11 +5,11 @@
 
 #include <cstdint>
 
+#include "record.h"
 #include "hal_defs.h"
 #include "modbus_rtu_master.h"
 
 #include "Timer.h"
-#include "RecordDB.h"
 #include "FiniteStateMachine.h"
 
 
@@ -96,7 +96,7 @@ protected:
 	static utl::Timer timer;
 
 public:
-	static RecordDB record;
+	static record_t record;
 
 	Measure();
 	void process();

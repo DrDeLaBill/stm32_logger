@@ -77,6 +77,7 @@ static constexpr char MAIN_TAG[] = "MAIN";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+void error_loop();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -84,7 +85,17 @@ void SystemClock_Config(void);
 StorageDriver storageDriver;
 StorageAT* storage;
 
-utl::Timer exitTimer(10000);
+SoulGuard<
+	RestartWatchdog,
+	PowerWatchdog,
+	MemoryWatchdog,
+	StackWatchdog,
+	StandbyWatchdog,
+	SettingsWatchdog,
+	OneWireWatcher,
+	RTCWatchdog,
+	SDCardWatcher
+> soulGuard;
 /* USER CODE END 0 */
 
 /**
@@ -146,26 +157,12 @@ int main(void)
   MX_FATFS_Init();
 
 #endif
-
-	SoulGuard<
-		RestartWatchdog,
-		PowerWatchdog,
-		MemoryWatchdog,
-		StackWatchdog,
-		StandbyWatchdog,
-		SettingsWatchdog,
-		OneWireWatcher,
-		RTCWatchdog
-	> soulGuard;
+    __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
 	Measure measure;
 
 	set_status(LOADING);
-	set_error(POWER_ERROR);
-	set_error(STACK_ERROR);
 
 	HAL_Delay(100);
-
-	exitTimer.start();
 
 	HAL_TIM_Base_Start_IT(&LED_TIM);
 	HAL_TIM_Base_Start_IT(&_1WIRE_TIM);
@@ -175,15 +172,10 @@ int main(void)
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	// Start USB
-//    gpCounter++;
-
-    flash_w25qxx_init();
     storage = new StorageAT(
 		flash_w25qxx_get_pages_count(),
 		&storageDriver
@@ -191,14 +183,19 @@ int main(void)
 
     system_rtc_test();
 
+    bool foundError = false;
+    utl::Timer errTimer(40 * SECOND_MS);
+
+    errTimer.start();
 	while (has_errors() || is_status(LOADING)) {
-    	soulGuard.defend();
+		soulGuard.defend();
+
+    	if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
     }
 
     system_post_load();
-
-    bool foundError = false;
-    utl::Timer errTimer(30 * SECOND_MS);
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
@@ -212,7 +209,7 @@ int main(void)
 		app_proccess();
 
 		if (foundError && !errTimer.wait()) {
-			system_error_handler((SOUL_STATUS)get_first_error());
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
 		}
 
 		if (has_errors() || is_status(LOADING)) {
@@ -282,6 +279,11 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void error_loop()
+{
+	soulGuard.defend();
+}
+
 int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
 	(void)len;
@@ -335,7 +337,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ERROR_HANDLER_CALLED;
-	system_error_handler(err);
+	system_error_handler(err, error_loop);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -352,7 +354,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
 	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ASSERT_ERROR;
-	system_error_handler(err);
+	system_error_handler(err, error_loop);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

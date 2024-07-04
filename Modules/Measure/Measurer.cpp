@@ -31,7 +31,7 @@ uint8_t Measure::errorsCount = 0;
 
 fsm::FiniteStateMachine<Measure::fsm_table> Measure::fsm;
 utl::Timer Measure::timer(GENERAL_TIMEOUT_MS);
-RecordDB Measure::record(0);
+record_t Measure::record = {};
 
 
 Measure::Measure()
@@ -58,8 +58,10 @@ void Measure::_idle_s::operator ()()
 		return;
 	}
 
-	record = RecordDB(0);
-	record_cluster_create(&record.clust);
+	memset((uint8_t*)&record, 0, sizeof(record));
+	record.mb1_count = settings_modbus1_count();
+	record._1w_count = settings_1wire_count();
+
 	set_status(NEED_ENABLE_SENSORS);
 	fsm.push_event(success_e{});
 }
@@ -94,14 +96,9 @@ void Measure::_mb1_wait_s::operator ()()
 	}
 
 	if (!timer.wait()) {
-		modbus_sensor_t measure{};
-		measure.ID    = sensAddress + 1;
-		measure.value = std::numeric_limits<int16_t>::max();
-		set_record_modbus1_measure(
-			&(record.record),
-			sensIdx,
-			&measure
-		);
+		record.mb1_id[sensIdx]    = sensAddress + 1;
+		record.mb1_value[sensIdx] = std::numeric_limits<int16_t>::max();
+
 		sensor_timeout();
 		fsm.push_event(timeout_e{});
 	}
@@ -133,15 +130,9 @@ void Measure::__1w_request_s::operator ()()
 void Measure::__1w_wait_s::operator ()()
 {
 	if (!timer.wait()) {
-		_1wire_sensor_t measure{};
-		measure.ADDR  = settings._1wire_address[sensAddress];
-		measure.value = std::numeric_limits<int16_t>::max();
-		set_record_1wire_measure(
-			&(record.record),
-			record_modbus1_sensors_count(&record.clust),
-			sensIdx,
-			&measure
-		);
+		record._1w_id[sensIdx]    = settings._1wire_address[sensAddress];
+		record._1w_value[sensIdx] = std::numeric_limits<int16_t>::max();
+
 		onewire_driver_clear();
 		fsm.push_event(timeout_e{});
 	}
@@ -151,15 +142,9 @@ void Measure::__1w_wait_s::operator ()()
 		// TODO: send sensor error to stng_info
 		needIterate = true;
 	} else if (onewire_driver_has_response()) {
-		_1wire_sensor_t measure{};
-		measure.ADDR  = settings._1wire_address[sensAddress];
-		measure.value = get_onewire_driver_value();
-		set_record_1wire_measure(
-			&(record.record),
-			record_modbus1_sensors_count(&record.clust),
-			sensIdx,
-			&measure
-		);
+		record._1w_id[sensIdx]    = settings._1wire_address[sensAddress];
+		record._1w_value[sensIdx] = get_onewire_driver_value();
+
 		needIterate = true;
 	}
 
@@ -199,7 +184,7 @@ void Measure::save_start_a::operator ()()
 {
 	set_status(LOADING);
 	fsm.clear_events();
-	if (record.save() == RECORD_OK) {
+	if (record_save(&record) == RECORD_OK) {
 		fsm.push_event(success_e{});
 	} else {
 		fsm.push_event(timeout_e{});
@@ -340,13 +325,8 @@ void Measure::response_packet_handler(modbus_response_t* packet)
     gprint("\n");
 #endif
 
-	modbus_sensor_t measure{};
-	measure.ID    = sensAddress + 1;
-	measure.value = static_cast<int16_t>(packet->response[0]);
-	set_record_modbus1_measure(
-		&(record.record),
-		sensIdx,
-		&measure
-	);
+	record.mb1_id[sensIdx]    = sensAddress + 1;
+	record.mb1_value[sensIdx] = static_cast<int16_t>(packet->response[0]);
+
     fsm.push_event(iterate_e{});
 }

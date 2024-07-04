@@ -2,13 +2,18 @@
 
 #include "system.h"
 
+#include "usb.h"
 #include "glog.h"
 #include "main.h"
 #include "clock.h"
+#include "gutils.h"
 #include "hal_defs.h"
 
 
-uint16_t SYSTEM_ADC_VOLTAGE = 0;
+const char SYSTEM_TAG[] = "SYS";
+
+
+uint16_t SYSTEM_ADC_VOLTAGE[2] = {0};
 
 
 #ifndef IS_SAME_TIME
@@ -76,57 +81,57 @@ void system_rtc_test(void)
 
 	printPretty("Get date test: ");
 	if (!clock_get_rtc_date(&readDate)) {
-		gprint("        error\n");
-		system_error_handler(RTC_ERROR);
+		gprint("   error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("        OK\n");
+	gprint("   OK\n");
 
 	printPretty("Get time test: ");
 	if (!clock_get_rtc_time(&readTime)) {
-		gprint("        error\n");
-		system_error_handler(RTC_ERROR);
+		gprint("   error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("        OK\n");
+	gprint("   OK\n");
 
 
 	printPretty("Save date test: ");
 	if (!clock_save_date(&readDate)) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint("  error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("    OK\n");
+	gprint("  OK\n");
 
 	printPretty("Save time test: ");
 	if (!clock_save_time(&readTime)) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint("  error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("    OK\n");
+	gprint("  OK\n");
 
 
 	RTC_DateTypeDef checkDate  ={0};
 	RTC_TimeTypeDef checkTime = {0};
 	printPretty("Check date test: ");
 	if (!clock_get_rtc_date(&checkDate)) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint(" error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
 	if (memcmp((void*)&readDate, (void*)&checkDate, sizeof(readDate))) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint(" error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("    OK\n");
+	gprint(" OK\n");
 
 	printPretty("Check time test: ");
 	if (!clock_get_rtc_time(&checkTime)) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint(" error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
 	if (!IS_SAME_TIME(readTime, checkTime)) {
-		gprint("    error\n");
-		system_error_handler(RTC_ERROR);
+		gprint(" error\n");
+		system_error_handler(RTC_ERROR, NULL);
 	}
-	gprint("    OK\n");
+	gprint(" OK\n");
 
 
 	printPretty("Weekday test\n");
@@ -172,17 +177,17 @@ void system_rtc_test(void)
 		clock_seconds_to_datetime(seconds[i], &tmpDate, &tmpTime);
 		if (memcmp((void*)&tmpDate, (void*)&dates[i], sizeof(tmpDate))) {
 			gprint("            error\n");
-			system_error_handler(RTC_ERROR);
+			system_error_handler(RTC_ERROR, NULL);
 		}
 		if (!IS_SAME_TIME(tmpTime, times[i])) {
 			gprint("            error\n");
-			system_error_handler(RTC_ERROR);
+			system_error_handler(RTC_ERROR, NULL);
 		}
 
 		uint32_t tmpSeconds = clock_datetime_to_seconds(&dates[i], &times[i]);
 		if (tmpSeconds != seconds[i]) {
 			gprint("            error\n");
-			system_error_handler(RTC_ERROR);
+			system_error_handler(RTC_ERROR, NULL);
 		}
 
 		gprint("            OK\n");
@@ -229,6 +234,14 @@ void system_pre_load(void)
     	set_error(STACK_ERROR);
     } else if (status == SETTINGS_LOAD_ERROR) {
     	set_error(SETTINGS_LOAD_ERROR);
+    } else if (
+		status == NON_MASKABLE_INTERRUPT ||
+		status == HARD_FAULT ||
+		status == MEM_MANAGE ||
+		status == BUS_FAULT ||
+		status == USAGE_FAULT
+	) {
+    	set_status(NEED_STANDBY);
     }
 }
 
@@ -238,19 +251,25 @@ void system_post_load(void)
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0);
 	HAL_PWR_DisableBkUpAccess();
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&SYSTEM_ADC_VOLTAGE, 1);
-	unsigned counter = 0;
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)SYSTEM_ADC_VOLTAGE, 2);
+	uint64_t counter = 0;
+	uint64_t count_max = HAL_RCC_GetHCLKFreq() * 10;
+	util_old_timer_t timer = {0};
+	util_old_timer_start(&timer, 10000);
 	while (1) {
 		uint16_t voltage = 0;
-		if (SYSTEM_ADC_VOLTAGE) {
-			voltage = STM_ADC_MAX * STM_REF_VOLTAGEx10 / SYSTEM_ADC_VOLTAGE;
+		if (SYSTEM_ADC_VOLTAGE[1]) {
+			voltage = STM_ADC_MAX * LOGGER_REF_VOLTAGEx10 / SYSTEM_ADC_VOLTAGE[1];
 		}
 
 		if (STM_MIN_VOLTAGEx10 <= voltage && voltage <= STM_MAX_VOLTAGEx10) {
 			break;
 		}
 
-		if (counter > 0x1000) {
+		if (is_error(RCC_ERROR) && counter > count_max) {
+			set_error(POWER_ERROR);
+			break;
+		} else if (!util_old_timer_wait(&timer)) {
 			set_error(POWER_ERROR);
 			break;
 		}
@@ -262,12 +281,13 @@ void system_post_load(void)
 		system_error_handler(
 			(get_first_error() == INTERNAL_ERROR) ?
 				LOAD_ERROR :
-				(SOUL_STATUS)get_first_error()
+				(SOUL_STATUS)get_first_error(),
+			NULL
 		);
 	}
 }
 
-void system_error_handler(SOUL_STATUS error)
+void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 {
 	static bool called = false;
 	if (called) {
@@ -281,18 +301,47 @@ void system_error_handler(SOUL_STATUS error)
 		error = INTERNAL_ERROR;
 	}
 
+	printTagLog(SYSTEM_TAG, "system_error_handler called error=%u", error);
+
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
 	HAL_PWR_EnableBkUpAccess();
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, error);
 	HAL_PWR_DisableBkUpAccess();
 
-	uint32_t counter = 0x100;
-	while(--counter) {}
+	uint64_t counter = 0;
+	uint64_t count_max = HAL_RCC_GetHCLKFreq() * 10;
+	util_old_timer_t timer = {0};
+	util_old_timer_start(&timer, 10000);
+	while(1) {
+		if (!usb_connected()) {
+    		set_status(NEED_STANDBY);
+		}
+		if (error_loop) {
+			error_loop();
+		}
+
+		if (is_error(RCC_ERROR) && counter > count_max) {
+			set_error(POWER_ERROR);
+			break;
+		} else if (!util_old_timer_wait(&timer)) {
+			set_error(POWER_ERROR);
+			break;
+		}
+
+		counter++;
+	}
+
+#ifdef DEBUG
+	printTagLog(SYSTEM_TAG, "system reset");
+	counter = 100;
+	while(counter--);
+#endif
+
 	NVIC_SystemReset();
 }
 
 uint32_t get_system_power()
 {
-	return (LOGGER_REF_VOLTAGEx10 * (uint32_t)SYSTEM_ADC_VOLTAGE) / STM_ADC_MAX;
+	return (STM_ADC_MAX * LOGGER_REF_VOLTAGEx10) / SYSTEM_ADC_VOLTAGE[1];
 }

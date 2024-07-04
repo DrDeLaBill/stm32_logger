@@ -11,6 +11,7 @@
 #include <stm32f4xx.h>
 #include <fatfs.h>
 //
+#include "soul.h"
 #include "glog.h"
 #include "gutils.h"
 #include "user_diskio_spi.h"
@@ -27,20 +28,24 @@ FRESULT intstor_read_file(const char* filename, void* buf, UINT size, UINT* br) 
 	if(br) (*br) = 0;
 
 	res = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount() error=%i\n", res);
 		return res;
 	}
 
 	res = f_open(&DIOSPIFile, filename, FA_OPEN_EXISTING|FA_READ);
-	if(res != FR_OK) {
+	if (res == FR_NO_FILESYSTEM) {
+		BYTE work[_MAX_SS] = {0};
+		res = f_mkfs(DIOSPIPath, FM_FAT32, 0, work, sizeof work);
+	}
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i\r\n", res);
 		out = res;
 		goto do_umount;
 	}
 
 	res = f_read(&DIOSPIFile, (uint8_t*)buf, size, br);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_write() error=%i\n", res);
 		out = res;
 		goto do_close;
@@ -48,13 +53,19 @@ FRESULT intstor_read_file(const char* filename, void* buf, UINT size, UINT* br) 
 
 do_close:
 	res = f_close(&DIOSPIFile);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_close() error=%i\n", res);
 	}
 
 do_umount:
+	if (res != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	res = f_mount(NULL, DIOSPIPath, 0);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount(umount) error=%i\n", res);
 	}
 
@@ -69,20 +80,24 @@ FRESULT intstor_write_file(const char* filename, const void* buf, UINT size, UIN
 	if(bw) (*bw) = 0;
 
 	res = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount() error=%i\n", res);
 		return res;
 	}
 
 	res = f_open(&DIOSPIFile, filename, FA_CREATE_ALWAYS|FA_WRITE);
-	if(res != FR_OK) {
+	if (res == FR_NO_FILESYSTEM) {
+		BYTE work[_MAX_SS] = {0};
+		res = f_mkfs(DIOSPIPath, FM_FAT32, 0, work, sizeof work);
+	}
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i\n", res);
 		out = res;
 		goto do_umount;
 	}
 
 	res = f_write(&DIOSPIFile, (uint8_t*)buf, size, bw);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_write() error=%i\n", res);
 		out = res;
 		goto do_close;
@@ -90,13 +105,19 @@ FRESULT intstor_write_file(const char* filename, const void* buf, UINT size, UIN
 
 do_close:
 	res = f_close(&DIOSPIFile);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_close() error=%i\n", res);
 	}
 
 do_umount:
+	if (res != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	res = f_mount(NULL, DIOSPIPath, 0);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount(umount) error=%i\n", res);
 	}
 
@@ -111,20 +132,24 @@ FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UI
 	if(bw) (*bw) = 0;
 
 	res = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount() error=%i\n", res);
 		return res;
 	}
 
 	res = f_open(&DIOSPIFile, filename, FA_OPEN_APPEND|FA_WRITE);
-	if(res != FR_OK) {
+	if (res == FR_NO_FILESYSTEM) {
+		BYTE work[_MAX_SS] = {0};
+		res = f_mkfs(DIOSPIPath, FM_FAT32, 0, work, sizeof work);
+	}
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i\n", res);
 		out = res;
 		goto do_umount;
 	}
 
 	res = f_write(&DIOSPIFile, (uint8_t*)buf, size, bw);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_write() error=%i\n", res);
 		out = res;
 		goto do_close;
@@ -132,13 +157,19 @@ FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UI
 
 do_close:
 	res = f_close(&DIOSPIFile);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_close() error=%i\n", res);
 	}
 
 do_umount:
+	if (res != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	res = f_mount(NULL, DIOSPIPath, 0);
-	if(res != FR_OK) {
+	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount(umount) error=%i\n", res);
 	}
 

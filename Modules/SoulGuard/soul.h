@@ -15,7 +15,7 @@ extern "C" {
 #include "hal_defs.h"
 
 
-typedef enum _SOUK_STATUS {
+typedef enum _SOUL_STATUS {
 	/* Device statuses start */
 	STATUSES_START = 0,
 
@@ -54,8 +54,10 @@ typedef enum _SOUK_STATUS {
 	RTC_ERROR,
 	POWER_ERROR,
 	MEMORY_ERROR,
+	MEMORY_INIT_ERROR,
 	STACK_ERROR,
 	RAM_ERROR,
+	SD_CARD_ERROR,
 	USB_ERROR,
 	SETTINGS_LOAD_ERROR,
 	APP_MODE_ERROR,

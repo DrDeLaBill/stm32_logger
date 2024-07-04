@@ -5,7 +5,6 @@
 
 #include <cstdint>
 
-#include "record.h"
 #include "hal_defs.h"
 
 #include "Timer.h"
@@ -240,17 +239,6 @@ public:
 	static void stopDMA();
 };
 
-struct InfoWatchdog
-{
-private:
-	RecordStatus loadMaxRecord();
-	RecordStatus loadMinRecord();
-	RecordStatus loadRecord();
-
-public:
-	void check();
-};
-
 struct OneWireWatcher
 {
 protected:
@@ -307,4 +295,9 @@ protected:
 public:
 	void check();
 
+};
+
+struct SDCardWatcher
+{
+	void check();
 };

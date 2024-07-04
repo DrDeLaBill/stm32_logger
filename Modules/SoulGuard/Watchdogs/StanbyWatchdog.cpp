@@ -7,6 +7,7 @@
 #include "main.h"
 #include "soul.h"
 #include "clock.h"
+#include "system.h"
 #include "settings.h"
 #include "hal_defs.h"
 
@@ -27,7 +28,7 @@ extern RTC_HandleTypeDef hrtc;
 
 
 fsm::FiniteStateMachine<StandbyWatchdog::fsm_table> StandbyWatchdog::fsm;
-utl::Timer StandbyWatchdog::timer(MINUTE_MS);
+utl::Timer StandbyWatchdog::timer(30 * SECOND_MS);
 
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef*)
@@ -80,13 +81,16 @@ bool StandbyWatchdog::isAlarmReady()
 
 	if (sAlarm.AlarmDateWeekDaySel != RTC_ALARMDATEWEEKDAYSEL_DATE) {
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "Incorrect alarm settings loaded.");
+		printTagLog(TAG, "Incorrect alarm settings loaded");
 #	endif
 		return false;
 	}
+
 	RTC_TimeTypeDef* atarmTime = &(sAlarm.AlarmTime);
 	uint32_t currSeconds       = clock_datetime_to_seconds(&date, &time);
-	date.Date = sAlarm.AlarmDateWeekDay;
+	if (sAlarm.AlarmDateWeekDay) {
+		date.Date = sAlarm.AlarmDateWeekDay;
+	}
 	if (date.Date > sAlarm.AlarmDateWeekDay) {
 		date.Month++;
 	}
@@ -98,13 +102,13 @@ bool StandbyWatchdog::isAlarmReady()
 	uint32_t needSecods   = settings.record_period > 0 ? settings.record_period / SECOND_MS : DELTA_SEC;
 	if (currSeconds < alarmSeconds && (alarmSeconds - currSeconds) > needSecods) {
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "The current alarm time is too long (%lu sec > %lu sec).", (alarmSeconds - currSeconds), needSecods);
+		printTagLog(TAG, "The current alarm time is too long (%lu sec > %lu sec)", (alarmSeconds - currSeconds), needSecods);
 #	endif
 		return false;
 	}
 	if (alarmSeconds < currSeconds) {
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "The alarm time has already passed.");
+		printTagLog(TAG, "The alarm time has already passed");
 #	endif
 		return false;
 	}
@@ -189,23 +193,29 @@ void StandbyWatchdog::startRTCAlarm(uint32_t seconds)
 	sAlarm.Alarm                    = RTC_ALARM_A;
 
 	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK) {
-		Error_Handler();
+		system_error_handler(RTC_ERROR, NULL);
 	}
 
 #	if STANDBY_W_BEDUG
 	printTagLog(
 		TAG,
-		"The alarm clock has set for %02u day %02u:%02u:%02u (current %02u day time %02u:%02u:%02u)",
+		"The alarm clock has set for %02u day %02u:%02u:%02u (current time: %02u day %s)",
 		sAlarm.AlarmDateWeekDay,
 		sAlarm.AlarmTime.Hours,
 		sAlarm.AlarmTime.Minutes,
 		sAlarm.AlarmTime.Seconds,
 		currDate.Date,
-		currTime.Hours,
-		currTime.Minutes,
-		currTime.Seconds
+		get_clock_time_format()
 	);
 #	endif
+
+	RTC_AlarmTypeDef testAlarm = {};
+	if (HAL_RTC_GetAlarm(&hrtc, &testAlarm, RTC_ALARM_A, RTC_FORMAT_BIN) != HAL_OK) {
+		system_error_handler(RTC_ERROR, NULL);
+	}
+	if (memcmp((uint8_t*)&testAlarm, (uint8_t*)&sAlarm, sizeof(sAlarm))) {
+		system_error_handler(RTC_ERROR, NULL);
+	}
 #endif
 }
 
@@ -375,6 +385,14 @@ void StandbyWatchdog::restart_alarm_a::operator ()()
 		fsm.push_event(need_start_alarm_e{});
 		return;
 	}
+
+	RTC_AlarmTypeDef testAlarm = {};
+	if (HAL_RTC_GetAlarm(&hrtc, &testAlarm, RTC_ALARM_A, RTC_FORMAT_BIN) != HAL_OK) {
+		system_error_handler(RTC_ERROR, NULL);
+	}
+	if (memcmp((uint8_t*)&testAlarm, (uint8_t*)&sAlarm, sizeof(sAlarm))) {
+		system_error_handler(RTC_ERROR, NULL);
+	}
 }
 
 void StandbyWatchdog::start_alarm_a::operator ()()
@@ -410,7 +428,7 @@ void StandbyWatchdog::check_alarm_a::operator ()()
 void StandbyWatchdog::enter_standby_a::operator ()()
 {
 #if STANDBY_W_BEDUG
-	printTagLog(TAG, "Initalizing the standby mode. The device turns off.");
+	printTagLog(TAG, "Initalizing the standby mode. The device turns off. Current time: %s", get_clock_time_format());
 #endif
 
 #if USE_WKUP_RTC_ALARM

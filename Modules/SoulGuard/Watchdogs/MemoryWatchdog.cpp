@@ -10,16 +10,27 @@
 #include "system.h"
 #include "hal_defs.h"
 
+#include "CodeStopwatch.h"
+
 
 #define ERRORS_MAX (5)
 
 
 MemoryWatchdog::MemoryWatchdog():
 	errorTimer(TIMEOUT_MS), timer(SECOND_MS), errors(0), timerStarted(false)
-	{}
+{
+	set_error(MEMORY_INIT_ERROR);
+}
 
 void MemoryWatchdog::check()
 {
+	utl::CodeStopwatch stopwatch("MEMw", GENERAL_TIMEOUT_MS);
+
+	if (is_error(MEMORY_INIT_ERROR)) {
+		flash_w25qxx_init() == FLASH_OK ? reset_error(MEMORY_INIT_ERROR) : set_error(MEMORY_INIT_ERROR);
+		return;
+	}
+
 	if (timer.wait()) {
 		return;
 	}
@@ -57,6 +68,6 @@ void MemoryWatchdog::check()
 	}
 
 	if (timerStarted && !errorTimer.wait()) {
-		system_error_handler(MEMORY_ERROR);
+		system_error_handler(MEMORY_ERROR, nullptr);
 	}
 }
