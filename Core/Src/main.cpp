@@ -90,13 +90,13 @@ SoulGuard<
 	PowerWatchdog,
 	MemoryWatchdog,
 	StackWatchdog,
-	StandbyWatchdog,
-	SDCardWatcher
+	StandbyWatchdog
 > hardGuard;
 SoulGuard<
 	SettingsWatchdog,
 	OneWireWatcher,
-	RTCWatchdog
+	RTCWatchdog,
+	SDCardWatcher
 > softGuard;
 /* USER CODE END 0 */
 
@@ -179,7 +179,6 @@ int main(void)
     utl::Timer errTimer(40 * SECOND_MS);
 
     set_error(STACK_ERROR);
-    set_error(SD_CARD_ERROR);
     set_error(MEMORY_INIT_ERROR);
     errTimer.start();
 	while (has_errors()) {
@@ -196,6 +195,7 @@ int main(void)
 		&storageDriver
 	);
 
+    set_error(SD_CARD_ERROR);
     errTimer.start();
 	while (has_errors() || is_status(LOADING)) {
 		hardGuard.defend();

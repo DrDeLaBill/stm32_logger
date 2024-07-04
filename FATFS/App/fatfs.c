@@ -24,6 +24,9 @@ FATFS USERFatFS;    /* File system object for USER logical drive */
 FIL USERFile;       /* File object for USER */
 
 /* USER CODE BEGIN Variables */
+#include "soul.h"
+#include "system.h"
+
 uint8_t retDIOSPI;
 char DIOSPIPath[4];
 FATFS DIOSPIFatFS;
@@ -36,7 +39,13 @@ void MX_FATFS_Init(void)
   retUSER = FATFS_LinkDriver(&USER_Driver, USERPath);
 
   /* USER CODE BEGIN Init */
-  retDIOSPI = FATFS_LinkDriver(&DIO_SPI_Driver, DIOSPIPath);
+	if (FATFS_UnLinkDriver(USERPath) != 0) {
+		system_error_handler(FATFS_ERROR, NULL);
+	}
+	retDIOSPI = FATFS_LinkDriver(&DIO_SPI_Driver, DIOSPIPath);
+	if (retDIOSPI != 0) {
+		system_error_handler(FATFS_ERROR, NULL);
+	}
   /* USER CODE END Init */
 }
 

@@ -18,8 +18,8 @@ const char* DIOSD_MODULE_TAG = "DIO_SPISD";
 #define DIO_SPI_CMD_DEBUG
 
 #ifdef DIO_SPI_DEBUG
-#define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, fmt __VA_OPT__(,) __VA_ARGS__); }
-#define DIO_SPI_PRINTF(fmt, ...) { printPretty(fmt __VA_OPT__(,) __VA_ARGS__); }
+#define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, " " fmt __VA_OPT__(,) __VA_ARGS__); }
+#define DIO_SPI_PRINTF(fmt, ...) { printPretty("\t" fmt __VA_OPT__(,) __VA_ARGS__); }
 #else /* DIO_SPI_DEBUG */
 #define DIO_SPI_PRINTF_TAG(fmt, ...) {}
 #define DIO_SPI_PRINTF(fmt, ...) {}

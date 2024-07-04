@@ -49,7 +49,7 @@ typedef struct _flash_w25qxx_info_t {
 #define FLASH_W25_SR1_UNBLOCK_VALUE   ((uint8_t)0x00)
 #define FLASH_W25_SR1_BLOCK_VALUE     ((uint8_t)0x0F)
 
-#define FLASH_SPI_TIMEOUT_MS          ((uint32_t)10000)
+#define FLASH_SPI_TIMEOUT_MS          ((uint32_t)500)
 #define FLASH_SPI_COMMAND_SIZE_MAX    ((uint8_t)10)
 
 
@@ -178,7 +178,7 @@ flash_status_t flash_w25qxx_reset()
         printTagLog(FLASH_TAG, "flash reset: error=%u (unset block protect)", status);
 #endif
         status = FLASH_BUSY;
-        goto do_block_protect;
+        goto do_spi_stop;
     }
 
     _flash_spi_cs_set();
@@ -189,7 +189,7 @@ flash_status_t flash_w25qxx_reset()
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "flash reset: error (FLASH busy)");
 #endif
-        return FLASH_BUSY;
+        goto do_spi_stop;
     }
 
     status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
@@ -204,9 +204,10 @@ flash_status_t flash_w25qxx_reset()
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "flash reset: error (flash is busy)");
 #endif
-        return FLASH_BUSY;
+        goto do_spi_stop;
     }
 
+do_spi_stop:
     _flash_spi_cs_reset();
 
 
@@ -471,8 +472,7 @@ flash_status_t _flash_write(uint32_t addr, uint8_t* data, uint32_t len)
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (send command)", addr, len, (unsigned int)status);
 #endif
-        _flash_spi_cs_reset();
-        return FLASH_ERROR;
+		goto do_block_protect;
     }
 
     status = _flash_send_data(data, len);
@@ -480,8 +480,7 @@ flash_status_t _flash_write(uint32_t addr, uint8_t* data, uint32_t len)
 #if FLASH_BEDUG
     	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (wait write data timeout)", addr, len, (unsigned int)status);
 #endif
-        _flash_spi_cs_reset();
-        return FLASH_ERROR;
+		goto do_block_protect;
     }
 
 do_block_protect:
@@ -500,10 +499,9 @@ do_block_protect:
 #if FLASH_BEDUG
         printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (set block protected)", addr, len, status);
 #endif
-        return status;
     }
 
-    return FLASH_OK;
+    return status;
 }
 
 uint32_t flash_w25qxx_get_pages_count()
@@ -747,30 +745,23 @@ flash_status_t _flash_read_SR1(uint8_t* SR1)
     uint8_t spi_cmd[] = { FLASH_W25_CMD_READ_SR1 };
 
     HAL_StatusTypeDef status = HAL_SPI_Transmit(&FLASH_SPI, spi_cmd, sizeof(spi_cmd), FLASH_SPI_TIMEOUT_MS);
-    if (status == HAL_BUSY) {
-       return FLASH_BUSY;
-    }
-
     if (status != HAL_OK) {
-       return FLASH_ERROR;
+        goto do_spi_stop;
     }
 
     status = HAL_SPI_Receive(&FLASH_SPI, SR1, sizeof(uint8_t), FLASH_SPI_TIMEOUT_MS);
-    if (status == HAL_BUSY) {
-        return FLASH_BUSY;
-    }
-
     if (status != HAL_OK) {
-        return FLASH_ERROR;
+        goto do_spi_stop;
     }
 
+do_spi_stop:
     _flash_spi_cs_reset();
 
     if (cs_selected) {
         _flash_spi_cs_set();
     }
 
-    return FLASH_OK;
+    return status;
 }
 
 flash_status_t _flash_write_enable()
@@ -966,8 +957,6 @@ flash_status_t _flash_set_protect_block(uint8_t value)
 #endif
         goto do_spi_stop;
     }
-
-    goto do_spi_stop;
 
 do_spi_stop:
     _flash_spi_cs_reset();
