@@ -39,11 +39,11 @@
 #include "system.h"
 #include "hal_defs.h"
 #include "settings.h"
+#include "measure_log.h"
 #include "onewire_driver.h"
 
 #include "Timer.h"
 #include "Record.h"
-#include "Measure.h"
 #include "gprotocol.h"
 #include "Watchdogs.h"
 #include "SoulGuard.h"
@@ -91,11 +91,13 @@ SoulGuard<
 	MemoryWatchdog,
 	StackWatchdog,
 	StandbyWatchdog,
+	SDCardWatcher
+> hardGuard;
+SoulGuard<
 	SettingsWatchdog,
 	OneWireWatcher,
-	RTCWatchdog,
-	SDCardWatcher
-> soulGuard;
+	RTCWatchdog
+> softGuard;
 /* USER CODE END 0 */
 
 /**
@@ -157,8 +159,6 @@ int main(void)
   MX_FATFS_Init();
 
 #endif
-    __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
-	Measure measure;
 
 	set_status(LOADING);
 
@@ -176,47 +176,60 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-    storage = new StorageAT(
-		flash_w25qxx_get_pages_count(),
-		&storageDriver
-	);
-
-    system_rtc_test();
-
-    bool foundError = false;
     utl::Timer errTimer(40 * SECOND_MS);
 
+    set_error(STACK_ERROR);
+    set_error(SD_CARD_ERROR);
+    set_error(MEMORY_INIT_ERROR);
     errTimer.start();
-	while (has_errors() || is_status(LOADING)) {
-		soulGuard.defend();
+	while (has_errors()) {
+		hardGuard.defend();
 
     	if (!errTimer.wait()) {
 			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
 		}
     }
 
+
+    storage = new StorageAT(
+		flash_w25qxx_get_pages_count(),
+		&storageDriver
+	);
+
+    errTimer.start();
+	while (has_errors() || is_status(LOADING)) {
+		hardGuard.defend();
+		softGuard.defend();
+
+    	if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
+    }
+
+    system_rtc_test();
+
+    measure_log_init();
+
     system_post_load();
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
 	set_status(WORKING);
+	errTimer.start();
     while (1)
 	{
 		utl::CodeStopwatch stopwatch(MAIN_TAG, 3 * GENERAL_TIMEOUT_MS);
 
-		soulGuard.defend();
+		hardGuard.defend();
+		softGuard.defend();
 
 		app_proccess();
 
-		if (foundError && !errTimer.wait()) {
+		if (!errTimer.wait()) {
 			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
 		}
 
 		if (has_errors() || is_status(LOADING)) {
-			if (!foundError) {
-				foundError = true;
-				errTimer.start();
-			}
 			continue;
 		}
     /* USER CODE END WHILE */
@@ -226,7 +239,9 @@ int main(void)
 
 		onewire_driver_tick();
 
-		measure.process();
+		measure_log_proccess();
+
+		errTimer.start();
 	}
   /* USER CODE END 3 */
 }
@@ -281,7 +296,8 @@ void SystemClock_Config(void)
 
 void error_loop()
 {
-	soulGuard.defend();
+	hardGuard.defend();
+	softGuard.defend();
 }
 
 int _write(int, uint8_t *ptr, int len) {

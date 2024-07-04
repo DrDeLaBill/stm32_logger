@@ -190,53 +190,7 @@ public:
 
 struct PowerWatchdog
 {
-private:
-	static constexpr uint32_t REFERENSE_VOLTAGE = 1800; // U = 1.8 V
-	static constexpr uint32_t VOLTAGE_MULTIPLIER = 2;
-	static constexpr uint32_t TRIG_LEVEL_MIN = 2700; // U = 2.7V
-	static constexpr uint32_t TRIG_LEVEL_MAX = 3600; // U = 2.7V
-	static constexpr uint32_t TIMEOUT_MS = 100;
-	static constexpr char TAG[] = "PWRw";
-
-	static utl::Timer timer;
-
-protected:
-	// Events:
-	FSM_CREATE_EVENT(success_e, 0);
-	FSM_CREATE_EVENT(error_e,   1);
-
-	// States:
-	struct _init_s   { void operator()(); };
-	struct _wait_s   { void operator()(); };
-	struct _check_s  { void operator()(); };
-
-	FSM_CREATE_STATE(init_s,  _init_s);
-	FSM_CREATE_STATE(wait_s,  _wait_s);
-	FSM_CREATE_STATE(check_s, _check_s);
-
-	// Actions:
-	struct start_DMA_a   { void operator()(); };
-	struct check_power_a { void operator()(); };
-	struct none_a        { void operator()(); };
-	struct set_error_a   { void operator()(); };
-
-	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,  success_e, wait_s,  start_DMA_a,   fsm::Guard::NO_GUARD>,
-
-		fsm::Transition<wait_s,  success_e, check_s, check_power_a, fsm::Guard::NO_GUARD>,
-		fsm::Transition<wait_s,  error_e,   init_s,  none_a,        fsm::Guard::NO_GUARD>,
-
-		fsm::Transition<check_s, success_e, wait_s,  start_DMA_a,   fsm::Guard::NO_GUARD>,
-		fsm::Transition<check_s, error_e,   init_s,  set_error_a,   fsm::Guard::NO_GUARD>
-	>;
-
-	static fsm::FiniteStateMachine<fsm_table> fsm;
-
-
-public:
 	void check();
-
-	static void stopDMA();
 };
 
 struct OneWireWatcher

@@ -2,93 +2,26 @@
 
 #include "Watchdogs.h"
 
-#include <limits>
-
-#include "usb.h"
-#include "glog.h"
-#include "main.h"
-#include "soul.h"
-#include "sensor.h"
 #include "system.h"
 #include "hal_defs.h"
 
-#include "Timer.h"
 #include "CodeStopwatch.h"
 
-
-fsm::FiniteStateMachine<PowerWatchdog::fsm_table> PowerWatchdog::fsm;
-utl::Timer PowerWatchdog::timer(PowerWatchdog::TIMEOUT_MS);
-
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-    if(hadc->Instance == POWER_ADC.Instance)
-    {
-    	PowerWatchdog::stopDMA();
-    }
-}
 
 void PowerWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
 
-	if (is_status(NEED_ENABLE_SENSORS)) {
-		sensors_enable();
-	} else {
-		sensors_disable();
-	}
-
-	fsm.proccess();
-}
-
-void PowerWatchdog::_init_s::operator ()()
-{
-	fsm.push_event(success_e{});
-}
-
-void PowerWatchdog::_wait_s::operator ()()
-{
 	if (!is_status(WORKING)) {
-		return;
-	}
-
-	if (usb_connected()) {
 		reset_error(POWER_ERROR);
 		return;
 	}
 
-	if (!timer.wait()) {
-		fsm.push_event(error_e{});
-	}
-}
+	uint16_t voltage = (uint16_t)get_system_power();
 
-void PowerWatchdog::_check_s::operator ()() { }
-
-void PowerWatchdog::start_DMA_a::operator ()()
-{
-	timer.start();
-}
-
-void PowerWatchdog::check_power_a::operator ()()
-{
-	uint32_t vbat = ((VOLTAGE_MULTIPLIER * REFERENSE_VOLTAGE * SYSTEM_ADC_VOLTAGE[0]) / STM_ADC_MAX);
-	if ((vbat < TRIG_LEVEL_MIN || vbat > TRIG_LEVEL_MAX) && !usb_connected()) {
-		fsm.push_event(error_e{});
+	if (STM_MIN_VOLTAGEx10 <= voltage && voltage <= STM_MAX_VOLTAGEx10) {
+		reset_error(POWER_ERROR);
 	} else {
-		reset_error(POWER_ERROR);
-		fsm.push_event(success_e{});
+		set_error(POWER_ERROR);
 	}
-}
-
-void PowerWatchdog::set_error_a::operator ()()
-{
-	set_error(POWER_ERROR);
-}
-
-void PowerWatchdog::none_a::operator ()() { }
-
-void PowerWatchdog::stopDMA()
-{
-//	HAL_ADC_Stop_DMA(&POWER_ADC);
-	fsm.push_event(success_e{});
 }

@@ -53,6 +53,7 @@ public:
 
     void details(const uint8_t index = 0)
     {
+    	(void)index;
         printTagLog(TAG, "Details: pointer=%hhn index = %u; size = %d; length = %u\n", (int8_t*)source, index, item_size(), length());
     }
 

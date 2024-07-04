@@ -9,14 +9,17 @@
 #include <stm32f4xx_hal.h>
 #include "user_diskio_spi.h"
 #include "gutils.h"
+#include "glog.h"
 
 
 const char* DIOSD_MODULE_TAG = "DIO_SPISD";
 
+#define DIO_SPI_DEBUG
+#define DIO_SPI_CMD_DEBUG
 
 #ifdef DIO_SPI_DEBUG
-#define DIO_SPI_PRINTF_TAG(fmt, ...) { LOG_DEBUG(DIOSD_MODULE_TAG, fmt __VA_OPT__(,) __VA_ARGS__); }
-#define DIO_SPI_PRINTF(fmt, ...) { LOG_DEBUG_LN(fmt __VA_OPT__(,) __VA_ARGS__); }
+#define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, fmt __VA_OPT__(,) __VA_ARGS__); }
+#define DIO_SPI_PRINTF(fmt, ...) { printPretty(fmt __VA_OPT__(,) __VA_ARGS__); }
 #else /* DIO_SPI_DEBUG */
 #define DIO_SPI_PRINTF_TAG(fmt, ...) {}
 #define DIO_SPI_PRINTF(fmt, ...) {}

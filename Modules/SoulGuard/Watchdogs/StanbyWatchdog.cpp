@@ -12,7 +12,6 @@
 #include "hal_defs.h"
 
 #include "Record.h"
-#include "Measure.h"
 #include "CodeStopwatch.h"
 
 
@@ -192,19 +191,21 @@ void StandbyWatchdog::startRTCAlarm(uint32_t seconds)
 	sAlarm.AlarmDateWeekDay         = dumpDate.Date;
 	sAlarm.Alarm                    = RTC_ALARM_A;
 
-	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK) {
+	HAL_PWR_EnableBkUpAccess();
+	HAL_StatusTypeDef status = HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
+	HAL_PWR_DisableBkUpAccess();
+	if (status != HAL_OK) {
 		system_error_handler(RTC_ERROR, NULL);
 	}
 
 #	if STANDBY_W_BEDUG
 	printTagLog(
 		TAG,
-		"The alarm clock has set for %02u day %02u:%02u:%02u (current time: %02u day %s)",
+		"The alarm clock has set for %02u day %02u:%02u:%02u (current time: %s)",
 		sAlarm.AlarmDateWeekDay,
 		sAlarm.AlarmTime.Hours,
 		sAlarm.AlarmTime.Minutes,
 		sAlarm.AlarmTime.Seconds,
-		currDate.Date,
 		get_clock_time_format()
 	);
 #	endif
@@ -377,7 +378,9 @@ void StandbyWatchdog::restart_alarm_a::operator ()()
 		fsm.push_event(need_start_alarm_e{});
 		return;
 	}
+	HAL_PWR_EnableBkUpAccess();
 	status = HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
+	HAL_PWR_DisableBkUpAccess();
 	if (status != HAL_OK) {
 #if STANDBY_W_BEDUG
 		printTagLog(TAG, "Unable to restart clock alarm");
