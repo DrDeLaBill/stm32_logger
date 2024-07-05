@@ -418,11 +418,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry excluding="Utils/test/|modbus_rtu_puk/test/|StorageAT/test/|StorageAT/build/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="FATFS"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
-						<entry excluding="Utils/test/|modbus_rtu_puk/test/|StorageAT/test/|StorageAT/build/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_DEVICE"/>
 					</sourceEntries>
 				</configuration>

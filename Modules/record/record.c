@@ -15,7 +15,9 @@
 #define STRING_LENGTH   (128)
 
 
+#ifdef DEBUG
 static const char RECORD_TAG[] = "RCD";
+#endif
 static const char RECORD_FILENAME[] = "dump.csv";
 
 

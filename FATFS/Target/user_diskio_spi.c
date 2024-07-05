@@ -721,7 +721,7 @@ DSTATUS DIO_SPI_initialize(BYTE pdrv) {
 
 	DIO_SPI_CardDeselect();
 
-	dio_card_status &= ~STA_NOINIT;
+	dio_card_status &= (DSTATUS)~STA_NOINIT;
 	return dio_card_status;
 
 fail:

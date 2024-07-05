@@ -94,7 +94,10 @@ void _fsm_onewire_driver_read_recieve_wait();
 void _fsm_onewire_driver_read_end();
 
 
+#ifdef DEBUG
 static const char _1WIRE_DRIVER_TAG[] = "1WRd";
+#endif
+
 
 driver_state_t driver_state = {
 	.fsm = _fsm_onewire_driver_init
@@ -154,7 +157,7 @@ void onewire_driver_next_search()
 	}
 
 	uint64_t old_mask = driver_state.tree_mask;
-	uint8_t last_bit = 0;
+	uint64_t last_bit = 0;
 	for (uint64_t i = __arr_len(driver_state.tree) - 1; i > 0; i--) {
 		if (driver_state.tree[i] == _1WIRE_SEARCH_UNDEFINED_BIT &&
 			!__get_bit(old_mask, i)

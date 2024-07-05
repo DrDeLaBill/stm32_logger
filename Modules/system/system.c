@@ -72,7 +72,9 @@ void system_clock_hsi_config(void)
 
 void system_rtc_test(void)
 {
+#ifdef DEBUG
 	static const char TEST_TAG[] = "TEST";
+#endif
 	gprint("\n\n\n");
 	printTagLog(TEST_TAG, "RTC testing in progress...");
 
@@ -259,7 +261,7 @@ void system_post_load(void)
 	while (1) {
 		uint16_t voltage = 0;
 		if (SYSTEM_ADC_VOLTAGE[1]) {
-			voltage = STM_ADC_MAX * LOGGER_REF_VOLTAGEx10 / SYSTEM_ADC_VOLTAGE[1];
+			voltage = get_system_power();
 		}
 
 		if (STM_MIN_VOLTAGEx10 <= voltage && voltage <= STM_MAX_VOLTAGEx10) {
@@ -343,5 +345,8 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 
 uint32_t get_system_power()
 {
+	if (!SYSTEM_ADC_VOLTAGE[1]) {
+		return 0;
+	}
 	return (STM_ADC_MAX * LOGGER_REF_VOLTAGEx10) / SYSTEM_ADC_VOLTAGE[1];
 }

@@ -12,7 +12,10 @@
 #include "hal_defs.h"
 
 
+#ifdef DEBUG
 static const char SETTINGS_TAG[] = "STNG";
+#endif
+
 
 settings_t settings = {0};
 

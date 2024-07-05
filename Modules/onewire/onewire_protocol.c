@@ -24,9 +24,9 @@
 #define END_DATA_DELAY_US    ((uint16_t)5)
 #define WAIT_SLAVE_BIT_US    ((uint16_t)5)
 
-#define SET_BUS()            (_1WIRE_GPIO_Port->ODR |= _1WIRE_Pin)
-#define RESET_BUS()          (_1WIRE_GPIO_Port->ODR &= ~(_1WIRE_Pin))
-#define READ_BUS()           (_1WIRE_GPIO_Port->IDR & _1WIRE_Pin)
+#define SET_BUS()            (_1WIRE_GPIO_Port->ODR |= (uint32_t)_1WIRE_Pin)
+#define RESET_BUS()          (_1WIRE_GPIO_Port->ODR &= (uint32_t)~(_1WIRE_Pin))
+#define READ_BUS()           (_1WIRE_GPIO_Port->IDR &  (uint32_t)_1WIRE_Pin)
 
 
 typedef struct _onewire_protocol_t {
