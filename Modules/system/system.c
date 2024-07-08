@@ -236,15 +236,16 @@ void system_pre_load(void)
     	set_error(STACK_ERROR);
     } else if (status == SETTINGS_LOAD_ERROR) {
     	set_error(SETTINGS_LOAD_ERROR);
-    } else if (
-		status == NON_MASKABLE_INTERRUPT ||
-		status == HARD_FAULT ||
-		status == MEM_MANAGE ||
-		status == BUS_FAULT ||
-		status == USAGE_FAULT
-	) {
-    	set_status(NEED_STANDBY);
     }
+//    } else if (
+//		status == NON_MASKABLE_INTERRUPT ||
+//		status == HARD_FAULT ||
+//		status == MEM_MANAGE ||
+//		status == BUS_FAULT ||
+//		status == USAGE_FAULT
+//	) {
+//    	set_status(NEED_STANDBY);
+//    }
 }
 
 void system_post_load(void)

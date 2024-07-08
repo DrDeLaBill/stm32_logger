@@ -234,6 +234,10 @@ bool StandbyWatchdog::needEnterStandby()
 		return false;
 	}
 
+	if (!is_status(WORKING)) {
+		return false;
+	}
+
 #if USE_WKUP_PA0
 	if (usb_connected()) {
 		return false;

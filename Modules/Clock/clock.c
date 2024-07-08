@@ -103,7 +103,11 @@ bool clock_save_time(const RTC_TimeTypeDef* time)
     }
     RTC_TimeTypeDef tmpTime = {0};
     memcpy((void*)&tmpTime, (void*)time, sizeof(tmpTime));
+
+	HAL_PWR_EnableBkUpAccess();
 	status = HAL_RTC_SetTime(&hrtc, &tmpTime, RTC_FORMAT_BIN);
+	HAL_PWR_DisableBkUpAccess();
+
 	BEDUG_ASSERT(status == HAL_OK, "Unable to set current time");
     return status == HAL_OK;
 }
@@ -125,7 +129,10 @@ bool clock_save_date(const RTC_DateTypeDef* date)
         	tmpDate.WeekDay = RTC_WEEKDAY_MONDAY;
         }
     	/* calculating weekday end */
+
+    	HAL_PWR_EnableBkUpAccess();
         status = HAL_RTC_SetDate(&hrtc, &tmpDate, RTC_FORMAT_BIN);
+    	HAL_PWR_DisableBkUpAccess();
     }
 	BEDUG_ASSERT(status == HAL_OK, "Unable to set current date");
     return status == HAL_OK;

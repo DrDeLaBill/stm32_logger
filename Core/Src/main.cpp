@@ -88,15 +88,15 @@ StorageAT* storage;
 SoulGuard<
 	RestartWatchdog,
 	PowerWatchdog,
-	MemoryWatchdog,
-	StackWatchdog,
-	StandbyWatchdog
+	StackWatchdog
 > hardGuard;
 SoulGuard<
+	MemoryWatchdog,
 	SettingsWatchdog,
 	OneWireWatcher,
 	RTCWatchdog,
-	SDCardWatcher
+	SDCardWatcher,
+	StandbyWatchdog
 > softGuard;
 /* USER CODE END 0 */
 
@@ -179,8 +179,6 @@ int main(void)
     utl::Timer errTimer(40 * SECOND_MS);
 
     set_error(STACK_ERROR);
-    set_error(MEMORY_INIT_ERROR);
-    errTimer.start();
 	while (has_errors()) {
 		hardGuard.defend();
 
@@ -189,6 +187,14 @@ int main(void)
 		}
     }
 
+    set_error(MEMORY_INIT_ERROR);
+    errTimer.start();
+    while(flash_w25qxx_init() != FLASH_OK) {
+    	if (!errTimer.wait()) {
+			system_error_handler(MEMORY_INIT_ERROR, error_loop);
+		}
+    }
+    reset_error(MEMORY_INIT_ERROR);
 
     storage = new StorageAT(
 		flash_w25qxx_get_pages_count(),

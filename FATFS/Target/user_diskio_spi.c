@@ -12,13 +12,13 @@
 #include "glog.h"
 
 
-const char* DIOSD_MODULE_TAG = "DIO_SPISD";
+const char* DIOSD_MODULE_TAG = "DSPI";
 
 #define DIO_SPI_DEBUG
 #define DIO_SPI_CMD_DEBUG
 
 #ifdef DIO_SPI_DEBUG
-#define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, " " fmt __VA_OPT__(,) __VA_ARGS__); }
+#define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, fmt __VA_OPT__(,) __VA_ARGS__); }
 #define DIO_SPI_PRINTF(fmt, ...) { printPretty("\t" fmt __VA_OPT__(,) __VA_ARGS__); }
 #else /* DIO_SPI_DEBUG */
 #define DIO_SPI_PRINTF_TAG(fmt, ...) {}
@@ -502,7 +502,10 @@ DRESULT DIO_SPI_RecvData(BYTE* buf, UINT len) {
 	do {
 		tmp = DIO_SPI_Transceive(0xFF);
 	} while(tmp == 0xFF && util_old_timer_wait(&tm));
-	if(tmp != 0xFE) return RES_ERROR;
+	if(tmp != 0xFE) {
+		DIO_SPI_DebugR2(tmp);
+		return RES_ERROR;
+	}
 
 	WORD realCrc = 0;
 	DIO_SPI_ReceiveMulti(buf, len, &realCrc);
@@ -511,7 +514,10 @@ DRESULT DIO_SPI_RecvData(BYTE* buf, UINT len) {
 	crc |= DIO_SPI_Transceive(0xFF); crc <<= 8;
 	crc |= DIO_SPI_Transceive(0xFF);
 
-	if(crc != realCrc) return RES_ERROR;
+	if(crc != realCrc) {
+		DIO_SPI_CMD_PRINTF("BAD CRC %u!=%u\n", realCrc, crc);
+		return RES_ERROR;
+	}
 
 	return RES_OK;
 }

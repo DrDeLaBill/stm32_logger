@@ -18,9 +18,7 @@
 
 MemoryWatchdog::MemoryWatchdog():
 	errorTimer(TIMEOUT_MS), timer(SECOND_MS), errors(0), timerStarted(false)
-{
-	set_error(MEMORY_INIT_ERROR);
-}
+{}
 
 void MemoryWatchdog::check()
 {

@@ -139,8 +139,8 @@ FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UI
 
 	res = f_open(&DIOSPIFile, filename, FA_OPEN_APPEND|FA_WRITE);
 	if (res == FR_NO_FILESYSTEM) {
-		BYTE work[_MAX_SS] = {0};
-		res = f_mkfs(DIOSPIPath, FM_FAT32, 0, work, sizeof work);
+//		BYTE work[_MAX_SS] = {0};
+//		res = f_mkfs(DIOSPIPath, FM_FAT32, 0, work, sizeof work);
 	}
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i\n", res);
