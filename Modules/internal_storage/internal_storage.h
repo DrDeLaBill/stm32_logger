@@ -27,6 +27,7 @@ struct _sd_payload_header_t {
 
 
 #include <fatfs.h>
+FRESULT intstor_test();
 FRESULT intstor_read_file(const char* filename, void* buf, UINT size, UINT* br);
 FRESULT intstor_write_file(const char* filename, const void* buf, UINT size, UINT* bw);
 FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UINT* bw);

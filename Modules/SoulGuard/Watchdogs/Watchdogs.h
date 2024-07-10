@@ -253,5 +253,7 @@ public:
 
 struct SDCardWatcher
 {
+	static constexpr char TAG[] = "SDCw";
+
 	void check();
 };

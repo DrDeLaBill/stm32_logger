@@ -26,15 +26,17 @@ record_status_t record_save(const record_t* record)
 {
 	printTagLog(RECORD_TAG, "saving record");
 
+	record_show(record);
+
 	char filename[FILENAME_LENGTH] = {0};
 	snprintf(filename, sizeof(filename) - 1, "%s" "%s", DIOSPIPath, RECORD_FILENAME);
 
 	UINT br = 0;
 	FRESULT res = FR_OK;
 	char str[STRING_LENGTH] = {0};
-	if (settings.record_id <= 1) {
+	if (settings.record_id < 1) {
 		snprintf(str, sizeof(str) - 1, "LOG_ID;TIME;MODBUS1_ID;MODBUS1_VALUE;1WIRE_ID;1WIRE_VALUE;\n");
-		res = intstor_append_file(filename, &str, sizeof(str), &br);
+		res = intstor_append_file(filename, &str, strlen(str), &br);
 	}
 	if(res != FR_OK) {
 		printTagLog(RECORD_TAG, "record was NOT saved");
@@ -47,7 +49,7 @@ record_status_t record_save(const record_t* record)
 			snprintf(
 				str,
 				sizeof(str) - 1,
-				"%lu;%s;%u;%d;%llu;%d;\n",
+				"%lu;%s;%u;%d;%lu;%d;\n",
 				record->id,
 				get_clock_time_format(),
 				(i < record->mb1_count) ? record->mb1_id[i] : 0,
@@ -59,7 +61,7 @@ record_status_t record_save(const record_t* record)
 			snprintf(
 				str,
 				sizeof(str) - 1,
-				";;%u;%d;%llu;%d;\n",
+				";;%u;%d;%lu;%d;\n",
 				(i < record->mb1_count) ? record->mb1_id[i] : 0,
 				(i < record->mb1_count) ? record->mb1_value[i] : 0,
 				(i < record->_1w_count) ? record->_1w_id[i] : 0,
@@ -67,9 +69,10 @@ record_status_t record_save(const record_t* record)
 			);
 		}
 
-		res = intstor_append_file(filename, &str, sizeof(str), &br);
+		res = intstor_append_file(filename, &str, strlen(str), &br);
 		if(res != FR_OK) {
 			printTagLog(RECORD_TAG, "record was NOT saved");
+			set_error(SD_CARD_ERROR);
 			return RECORD_ERROR;
 		}
 	}
