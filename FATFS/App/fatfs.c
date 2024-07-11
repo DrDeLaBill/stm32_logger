@@ -28,7 +28,7 @@ FIL USERFile;       /* File object for USER */
 #include "system.h"
 
 uint8_t retDIOSPI;
-char DIOSPIPath[4];
+char DIOSPIPath[4] = "";
 FATFS DIOSPIFatFS;
 FIL DIOSPIFile;
 /* USER CODE END Variables */

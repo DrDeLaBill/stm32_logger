@@ -254,6 +254,10 @@ public:
 struct SDCardWatcher
 {
 	static constexpr char TAG[] = "SDCw";
+	static constexpr unsigned ERRORS_MAX = 7;
 
+	unsigned errors;
+
+	SDCardWatcher();
 	void check();
 };

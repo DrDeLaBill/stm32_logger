@@ -96,7 +96,7 @@ void record_show(const record_t* record)
     printPretty("INDEX ID                 VALUE\n");
     unsigned count = 0;
     while (count < record->mb1_count) {
-		printPretty("%03u   %03u                %u\n", count, record->mb1_id[count], record->mb1_value[count]);
+		printPretty("%03u   %03u                %d\n", count, record->mb1_id[count], record->mb1_value[count]);
     	count++;
     }
     if (!count) {
@@ -106,7 +106,7 @@ void record_show(const record_t* record)
     printPretty("INDEX ID                 VALUE\n");
     count = 0;
     while (count < record->_1w_count) {
-		printPretty("%03u   0x%08X%08X %u\n", count, (int)(record->_1w_id[count] >> 32), (int)(record->_1w_id[count]), record->_1w_value[count]);
+		printPretty("%03u   0x%08X%08X %d\n", count, (int)(record->_1w_id[count] >> 32), (int)(record->_1w_id[count]), record->_1w_value[count]);
     	count++;
     }
     if (!count) {

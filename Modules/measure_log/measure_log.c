@@ -193,6 +193,7 @@ void _meas_1w_delay_s(void)
 	if (!util_old_timer_wait(&meas_info.timer)) {
 		_save_start_a();
 		fsm_gc_push_event(&meas_fsm, &meas_timeout_e);
+		return;
 	}
 
 	if (onewire_driver_ready()) {
@@ -229,6 +230,7 @@ void _meas_1w_wait_s(void)
 
 		_count_error_a();
 		fsm_gc_push_event(&meas_fsm, &meas_timeout_e);
+		return;
 	}
 
 	bool needIterate = false;

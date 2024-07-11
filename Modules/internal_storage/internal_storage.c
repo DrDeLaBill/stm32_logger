@@ -19,14 +19,15 @@
 
 
 const char* STOR_MODULE_TAG = "STOR";
+const char* test_file_name = "test";
 
 
 FRESULT _instor_mount();
+FRESULT _instor_create_test();
 
 
 FRESULT intstor_test()
 {
-	const char* filename = "test.txt";
 	const char buf[] = "test";
 	UINT size = strlen(buf);
 	UINT bw = 0;
@@ -41,11 +42,11 @@ FRESULT intstor_test()
 		goto do_unmount;
 	}
 
-	res = f_open(&DIOSPIFile, filename, FA_CREATE_ALWAYS|FA_WRITE);
+	res = _instor_create_test();
 	if (res != FR_OK) {
-		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
+		printTagLog(STOR_MODULE_TAG, "_instor_create_test() error=%i", res);
 		out = res;
-		goto do_unmount;
+		goto do_close;
 	}
 
 	res = f_write(&DIOSPIFile, (uint8_t*)buf, size, &bw);
@@ -62,18 +63,18 @@ FRESULT intstor_test()
 		goto do_unmount;
 	}
 
-	res = f_open(&DIOSPIFile, filename, FA_CREATE_ALWAYS|FA_WRITE);
+	res = f_open(&DIOSPIFile, test_file_name, FA_OPEN_EXISTING|FA_READ);
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
 		out = res;
-		goto do_unmount;
+		goto do_close;
 	}
 
 	UINT br = 0;
-	char read_buf[sizeof(buf)] = {};
+	char read_buf[sizeof(buf)] = {0};
 	res = f_read(&DIOSPIFile, (uint8_t*)read_buf, sizeof(read_buf), &br);
 	if (res != FR_OK) {
-		printTagLog(STOR_MODULE_TAG, "f_write() error=%i", res);
+		printTagLog(STOR_MODULE_TAG, "f_read() error=%i", res);
 		out = res;
 		goto do_close;
 	}
@@ -85,12 +86,6 @@ do_close:
 	}
 
 do_unmount:
-	if (res != FR_OK) {
-		set_error(SD_CARD_ERROR);
-	} else {
-		reset_error(SD_CARD_ERROR);
-	}
-
 	res = f_mount(NULL, DIOSPIPath, 0);
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_mount(unmount) error=%i", res);
@@ -115,7 +110,7 @@ FRESULT intstor_read_file(const char* filename, void* buf, UINT size, UINT* br) 
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i\r", res);
 		out = res;
-		goto do_unmount;
+		goto do_close;
 	}
 
 	res = f_read(&DIOSPIFile, (uint8_t*)buf, size, br);
@@ -164,7 +159,7 @@ FRESULT intstor_write_file(const char* filename, const void* buf, UINT size, UIN
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
 		out = res;
-		goto do_unmount;
+		goto do_close;
 	}
 
 	res = f_write(&DIOSPIFile, (uint8_t*)buf, size, bw);
@@ -213,7 +208,7 @@ FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UI
 	if (res != FR_OK) {
 		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
 		out = res;
-		goto do_unmount;
+		goto do_close;
 	}
 
 	res = f_write(&DIOSPIFile, (uint8_t*)buf, size, bw);
@@ -246,17 +241,35 @@ do_unmount:
 
 FRESULT _instor_mount()
 {
-	FRESULT res = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
-	if (res == FR_NO_FILESYSTEM) {
+	FRESULT res_mkfs = FR_OK;
+	FRESULT res_mount = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
+	if (res_mount == FR_NO_FILESYSTEM) {
 		printTagLog(STOR_MODULE_TAG, "f_mount() error=FR_NO_FILESYSTEM");
 		BYTE work[_MAX_SS] = {0};
-		res = f_mkfs(DIOSPIPath, FM_FAT, 0, work, sizeof work);
-	} else if (res != FR_OK) {
-		printTagLog(STOR_MODULE_TAG, "f_mount() error=%u", res);
-		return res;
+		res_mkfs = f_mkfs(DIOSPIPath, FM_FAT, 0, work, sizeof work);
+		if (res_mkfs != FR_OK) {
+			printTagLog(STOR_MODULE_TAG, "f_mkfs() error=%u", res_mkfs);
+			return res_mount;
+		}
+		res_mount = f_mount(&DIOSPIFatFS, DIOSPIPath, 1);
+		if (res_mount != FR_OK) {
+			printTagLog(STOR_MODULE_TAG, "f_mount() error=%u", res_mount);
+		}
+	}
+	return res_mount;
+}
+
+FRESULT _instor_create_test()
+{
+	DIR dir = {0};
+	FILINFO info = {0};
+
+	FRESULT res = f_open(&DIOSPIFile, test_file_name, FA_OPEN_EXISTING|FA_WRITE);
+	if (res == FR_NO_FILE) {
+		res = f_open(&DIOSPIFile, test_file_name, FA_CREATE_ALWAYS|FA_WRITE);
 	}
 	if (res != FR_OK) {
-		printTagLog(STOR_MODULE_TAG, "f_mkfs() error=%i", res);
+		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
 	}
 	return res;
 }
