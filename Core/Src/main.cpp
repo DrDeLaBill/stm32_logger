@@ -198,7 +198,8 @@ int main(void)
 
     storage = new StorageAT(
 		flash_w25qxx_get_pages_count(),
-		&storageDriver
+		&storageDriver,
+		FLASH_W25_SECTOR_SIZE
 	);
 
     set_error(SD_CARD_ERROR);

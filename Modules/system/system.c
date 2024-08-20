@@ -25,6 +25,42 @@ uint16_t SYSTEM_ADC_VOLTAGE[2] = {0};
 
 void system_clock_hsi_config(void)
 {
+#ifdef STM32F1
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+							  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_ADC;
+	PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+	PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+	{
+		Error_Handler();
+	}
+#elif defined(STM32F4)
 	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
 	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
@@ -66,77 +102,107 @@ void system_clock_hsi_config(void)
 	{
 		Error_Handler();
 	}
-
-	reset_error(RCC_ERROR);
+#else
+#   error "Please select your controller"
+#endif
 }
 
 void system_rtc_test(void)
 {
-#ifdef DEBUG
+#if SYSTEM_BEDUG
 	static const char TEST_TAG[] = "TEST";
-#endif
 	gprint("\n\n\n");
 	printTagLog(TEST_TAG, "RTC testing in progress...");
+#endif
 
 	RTC_DateTypeDef readDate  ={0};
 	RTC_TimeTypeDef readTime = {0};
 
+#if SYSTEM_BEDUG
 	printPretty("Get date test: ");
+#endif
 	if (!clock_get_rtc_date(&readDate)) {
+#if SYSTEM_BEDUG
 		gprint("   error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint("   OK\n");
-
 	printPretty("Get time test: ");
+#endif
 	if (!clock_get_rtc_time(&readTime)) {
+#if SYSTEM_BEDUG
 		gprint("   error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint("   OK\n");
-
-
 	printPretty("Save date test: ");
+#endif
 	if (!clock_save_date(&readDate)) {
+#if SYSTEM_BEDUG
 		gprint("  error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint("  OK\n");
-
 	printPretty("Save time test: ");
+#endif
 	if (!clock_save_time(&readTime)) {
+#if SYSTEM_BEDUG
 		gprint("  error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint("  OK\n");
+#endif
 
 
 	RTC_DateTypeDef checkDate  ={0};
 	RTC_TimeTypeDef checkTime = {0};
+#if SYSTEM_BEDUG
 	printPretty("Check date test: ");
+#endif
 	if (!clock_get_rtc_date(&checkDate)) {
+#if SYSTEM_BEDUG
 		gprint(" error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
 	if (memcmp((void*)&readDate, (void*)&checkDate, sizeof(readDate))) {
+#if SYSTEM_BEDUG
 		gprint(" error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint(" OK\n");
-
 	printPretty("Check time test: ");
+#endif
 	if (!clock_get_rtc_time(&checkTime)) {
+#if SYSTEM_BEDUG
 		gprint(" error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
 	if (!IS_SAME_TIME(readTime, checkTime)) {
+#if SYSTEM_BEDUG
 		gprint(" error\n");
+#endif
 		system_error_handler(RTC_ERROR, NULL);
 	}
+#if SYSTEM_BEDUG
 	gprint(" OK\n");
+#endif
 
 
+#if SYSTEM_BEDUG
 	printPretty("Weekday test\n");
+#endif
 	const RTC_DateTypeDef dates[] = {
 		{RTC_WEEKDAY_SATURDAY,  01, 01, 00},
 		{RTC_WEEKDAY_SUNDAY,    01, 02, 00},
@@ -148,6 +214,19 @@ void system_rtc_test(void)
 		{RTC_WEEKDAY_THURSDAY,  05, 02, 24},
 		{RTC_WEEKDAY_FRIDAY,    05, 03, 24},
 	};
+#if defined(STM32F1)
+	const RTC_TimeTypeDef times[] = {
+		{00, 00, 00},
+		{00, 00, 00},
+		{03, 24, 49},
+		{04, 14, 24},
+		{03, 27, 01},
+		{23, 01, 40},
+		{03, 01, 40},
+		{04, 26, 12},
+		{03, 52, 35},
+	};
+#elif defined(STM32F4)
 	const RTC_TimeTypeDef times[] = {
 		{00, 00, 00, 0, 0, 0, 0, 0},
 		{00, 00, 00, 0, 0, 0, 0, 0},
@@ -159,6 +238,7 @@ void system_rtc_test(void)
 		{04, 26, 12, 0, 0, 0, 0, 0},
 		{03, 52, 35, 0, 0, 0, 0, 0},
 	};
+#endif
 	const uint32_t seconds[] = {
 		0,
 		86400,
@@ -172,31 +252,43 @@ void system_rtc_test(void)
 	};
 
 	for (unsigned i = 0; i < __arr_len(seconds); i++) {
+#if SYSTEM_BEDUG
 		printPretty("[%02u]: ", i);
+#endif
 
 		RTC_DateTypeDef tmpDate = {0};
 		RTC_TimeTypeDef tmpTime = {0};
 		clock_seconds_to_datetime(seconds[i], &tmpDate, &tmpTime);
 		if (memcmp((void*)&tmpDate, (void*)&dates[i], sizeof(tmpDate))) {
+#if SYSTEM_BEDUG
 			gprint("            error\n");
+#endif
 			system_error_handler(RTC_ERROR, NULL);
 		}
 		if (!IS_SAME_TIME(tmpTime, times[i])) {
+#if SYSTEM_BEDUG
 			gprint("            error\n");
+#endif
 			system_error_handler(RTC_ERROR, NULL);
 		}
 
 		uint32_t tmpSeconds = clock_datetime_to_seconds(&dates[i], &times[i]);
 		if (tmpSeconds != seconds[i]) {
+#if SYSTEM_BEDUG
 			gprint("            error\n");
+#endif
 			system_error_handler(RTC_ERROR, NULL);
 		}
 
+#if SYSTEM_BEDUG
 		gprint("            OK\n");
+#endif
 	}
 
 
+#if SYSTEM_BEDUG
 	printTagLog(TEST_TAG, "RTC testing done");
+#endif
 }
 
 void system_pre_load(void)
@@ -224,9 +316,15 @@ void system_pre_load(void)
 		counter++;
 	}
 
+#ifdef STM32F1
+	uint32_t backupregister = (uint32_t)BKP_BASE;
+	backupregister += (RTC_BKP_DR1 * 4U);
+	SOUL_STATUS status = (SOUL_STATUS)((*(__IO uint32_t *)(backupregister)) & BKP_DR1_D);
+#elif defined(STM32F4)
 	HAL_PWR_EnableBkUpAccess();
 	SOUL_STATUS status = (SOUL_STATUS)HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1);
 	HAL_PWR_DisableBkUpAccess();
+#endif
 
 	set_last_error(status);
 
@@ -237,15 +335,6 @@ void system_pre_load(void)
     } else if (status == SETTINGS_LOAD_ERROR) {
     	set_error(SETTINGS_LOAD_ERROR);
     }
-//    } else if (
-//		status == NON_MASKABLE_INTERRUPT ||
-//		status == HARD_FAULT ||
-//		status == MEM_MANAGE ||
-//		status == BUS_FAULT ||
-//		status == USAGE_FAULT
-//	) {
-//    	set_status(NEED_STANDBY);
-//    }
 }
 
 void system_post_load(void)
@@ -254,17 +343,22 @@ void system_post_load(void)
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0);
 	HAL_PWR_DisableBkUpAccess();
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)SYSTEM_ADC_VOLTAGE, 2);
+#if SYSTEM_BEDUG
+	if (get_last_error()) {
+		printTagLog(SYSTEM_TAG, "Last reload error: %u", get_last_error());
+	}
+#endif
+
+#ifdef STM32F1
+	HAL_ADCEx_Calibration_Start(&hadc1);
+#endif
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)SYSTEM_ADC_VOLTAGE, 3);
 	uint64_t counter = 0;
 	uint64_t count_max = HAL_RCC_GetHCLKFreq() * 10;
 	util_old_timer_t timer = {0};
 	util_old_timer_start(&timer, 10000);
 	while (1) {
-		uint16_t voltage = 0;
-		if (SYSTEM_ADC_VOLTAGE[1]) {
-			voltage = get_system_power();
-		}
-
+		uint32_t voltage = get_system_power();
 		if (STM_MIN_VOLTAGEx10 <= voltage && voltage <= STM_MAX_VOLTAGEx10) {
 			break;
 		}
@@ -306,7 +400,12 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 
 	printTagLog(SYSTEM_TAG, "system_error_handler called error=%u", error);
 
+	/* Custom events begin */
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+	if (!usb_connected()) {
+		set_status(NEED_STANDBY);
+	}
+	/* Custom events end */
 
 	HAL_PWR_EnableBkUpAccess();
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, error);
@@ -317,9 +416,6 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 	util_old_timer_t timer = {0};
 	util_old_timer_start(&timer, 10000);
 	while(1) {
-		if (!usb_connected()) {
-    		set_status(NEED_STANDBY);
-		}
 		if (error_loop) {
 			error_loop();
 		}
@@ -344,10 +440,26 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 	NVIC_SystemReset();
 }
 
-uint32_t get_system_power()
+uint32_t get_system_power(void)
 {
 	if (!SYSTEM_ADC_VOLTAGE[1]) {
 		return 0;
 	}
 	return (STM_ADC_MAX * LOGGER_REF_VOLTAGEx10) / SYSTEM_ADC_VOLTAGE[1];
+}
+
+char* get_system_serial_str(void)
+{
+	uint32_t uid_base = 0x1FFFF7E8;
+
+	uint16_t *idBase0 = (uint16_t*)(uid_base);
+	uint16_t *idBase1 = (uint16_t*)(uid_base + 0x02);
+	uint32_t *idBase2 = (uint32_t*)(uid_base + 0x04);
+	uint32_t *idBase3 = (uint32_t*)(uid_base + 0x08);
+
+	static char str_uid[25] = {0};
+	memset((void*)str_uid, 0, sizeof(str_uid));
+	sprintf(str_uid, "%04X%04X%08lX%08lX", *idBase0, *idBase1, *idBase2, *idBase3);
+
+	return str_uid;
 }

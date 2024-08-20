@@ -14,8 +14,8 @@
 
 const char* DIOSD_MODULE_TAG = "DSPI";
 
-#define DIO_SPI_DEBUG
-#define DIO_SPI_CMD_DEBUG
+//#define DIO_SPI_DEBUG
+//#define DIO_SPI_CMD_DEBUG
 
 #ifdef DIO_SPI_DEBUG
 #define DIO_SPI_PRINTF_TAG(fmt, ...) { printTagLog(DIOSD_MODULE_TAG, "SPI command dump:"); printPretty(fmt __VA_OPT__(,) __VA_ARGS__); }
@@ -666,7 +666,7 @@ DSTATUS DIO_SPI_initialize(BYTE pdrv) {
 
 	// dummy clocks to synchronize
 	DIO_SPI_CardDisable();
-	for(uint8_t i = 10; i; i--) DIO_SPI_Transceive(0xFF);
+	for(uint8_t i = 100; i; i--) DIO_SPI_Transceive(0xFF);
 
 	util_old_timer_t tm;
 	util_old_timer_start(&tm, 1000);

@@ -15,15 +15,21 @@ extern "C" {
 #include "main.h"
 
 
+#define DEVICE_MAJOR (0)
+#define DEVICE_MINOR (1)
+#define DEVICE_PATCH (0)
+
+
 /*
  * Device types:
  * 0x0001 - Dispenser
  * 0x0002 - Gas station
  * 0x0003 - Logger
  * 0x0004 - B.O.B.A.
+ * 0x0005 - Calibrate station
+ * 0x0006 - Dispenser-mini
  */
 #define DEVICE_TYPE ((uint16_t)0x0003)
-// TODO: add most significant byte of version (now it v0.1.4 -.fw.sw)
 #define SW_VERSION  ((uint8_t)0x01)
 #define FW_VERSION  ((uint8_t)0x01)
 #define CF_VERSION  ((uint8_t)0x01)

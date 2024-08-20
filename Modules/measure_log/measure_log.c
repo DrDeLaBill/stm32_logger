@@ -47,11 +47,11 @@ void _register_error_a(void);
 
 FSM_GC_CREATE(meas_fsm)
 
-FSM_GC_CREATE_EVENT(meas_success_e)
-FSM_GC_CREATE_EVENT(meas_timeout_e)
-FSM_GC_CREATE_EVENT(meas_iterate_e)
-FSM_GC_CREATE_EVENT(meas_end_e)
-FSM_GC_CREATE_EVENT(meas_error_e)
+FSM_GC_CREATE_EVENT(meas_success_e, 0)
+FSM_GC_CREATE_EVENT(meas_timeout_e, 0)
+FSM_GC_CREATE_EVENT(meas_iterate_e, 0)
+FSM_GC_CREATE_EVENT(meas_end_e,     0)
+FSM_GC_CREATE_EVENT(meas_error_e,   1)
 
 FSM_GC_CREATE_STATE(meas_idle_s,        _meas_idle_s)
 FSM_GC_CREATE_STATE(meas_wait_start_s,  _meas_wait_start_s)
@@ -64,28 +64,28 @@ FSM_GC_CREATE_STATE(meas_save_s,        _meas_save_s)
 
 FSM_GC_CREATE_TABLE(
 	meas_fsm_table,
-    { &meas_idle_s,        &meas_success_e, &meas_wait_start_s },
+    { &meas_idle_s,        &meas_success_e, &meas_wait_start_s,  NULL},
 
-    { &meas_wait_start_s,  &meas_timeout_e, &meas_mb1_request_s },
+    { &meas_wait_start_s,  &meas_timeout_e, &meas_mb1_request_s, NULL},
 
-    { &meas_mb1_request_s, &meas_success_e, &meas_mb1_wait_s },
-    { &meas_mb1_request_s, &meas_end_e,     &meas_1w_delay_s },
-    { &meas_mb1_request_s, &meas_iterate_e, &meas_mb1_request_s },
-    { &meas_mb1_wait_s,    &meas_iterate_e, &meas_mb1_request_s },
-    { &meas_mb1_wait_s,    &meas_timeout_e, &meas_mb1_request_s },
+    { &meas_mb1_request_s, &meas_success_e, &meas_mb1_wait_s,    NULL},
+    { &meas_mb1_request_s, &meas_end_e,     &meas_1w_delay_s,    NULL},
+    { &meas_mb1_request_s, &meas_iterate_e, &meas_mb1_request_s, NULL},
+    { &meas_mb1_wait_s,    &meas_iterate_e, &meas_mb1_request_s, NULL},
+    { &meas_mb1_wait_s,    &meas_timeout_e, &meas_mb1_request_s, NULL},
 
-    { &meas_1w_delay_s,    &meas_success_e, &meas_1w_request_s },
-    { &meas_1w_delay_s,    &meas_timeout_e, &meas_save_s },
+    { &meas_1w_delay_s,    &meas_success_e, &meas_1w_request_s,  NULL},
+    { &meas_1w_delay_s,    &meas_timeout_e, &meas_save_s,        NULL},
 
-    { &meas_1w_request_s,  &meas_success_e, &meas_1w_wait_s },
-    { &meas_1w_request_s,  &meas_end_e,     &meas_save_s },
-    { &meas_1w_request_s,  &meas_iterate_e, &meas_1w_request_s },
-    { &meas_1w_wait_s,     &meas_iterate_e, &meas_1w_request_s },
-    { &meas_1w_wait_s,     &meas_timeout_e, &meas_1w_request_s },
+    { &meas_1w_request_s,  &meas_success_e, &meas_1w_wait_s,     NULL},
+    { &meas_1w_request_s,  &meas_end_e,     &meas_save_s,        NULL},
+    { &meas_1w_request_s,  &meas_iterate_e, &meas_1w_request_s,  NULL},
+    { &meas_1w_wait_s,     &meas_iterate_e, &meas_1w_request_s,  NULL},
+    { &meas_1w_wait_s,     &meas_timeout_e, &meas_1w_request_s,  NULL},
 
-    { &meas_save_s,        &meas_success_e, &meas_idle_s },
-    { &meas_save_s,        &meas_timeout_e, &meas_save_s },
-    { &meas_save_s,        &meas_error_e,   &meas_idle_s }
+    { &meas_save_s,        &meas_success_e, &meas_idle_s,        NULL},
+    { &meas_save_s,        &meas_timeout_e, &meas_save_s,        NULL},
+    { &meas_save_s,        &meas_error_e,   &meas_idle_s,        NULL}
 )
 
 

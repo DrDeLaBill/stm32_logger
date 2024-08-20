@@ -13,7 +13,7 @@ extern "C" {
 #include <stdbool.h>
 
 
-#define FLASH_BEDUG               (true)
+#define FLASH_BEDUG               (1)
 
 #define FLASH_TEST                (false)
 #define FLASH_TEST_PAGES_COUNT    ((uint32_t)64)
@@ -50,7 +50,7 @@ flash_status_t flash_w25qxx_reset();
  *  @param len Data buffer length.
  *  @return Result status.
  */
-flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
+flash_status_t flash_w25qxx_read(const uint32_t addr, uint8_t* data, const uint32_t len);
 
 /**
  *  Writes data to the FLASH memory.
@@ -59,10 +59,10 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
  *  @param len Data buffer length (256 units maximum).
  *  @return Result status.
  */
-flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len);
+flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, const uint32_t len);
 
 // TODO: docs
-flash_status_t flash_w25qxx_erase_data(uint32_t addr, uint32_t len);
+flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_t count);
 
 /**
  *  @return FLASH memory pages count.

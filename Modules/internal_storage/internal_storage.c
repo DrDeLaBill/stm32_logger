@@ -138,6 +138,12 @@ do_unmount:
 		printTagLog(STOR_MODULE_TAG, "f_mount(unmount) error=%i", res);
 	}
 
+	if (out != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	return out;
 }
 
@@ -187,11 +193,18 @@ do_unmount:
 		printTagLog(STOR_MODULE_TAG, "f_mount(unmount) error=%i", res);
 	}
 
+	if (out != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	return out;
 }
 
 
-FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UINT* bw) {
+FRESULT intstor_append_file(const char* filename, const void* buf, UINT size, UINT* bw)
+{
 	FRESULT res;
 	FRESULT out = FR_OK;
 
@@ -236,6 +249,66 @@ do_unmount:
 		printTagLog(STOR_MODULE_TAG, "f_mount(unmount) error=%i", res);
 	}
 
+	if (out != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
+	return out;
+}
+
+FRESULT intstor_file_size(const char* filename, UINT* size)
+{
+	FRESULT res;
+	FRESULT out = FR_OK;
+
+	*size = 0;
+
+	res = _instor_mount();
+	if (res != FR_OK) {
+		printTagLog(STOR_MODULE_TAG, "_instor_mount() error=%i", res);
+		out = res;
+		goto do_unmount;
+	}
+
+	res = f_open(&DIOSPIFile, filename, FA_OPEN_EXISTING|FA_READ);
+	if (res == FR_NO_FILE) {
+		out = FR_OK;
+		goto do_close;
+	}
+	if (res != FR_OK) {
+		printTagLog(STOR_MODULE_TAG, "f_open() error=%i", res);
+		out = res;
+		goto do_close;
+	}
+
+	*size = f_size(&DIOSPIFile);
+
+do_close:
+	res = f_close(&DIOSPIFile);
+	if (res != FR_OK) {
+		printTagLog(STOR_MODULE_TAG, "f_close() error=%i", res);
+	}
+
+do_unmount:
+	if (res != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
+	res = f_mount(NULL, DIOSPIPath, 0);
+	if (res != FR_OK) {
+		printTagLog(STOR_MODULE_TAG, "f_mount(unmount) error=%i", res);
+	}
+
+	if (out != FR_OK) {
+		set_error(SD_CARD_ERROR);
+	} else {
+		reset_error(SD_CARD_ERROR);
+	}
+
 	return out;
 }
 
@@ -261,9 +334,6 @@ FRESULT _instor_mount()
 
 FRESULT _instor_create_test()
 {
-	DIR dir = {0};
-	FILINFO info = {0};
-
 	FRESULT res = f_open(&DIOSPIFile, test_file_name, FA_OPEN_EXISTING|FA_WRITE);
 	if (res == FR_NO_FILE) {
 		res = f_open(&DIOSPIFile, test_file_name, FA_CREATE_ALWAYS|FA_WRITE);

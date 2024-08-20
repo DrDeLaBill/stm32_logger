@@ -31,10 +31,17 @@ record_status_t record_save(const record_t* record)
 	char filename[FILENAME_LENGTH] = {0};
 	snprintf(filename, sizeof(filename) - 1, "%s" "%s", DIOSPIPath, RECORD_FILENAME);
 
+	UINT file_size = 0;
+	FRESULT res = intstor_file_size(filename, &file_size);
+	if (res != FR_OK) {
+		printTagLog(RECORD_TAG, "unable to get file size");
+		return RECORD_ERROR;
+	}
+
 	UINT br = 0;
-	FRESULT res = FR_OK;
 	char str[STRING_LENGTH] = {0};
-	if (settings.record_id < 1) {
+
+	if (!file_size) {
 		snprintf(str, sizeof(str) - 1, "LOG_ID;TIME;MODBUS1_ID;MODBUS1_VALUE;1WIRE_ID;1WIRE_VALUE;\n");
 		res = intstor_append_file(filename, &str, strlen(str), &br);
 	}
@@ -49,7 +56,7 @@ record_status_t record_save(const record_t* record)
 			snprintf(
 				str,
 				sizeof(str) - 1,
-				"%lu;%s;%u;%d;%lu;%d;\n",
+				"%lu;%s;%u;%d;%llu;%d;\n",
 				record->id,
 				get_clock_time_format(),
 				(i < record->mb1_count) ? record->mb1_id[i] : 0,
@@ -61,7 +68,7 @@ record_status_t record_save(const record_t* record)
 			snprintf(
 				str,
 				sizeof(str) - 1,
-				";;%u;%d;%lu;%d;\n",
+				";;%u;%d;%llu;%d;\n",
 				(i < record->mb1_count) ? record->mb1_id[i] : 0,
 				(i < record->mb1_count) ? record->mb1_value[i] : 0,
 				(i < record->_1w_count) ? record->_1w_id[i] : 0,

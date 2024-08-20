@@ -25,7 +25,7 @@ uint32_t StorageDriver::lastAddress = 0;
 #endif
 
 
-StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len) {
+StorageStatus StorageDriver::read(const uint32_t address, uint8_t *data, const uint32_t len) {
 	if (is_error(POWER_ERROR) || is_status(MEMORY_ERROR)) {
 
 #if STORAGE_DRIVER_BEDUG
@@ -101,7 +101,7 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t *data, uint32_t len)
 }
 ;
 
-StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len) {
+StorageStatus StorageDriver::write(const uint32_t address, const uint8_t *data, const uint32_t len) {
 	if (is_error(POWER_ERROR) || is_status(MEMORY_ERROR)) {
 
 #if STORAGE_DRIVER_BEDUG
@@ -154,4 +154,52 @@ StorageStatus StorageDriver::write(uint32_t address, uint8_t *data, uint32_t len
 	hasError = false;
 	reset_status(MEMORY_WRITE_FAULT);
     return STORAGE_OK;
+}
+
+StorageStatus StorageDriver::erase(const uint32_t* addresses, const uint32_t count)
+{
+	if (is_error(POWER_ERROR) || is_status(MEMORY_ERROR)) {
+
+#if STORAGE_DRIVER_BEDUG
+		printTagLog(TAG, "Error power", address);
+#endif
+
+		return STORAGE_ERROR;
+	}
+
+#if STORAGE_DRIVER_BEDUG
+	printTagLog(TAG, "Erase addresses start");
+#endif
+
+	flash_status_t status = flash_w25qxx_erase_addresses(addresses, count);
+
+	if (hasError && !timer.wait()) {
+		set_status(MEMORY_WRITE_FAULT);
+	}
+	if (!hasError && status != FLASH_OK) {
+		hasError = true;
+		timer.start();
+	}
+#if STORAGE_DRIVER_BEDUG
+	if (status != FLASH_OK) {
+		printTagLog(TAG, "Erase addresses error=%u", status);
+	}
+#endif
+	if (status == FLASH_BUSY) {
+		return STORAGE_BUSY;
+	}
+	if (status == FLASH_OOM) {
+		return STORAGE_OOM;
+	}
+	if (status != FLASH_OK) {
+		return STORAGE_ERROR;
+	}
+
+#if STORAGE_DRIVER_BEDUG
+	printTagLog(TAG, "Erase addresses success");
+#endif
+
+	hasError = false;
+	reset_status(MEMORY_WRITE_FAULT);
+	return STORAGE_OK;
 }
