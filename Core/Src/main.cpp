@@ -221,6 +221,13 @@ int main(void)
 
     printTagLog(MAIN_TAG, "The device has been loaded");
 
+#ifdef DEBUG
+	unsigned last_error = get_first_error();
+
+	unsigned kFLOPScounter = 0;
+	utl::Timer kFLOPSTimer(10 * SECOND_MS);
+	kFLOPSTimer.start();
+#endif
 	set_status(WORKING);
 	errTimer.start();
     while (1)
@@ -229,6 +236,24 @@ int main(void)
 
 		hardGuard.defend();
 		softGuard.defend();
+
+#ifdef DEBUG
+		unsigned error = get_first_error();
+		if (error && last_error != error) {
+			printTagLog(MAIN_TAG, "New error: %u", error);
+			last_error = error;
+		} else if (last_error != error) {
+			printTagLog(MAIN_TAG, "No errors");
+			last_error = error;
+		}
+
+		kFLOPScounter++;
+		if (!kFLOPSTimer.wait()) {
+			printTagLog(MAIN_TAG, "kFLOPS: %u", kFLOPScounter / 10000);
+			kFLOPScounter = 0;
+			kFLOPSTimer.start();
+		}
+#endif
 
 		app_proccess();
 

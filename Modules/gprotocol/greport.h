@@ -12,16 +12,33 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 
+#include "gutils.h"
+
 
 #define PACK_GETTER_KEY ((uint8_t)0x00)
 
 
-typedef struct __attribute__((packed)) _pack_t {
+#ifdef __MINGW32__
+#   pragma pack(push, 1)
+typedef struct
+    _pack_t {
     uint32_t key;
     uint8_t  index;
     uint8_t  data[sizeof(uint64_t)];
     uint16_t crc;
 } pack_t;
+#   pragma pack(pop)
+#else
+TYPE_PACK(
+    typedef struct,
+    _pack_t {
+        uint32_t key;
+        uint8_t  index;
+        uint8_t  data[sizeof(uint64_t)];
+        uint16_t crc;
+    } pack_t;
+)
+#endif
 
 
 uint16_t pack_crc(const pack_t* report);

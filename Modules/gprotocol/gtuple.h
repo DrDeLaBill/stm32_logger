@@ -58,9 +58,9 @@ public:
 
     void set(uint8_t* const src, const uint8_t index = 0)
     {
-    	BEDUG_ASSERT(index < full_size(), "Index is out of range");
+    	BEDUG_ASSERT(index < length(), "Index is out of range");
     	BEDUG_ASSERT(src, "Source must not be NULL");
-    	if (!src || index >= full_size()) {
+    	if (!src || index >= length()) {
     		return;
     	}
     	memcpy(&source[index * item_size()], src, item_size());
@@ -70,7 +70,7 @@ public:
     {
     	BEDUG_ASSERT(index < length(), "Index is out of range");
     	BEDUG_ASSERT(dst, "Destination must not be NULL");
-    	if (!dst) {
+    	if (!dst || index >= length()) {
     		return;
     	}
     	uint8_t* tmp = &source[full_size() - 1];

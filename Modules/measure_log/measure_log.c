@@ -50,8 +50,8 @@ FSM_GC_CREATE(meas_fsm)
 FSM_GC_CREATE_EVENT(meas_success_e, 0)
 FSM_GC_CREATE_EVENT(meas_timeout_e, 0)
 FSM_GC_CREATE_EVENT(meas_iterate_e, 0)
-FSM_GC_CREATE_EVENT(meas_end_e,     0)
-FSM_GC_CREATE_EVENT(meas_error_e,   1)
+FSM_GC_CREATE_EVENT(meas_end_e,     1)
+FSM_GC_CREATE_EVENT(meas_error_e,   2)
 
 FSM_GC_CREATE_STATE(meas_idle_s,        _meas_idle_s)
 FSM_GC_CREATE_STATE(meas_wait_start_s,  _meas_wait_start_s)
@@ -142,6 +142,10 @@ void _meas_idle_s(void)
 
 void _meas_wait_start_s(void)
 {
+	if (HAL_GPIO_ReadPin(WKUP_GPIO_Port, WKUP_Pin)) { // TODO: usb_connected()) {
+		return;
+	}
+
 	if (!util_old_timer_wait(&meas_info.timer)) {
 		_init_mb1_sens_a();
 		fsm_gc_push_event(&meas_fsm, &meas_timeout_e);

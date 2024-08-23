@@ -352,7 +352,7 @@ void system_post_load(void)
 #ifdef STM32F1
 	HAL_ADCEx_Calibration_Start(&hadc1);
 #endif
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)SYSTEM_ADC_VOLTAGE, 3);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)SYSTEM_ADC_VOLTAGE, 2);
 	uint64_t counter = 0;
 	uint64_t count_max = HAL_RCC_GetHCLKFreq() * 10;
 	util_old_timer_t timer = {0};
@@ -411,8 +411,8 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, error);
 	HAL_PWR_DisableBkUpAccess();
 
-	uint64_t counter = 0;
-	uint64_t count_max = HAL_RCC_GetHCLKFreq() * 10;
+	uint64_t counter       = 0;
+	uint64_t count_max     = 1000000;
 	util_old_timer_t timer = {0};
 	util_old_timer_start(&timer, 10000);
 	while(1) {
@@ -420,7 +420,7 @@ void system_error_handler(SOUL_STATUS error, void (*error_loop) (void))
 			error_loop();
 		}
 
-		if (is_error(RCC_ERROR) && counter > count_max) {
+		if (counter > count_max) {
 			set_error(POWER_ERROR);
 			break;
 		} else if (!util_old_timer_wait(&timer)) {

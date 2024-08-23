@@ -19,6 +19,8 @@
 #   include "usbd_cdc_if.h"
 #elif defined(ESP32)
 #   include <Arduino.h>
+#elif defined(__MINGW32__)
+#   include "comservice.h"
 #else
 #   error Please check your platform
 #endif
@@ -37,12 +39,15 @@
 #endif
 
 
+#define GPROTOCOL_BEDUG    (1)
+
+
 struct gprotocol
 {
 private:
 	static constexpr char TAG[] = "GPTL";
 
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
 //	static std::unordered_map<uint32_t, std::string> debug_table;
 #endif
 
@@ -63,7 +68,7 @@ public:
 		hash ^= (hash >> 11);
 		hash += (hash << 15);
 
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
 //		debug_table.insert(std::make_pair(hash, std::string(data)));
 #endif
 
@@ -79,6 +84,8 @@ private:
 		CDC_Transmit_FS((uint8_t*)report, sizeof(pack_t));
 #elif defined(ARDUINO)
 		SERIAL_TRK.write(reinterpret_cast<uint8_t*>(report), sizeof(pack_t));
+#elif defined(__MINGW32__)
+        COMService::sendReport(*report);
 #endif
 	}
 
@@ -151,15 +158,25 @@ private:
 
 
 public:
-	gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table) {}
+	gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table)
+	{
+		printf("123\n");
+	}
 
 	bool slave_recieve(pack_t* request)
 	{
+#if GPROTOCOL_BEDUG
+		if (request->crc > 0xFF && request->crc != pack_crc(request)) {
+			printTagLog(TAG, "Request CRC error:");
+			pack_show(request);
+		}
+#endif
+
 		if (request->crc != pack_crc(request)) {
 			return false;
 		}
 
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
     	printTagLog(TAG, "Request:");
     	pack_show(request);
 #endif
@@ -180,12 +197,12 @@ public:
 
     	response.crc = pack_crc(&response);
 
-    	send_report(&response);
-
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
     	printTagLog(TAG, "Response:");
     	pack_show(&response);
 #endif
+
+    	send_report(&response);
 
     	return true;
 	}
@@ -205,26 +222,26 @@ public:
 
 		request.crc = pack_crc(&request);
 
-    	send_report(&request);
-
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
     	printTagLog(TAG, "Request:");
     	pack_show(&request);
 #endif
+
+    	send_report(&request);
 	}
 
 	bool master_recieve(pack_t* response)
 	{
+#if GPROTOCOL_BEDUG
+    	printTagLog(TAG, "Response:");
+    	pack_show(response);
+#endif
+
 		if (response->crc != pack_crc(response)) {
 			return false;
 		}
 
 		set_from_serialized(response->key, response->data, response->index);
-
-#ifdef DEBUG
-    	printTagLog(TAG, "Response:");
-    	pack_show(response);
-#endif
 
     	return true;
 	}
@@ -232,7 +249,7 @@ public:
 };
 
 
-#ifdef DEBUG
+#if GPROTOCOL_BEDUG
 //std::unordered_map<uint32_t, std::string> gprotocol::debug_table;
 #endif
 

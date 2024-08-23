@@ -27,9 +27,45 @@ extern RTC_HandleTypeDef hrtc;
 #endif
 
 
-fsm::FiniteStateMachine<StandbyWatchdog::fsm_table> StandbyWatchdog::fsm;
-utl::Timer StandbyWatchdog::timer(30 * SECOND_MS);
+static utl::Timer timer(30 * SECOND_MS);
 
+
+void _init_s();
+void _idle_s();
+void _start_s();
+
+void check_last_alarm_a();
+void enter_standby_a();
+void restart_alarm_a();
+void start_alarm_a();
+void check_alarm_a();
+
+
+FSM_GC_CREATE(_fsm)
+
+FSM_GC_CREATE_EVENT(loaded_e,             0)
+FSM_GC_CREATE_EVENT(started_e,            0)
+FSM_GC_CREATE_EVENT(need_standby_e,       1)
+FSM_GC_CREATE_EVENT(alarm_e,              2)
+FSM_GC_CREATE_EVENT(need_restart_alarm_e, 2)
+FSM_GC_CREATE_EVENT(need_start_alarm_e,   3)
+
+FSM_GC_CREATE_STATE(init_s,  _init_s)
+FSM_GC_CREATE_STATE(idle_s,  _idle_s)
+FSM_GC_CREATE_STATE(start_s, _start_s)
+
+FSM_GC_CREATE_TABLE(
+	fsm_table,
+	{&init_s,  &loaded_e,             &idle_s,  check_last_alarm_a},
+	{&init_s,  &need_standby_e,       &init_s,  enter_standby_a   },
+
+	{&idle_s,  &need_restart_alarm_e, &start_s, restart_alarm_a   },
+	{&idle_s,  &need_start_alarm_e,   &start_s, start_alarm_a     },
+	{&idle_s,  &alarm_e,              &start_s, start_alarm_a     },
+	{&idle_s,  &need_standby_e,       &idle_s,  enter_standby_a   },
+
+	{&start_s, &started_e,            &idle_s,  check_alarm_a     }
+)
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef*)
 {
@@ -42,16 +78,21 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef*)
 #endif
 }
 
+StandbyWatchdog::StandbyWatchdog()
+{
+	fsm_gc_init(&_fsm, fsm_table, __arr_len(fsm_table));
+}
+
 void StandbyWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch(TAG, WATCHDOG_TIMEOUT_MS);
 
-	fsm.proccess();
+	fsm_gc_proccess(&_fsm);
 }
 
 void StandbyWatchdog::alarm()
 {
-	fsm.push_event(alarm_e{});
+	fsm_gc_push_event(&_fsm, &alarm_e);
 }
 
 bool StandbyWatchdog::isAlarmReady()
@@ -258,33 +299,33 @@ uint32_t StandbyWatchdog::sleepTimeSec()
 }
 
 
-void StandbyWatchdog::_init_s::operator()()
+void _init_s()
 {
 	if (!is_status(LOADING)) {
-		fsm.push_event(loaded_e{});
+		fsm_gc_push_event(&_fsm, &loaded_e);
 	} else if (is_status(NEED_STANDBY)) {
-		fsm.push_event(need_standby_e{});
+		fsm_gc_push_event(&_fsm, &need_standby_e);
 	}
 }
 
-void StandbyWatchdog::_idle_s::operator ()()
+void _idle_s()
 {
 #if USE_WKUP_RTC_ALARM
-	if (!isAlarmReady()) {
-		fsm.push_event(need_start_alarm_e{});
+	if (!StandbyWatchdog::isAlarmReady()) {
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 	}
 #endif
-	if (needEnterStandby()) {
-		fsm.push_event(need_standby_e{});
+	if (StandbyWatchdog::needEnterStandby()) {
+		fsm_gc_push_event(&_fsm, &need_standby_e);
 	}
 }
 
-void StandbyWatchdog::_start_s::operator ()()
+void _start_s()
 {
-	fsm.push_event(started_e{});
+	fsm_gc_push_event(&_fsm, &started_e);
 }
 
-void StandbyWatchdog::check_last_alarm_a::operator ()()
+void check_last_alarm_a()
 {
 #if USE_WKUP_PA0
 	HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1);
@@ -298,35 +339,35 @@ void StandbyWatchdog::check_last_alarm_a::operator ()()
 
 	timer.start();
 
-	if (usb_connected() && hasWokenUp()) {
-		clearPWRFlags();
+	if (usb_connected() && StandbyWatchdog::hasWokenUp()) {
+		StandbyWatchdog::clearPWRFlags();
 #if STANDBY_W_BEDUG
-		printTagLog(TAG, "The device has exited the standby mode by USB connection.");
+		printTagLog(StandbyWatchdog::TAG, "The device has exited the standby mode by USB connection.");
 #endif
 	}
 
 #if USE_WKUP_PA0
-	if (hasWokenUp()) {
+	if (StandbyWatchdog::hasWokenUp()) {
 		set_status(NEED_MEASURE);
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "The device has woken up. Measure has requested.");
+		printTagLog(StandbyWatchdog::TAG, "The device has woken up. Measure has requested.");
 #	endif
-		fsm.push_event(need_start_alarm_e{});
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 		return;
 	}
 #endif
 
 #if STANDBY_W_BEDUG
-	printTagLog(TAG, "The device has reloaded. Try to reinit clock alarm.");
+	printTagLog(StandbyWatchdog::TAG, "The device has reloaded. Try to reinit clock alarm.");
 #endif
 
 	RTC_AlarmTypeDef sAlarm  = {};
 	HAL_StatusTypeDef status = HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
 	if (status != HAL_OK) {
 #if STANDBY_W_BEDUG
-		printTagLog(TAG, "Unable to get clock alarm");
+		printTagLog(StandbyWatchdog::TAG, "Unable to get clock alarm");
 #endif
-		fsm.push_event(need_start_alarm_e{});
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 		return;
 	}
 
@@ -335,19 +376,19 @@ void StandbyWatchdog::check_last_alarm_a::operator ()()
 	RTC_TimeTypeDef  time = {};
 	if (!clock_get_rtc_time(&time)) {
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "Unable to get current time");
+		printTagLog(StandbyWatchdog::TAG, "Unable to get current time");
 #	endif
 	}
 	if (!clock_get_rtc_date(&date)) {
 #	if STANDBY_W_BEDUG
-		printTagLog(TAG, "Unable to get current date");
+		printTagLog(StandbyWatchdog::TAG, "Unable to get current date");
 #	endif
 	}
 #endif
 
 #if STANDBY_W_BEDUG
 	printTagLog(
-		TAG,
+		StandbyWatchdog::TAG,
 		"The reloaded alarm clock: %02u day %02u:%02u:%02u (current %02u day time %02u:%02u:%02u)",
 		sAlarm.AlarmDateWeekDay,
 		sAlarm.AlarmTime.Hours,
@@ -361,26 +402,26 @@ void StandbyWatchdog::check_last_alarm_a::operator ()()
 #endif
 
 #if USE_WKUP_RTC_ALARM
-	if (!isAlarmReady()) {
-		fsm.push_event(need_start_alarm_e{});
+	if (!StandbyWatchdog::isAlarmReady()) {
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 		return;
 	}
 #endif
 
-	fsm.push_event(need_restart_alarm_e{});
+	fsm_gc_push_event(&_fsm, &need_restart_alarm_e);
 }
 
-void StandbyWatchdog::restart_alarm_a::operator ()()
+void restart_alarm_a()
 {
-	fsm.clear_events();
+	fsm_gc_clear(&_fsm);
 
 	RTC_AlarmTypeDef sAlarm  = {};
 	HAL_StatusTypeDef status = HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
 	if (status != HAL_OK) {
 #if STANDBY_W_BEDUG
-		printTagLog(TAG, "Unable to get clock alarm");
+		printTagLog(StandbyWatchdog::TAG, "Unable to get clock alarm");
 #endif
-		fsm.push_event(need_start_alarm_e{});
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 		return;
 	}
 	HAL_PWR_EnableBkUpAccess();
@@ -388,9 +429,9 @@ void StandbyWatchdog::restart_alarm_a::operator ()()
 	HAL_PWR_DisableBkUpAccess();
 	if (status != HAL_OK) {
 #if STANDBY_W_BEDUG
-		printTagLog(TAG, "Unable to restart clock alarm");
+		printTagLog(StandbyWatchdog::TAG, "Unable to restart clock alarm");
 #endif
-		fsm.push_event(need_start_alarm_e{});
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 		return;
 	}
 
@@ -403,15 +444,15 @@ void StandbyWatchdog::restart_alarm_a::operator ()()
 	}
 }
 
-void StandbyWatchdog::start_alarm_a::operator ()()
+void start_alarm_a()
 {
-	fsm.clear_events();
+	fsm_gc_clear(&_fsm);
 
 	set_status(NEED_MEASURE);
 
-	clearPWRFlags();
+	StandbyWatchdog::clearPWRFlags();
 
-	uint32_t needSeconds = sleepTimeSec();
+	uint32_t needSeconds = StandbyWatchdog::sleepTimeSec();
 //	uint32_t lastSeconds = 0; // TODO
 //	if (Record::getLastTime(&lastSeconds) != RECORD_OK) {
 //		startRTCAlarm(needSeconds);
@@ -423,25 +464,25 @@ void StandbyWatchdog::start_alarm_a::operator ()()
 //		needSeconds = currSeconds - lastSeconds;
 //	}
 
-	startRTCAlarm(needSeconds);
+	StandbyWatchdog::startRTCAlarm(needSeconds);
 }
 
-void StandbyWatchdog::check_alarm_a::operator ()()
+void check_alarm_a()
 {
-	if (!isAlarmReady()) {
-		fsm.push_event(need_start_alarm_e{});
+	if (!StandbyWatchdog::isAlarmReady()) {
+		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
 	}
 }
 
-void StandbyWatchdog::enter_standby_a::operator ()()
+void enter_standby_a()
 {
 #if STANDBY_W_BEDUG
-	printTagLog(TAG, "Initalizing the standby mode. The device turns off. Current time: %s", get_clock_time_format());
+	printTagLog(StandbyWatchdog::TAG, "Initalizing the standby mode. The device turns off. Current time: %s", get_clock_time_format());
 #endif
 
 #if USE_WKUP_RTC_ALARM
-	if (!isAlarmReady()) {
-		startRTCAlarm();
+	if (!StandbyWatchdog::isAlarmReady()) {
+		StandbyWatchdog::startRTCAlarm();
 	}
 #endif
 

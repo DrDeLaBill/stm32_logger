@@ -3,6 +3,7 @@
 #include "usb.h"
 
 #include <cstring>
+#include <unordered_map>
 
 #include "usbd_cdc_if.h"
 
@@ -24,18 +25,18 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("record_period"),         {reinterpret_cast<uint8_t*>(&settings.record_period),         sizeof(settings.record_period)}},
 	{GP_KEY_STR("send_period"),           {reinterpret_cast<uint8_t*>(&settings.send_period),           sizeof(settings.send_period)}},
 	{GP_KEY_STR("record_id"),             {reinterpret_cast<uint8_t*>(&settings.record_id),             sizeof(settings.record_id)}},
-	{GP_KEY_STR("modbus1_status"),        {reinterpret_cast<uint8_t*>(&settings.modbus1_status),        sizeof(settings.modbus1_status),    __arr_len(settings.modbus1_status)}},
-	{GP_KEY_STR("modbus1_value_reg"),     {reinterpret_cast<uint8_t*>(&settings.modbus1_value_reg),     sizeof(settings.modbus1_value_reg), __arr_len(settings.modbus1_value_reg)}},
-	{GP_KEY_STR("modbus1_id_reg"),        {reinterpret_cast<uint8_t*>(&settings.modbus1_id_reg),        sizeof(settings.modbus1_id_reg),    __arr_len(settings.modbus1_id_reg)}},
-	{GP_KEY_STR("_1wire_address"),        {reinterpret_cast<uint8_t*>(&settings._1wire_address),        sizeof(settings._1wire_address),    __arr_len(settings._1wire_address)}},
+	{GP_KEY_STR("modbus1_status"),        {reinterpret_cast<uint8_t*>(&settings.modbus1_status),        sizeof(settings.modbus1_status[0]),     __arr_len(settings.modbus1_status)}},
+	{GP_KEY_STR("modbus1_value_reg"),     {reinterpret_cast<uint8_t*>(&settings.modbus1_value_reg),     sizeof(settings.modbus1_value_reg[0]),  __arr_len(settings.modbus1_value_reg)}},
+	{GP_KEY_STR("modbus1_id_reg"),        {reinterpret_cast<uint8_t*>(&settings.modbus1_id_reg),        sizeof(settings.modbus1_id_reg[0]),     __arr_len(settings.modbus1_id_reg)}},
+	{GP_KEY_STR("_1wire_address"),        {reinterpret_cast<uint8_t*>(&settings._1wire_address),        sizeof(settings._1wire_address[0]),     __arr_len(settings._1wire_address)}},
 	{GP_KEY_STR("mb1_last_id"),           {reinterpret_cast<uint8_t*>(&app_info.mb1_last_id),           sizeof(app_info.mb1_last_id)}},
 	{GP_KEY_STR("mb1_new_id"),            {reinterpret_cast<uint8_t*>(&app_info.mb1_new_id),            sizeof(app_info.mb1_new_id)}},
 	{GP_KEY_STR("need_mb1_id_update"),    {reinterpret_cast<uint8_t*>(&app_info.need_mb1_id_update),    sizeof(app_info.need_mb1_id_update)}},
 	{GP_KEY_STR("time"),                  {reinterpret_cast<uint8_t*>(&app_info.time),                  sizeof(app_info.time)}},
 	{GP_KEY_STR("need_registrate_1wire"), {reinterpret_cast<uint8_t*>(&app_info.need_registrate_1wire), sizeof(app_info.need_registrate_1wire)}},
-	{GP_KEY_STR("modbus1_last_value"),    {reinterpret_cast<uint8_t*>(&app_info.modbus1_last_value),    sizeof(app_info.modbus1_last_value)}},
-	{GP_KEY_STR("_1wire_last_value"),     {reinterpret_cast<uint8_t*>(&app_info._1wire_last_value),     sizeof(app_info._1wire_last_value)}},
-	{GP_KEY_STR("_1wire_registrate"),     {reinterpret_cast<uint8_t*>(&app_info._1wire_registrate),     sizeof(app_info._1wire_registrate)}},
+	{GP_KEY_STR("modbus1_last_value"),    {reinterpret_cast<uint8_t*>(&app_info.modbus1_last_value),    sizeof(app_info.modbus1_last_value[0]), __arr_len(app_info.modbus1_last_value)}},
+	{GP_KEY_STR("_1wire_last_value"),     {reinterpret_cast<uint8_t*>(&app_info._1wire_last_value),     sizeof(app_info._1wire_last_value[0]),  __arr_len(app_info._1wire_last_value)}},
+	{GP_KEY_STR("_1wire_registrate"),     {reinterpret_cast<uint8_t*>(&app_info._1wire_registrate),     sizeof(app_info._1wire_registrate[0]),  __arr_len(app_info._1wire_registrate)}},
 };
 gprotocol protocol(table);
 
@@ -59,11 +60,10 @@ void usb_proccess()
 	pack_t* request = reinterpret_cast<pack_t*>(UserRxBufferFS);
 
 	if (!request->crc) {
-		gpTimer.start();
 		return;
 	}
 
-	if (protocol.slave_recieve(request)) {
-		memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
-	}
+	protocol.slave_recieve(request);
+
+	memset(UserRxBufferFS, 0, sizeof(pack_t));
 }

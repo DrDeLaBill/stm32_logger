@@ -94,10 +94,14 @@ private:
 	static constexpr uint32_t DELTA_SEC = HOUR_MS / SECOND_MS;
 #endif
 
-	static uint32_t sleepTimeSec();
+public:
+	static constexpr char TAG[] = "STBY";
 
-protected:
-	static utl::Timer timer;
+	StandbyWatchdog();
+
+	static void alarm();
+
+	void check();
 
 	static bool isAlarmReady();
 	static void startRTCAlarm(uint32_t seconds = sleepTimeSec());
@@ -108,52 +112,7 @@ protected:
 	static bool needEnterStandby();
 	static void enterStandby();
 
-
-	// Events:
-	FSM_CREATE_EVENT(loaded_e,             0);
-	FSM_CREATE_EVENT(alarm_started_e,      0);
-	FSM_CREATE_EVENT(started_e,            0);
-	FSM_CREATE_EVENT(need_standby_e,       1);
-	FSM_CREATE_EVENT(alarm_e,              2);
-	FSM_CREATE_EVENT(need_restart_alarm_e, 2);
-	FSM_CREATE_EVENT(need_start_alarm_e,   3);
-
-	// States:
-	struct _init_s  { void operator()(); };
-	struct _idle_s  { void operator()(); };
-	struct _start_s { void operator()(); };
-
-	FSM_CREATE_STATE(init_s,  _init_s);
-	FSM_CREATE_STATE(idle_s,  _idle_s);
-	FSM_CREATE_STATE(start_s, _start_s);
-
-	// Actions:
-	struct check_last_alarm_a { void operator()(); };
-	struct restart_alarm_a    { void operator()(); };
-	struct start_alarm_a      { void operator()(); };
-	struct enter_standby_a    { void operator()(); };
-	struct check_alarm_a      { void operator()(); };
-
-	using fsm_table = fsm::TransitionTable<
-		fsm::Transition<init_s,  loaded_e,             idle_s,  check_last_alarm_a, fsm::Guard::NO_GUARD>,
-		fsm::Transition<init_s,  need_standby_e,       init_s,  enter_standby_a,    fsm::Guard::NO_GUARD>,
-
-		fsm::Transition<idle_s,  need_restart_alarm_e, start_s, restart_alarm_a,    fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s,  need_start_alarm_e,   start_s, start_alarm_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s,  alarm_e,              start_s, start_alarm_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<idle_s,  need_standby_e,       idle_s,  enter_standby_a,    fsm::Guard::NO_GUARD>,
-
-		fsm::Transition<start_s, started_e,            idle_s,  check_alarm_a,      fsm::Guard::NO_GUARD>
-	>;
-
-	static fsm::FiniteStateMachine<fsm_table> fsm;
-
-public:
-	static constexpr char TAG[] = "STBY";
-
-	static void alarm();
-
-	void check();
+	static uint32_t sleepTimeSec();
 };
 
 struct PowerWatchdog
