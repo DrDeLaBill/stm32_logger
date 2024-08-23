@@ -59,10 +59,11 @@ void usb_proccess()
 	pack_t* request = reinterpret_cast<pack_t*>(UserRxBufferFS);
 
 	if (!request->crc) {
+		gpTimer.start();
 		return;
 	}
 
-	protocol.slave_recieve(request);
-
-	memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
+	if (protocol.slave_recieve(request)) {
+		memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
+	}
 }

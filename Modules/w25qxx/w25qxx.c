@@ -65,7 +65,6 @@ flash_status_t _flash_set_protect_block(uint8_t value);
 
 flash_status_t _flash_read(uint32_t addr, uint8_t* data, uint32_t len);
 
-flash_status_t _flash_erase_data(uint32_t addr, uint32_t len);
 flash_status_t _flash_erase_sector(uint32_t addr);
 
 flash_status_t _flash_data_cmp(const uint32_t addr, const uint8_t* data, const uint32_t len, bool* cmp_res);
@@ -252,12 +251,12 @@ do_block_protect:
 flash_status_t flash_w25qxx_read(const uint32_t addr, uint8_t* data, const uint32_t len)
 {
 #if FLASH_BEDUG
-//	printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: begin", addr, len);
+//	printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: begin", addr, len);
 #endif
 
     if (!flash_info.initialized) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu (flash was not initialized)", addr, len);
+        printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu (flash was not initialized)", addr, len);
 #endif
     	return FLASH_ERROR;
     }
@@ -270,7 +269,7 @@ flash_status_t flash_w25qxx_read(const uint32_t addr, uint8_t* data, const uint3
 
 #if FLASH_BEDUG
 //    if (status == FLASH_OK) {
-//		printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: OK", addr, len);
+//		printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: OK", addr, len);
 //    }
 //    if (status == FLASH_OK && len) {
 //		util_debug_hex_dump(data, addr, len);
@@ -284,13 +283,13 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
 {
 	/* Check input data BEGIN */
 #if FLASH_BEDUG
-	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu: begin", addr, len);
+	printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu: begin", addr, len);
 //	util_debug_hex_dump(data, addr, len);
 #endif
 
     if (!flash_info.initialized) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu (flash was not initialized)", addr, len);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu (flash was not initialized)", addr, len);
 #endif
         return FLASH_ERROR;
     }
@@ -299,7 +298,7 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
 	flash_status_t status = FLASH_OK;
     if (addr + len > _flash_get_storage_bytes_size()) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error (unacceptable address)", addr, len);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error (unacceptable address)", addr, len);
 #endif
         status = FLASH_OOM;
         goto do_spi_stop;
@@ -314,7 +313,7 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
     status = _flash_data_cmp(addr, data, len, &compare_status);
 	if (status != FLASH_OK) {
 #if FLASH_BEDUG
-		printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (compare data)", addr, len, status);
+		printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (compare data)", addr, len, status);
 #endif
         goto do_spi_stop;
 	}
@@ -322,23 +321,79 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
 
 	if (!compare_status) {
 #if FLASH_BEDUG
-		printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu: ABORT (already written)", addr, len);
+		printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu: ABORT (already written)", addr, len);
 #endif
         return FLASH_OK;
 	}
     /* Compare old flashed data END */
 
-
 	/* Erase data BEGIN */
-	_flash_spi_cs_set();
-	status = _flash_erase_data(addr, len);
-	if (status != FLASH_OK) {
+	{
+		uint32_t erase_addrs[FLASH_W25_SECTOR_SIZE / FLASH_W25_PAGE_SIZE] = {0};
+		unsigned erase_cnt        = 0;
+		uint32_t erase_len        = 0;
+		uint32_t erase_addr       = addr;
+		erase_addrs[erase_cnt++] = erase_addr;
+		while (erase_len < len) {
+			uint32_t erase_next_addr        = erase_addr + FLASH_W25_PAGE_SIZE;
+			uint32_t min_erase_size         = FLASH_W25_SECTOR_SIZE;
+			uint32_t erase_sector_addr      = (erase_addr / min_erase_size) * min_erase_size;
+			uint32_t erase_next_sector_addr = (erase_next_addr / min_erase_size) * min_erase_size;
+
+			if (erase_len + FLASH_W25_PAGE_SIZE >= len ||
+				erase_sector_addr != erase_next_sector_addr
+			) {
+				status = flash_w25qxx_erase_addresses(erase_addrs, erase_cnt);
+				if (status != FLASH_OK) {
 #if FLASH_BEDUG
-		printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (erase old data)", addr, len, status);
+					printTagLog(
+						FLASH_TAG,
+						"flash write addr=%08lX len=%lu error=%u (unable to erase old data)",
+						addr,
+						len,
+						status
+					);
 #endif
-        goto do_spi_stop;
+				}
+
+				memset(
+					(uint8_t*)erase_addrs,
+					0,
+					sizeof(erase_addrs)
+				);
+
+				if (status == FLASH_BUSY) {
+			        return status;
+				}
+				if (status != FLASH_OK) {
+					break;
+				}
+
+				erase_cnt = 0;
+			}
+
+			erase_addr = erase_next_addr;
+			erase_len += FLASH_W25_PAGE_SIZE;
+			if (erase_len < len) {
+				erase_addrs[erase_cnt++] = erase_next_addr;
+			}
+		}
+
+		if (erase_cnt) {
+			status = flash_w25qxx_erase_addresses(erase_addrs, erase_cnt);
+		}
+		if (status != FLASH_OK) {
+#if FLASH_BEDUG
+			printTagLog(
+				FLASH_TAG,
+				"flash write addr=%08lX len=%lu error=%u (unable to erase old data)",
+				addr,
+				len,
+				status
+			);
+#endif
+		}
 	}
-	_flash_spi_cs_reset();
 	/* Erase data END */
 
 
@@ -351,28 +406,35 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
     	}
     	_flash_spi_cs_set();
     	status = _flash_write(addr + cur_len, data + cur_len, write_len);
+    	_flash_spi_cs_reset();
     	if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (write)", addr + cur_len, write_len, status);
+        	printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (write)", addr + cur_len, write_len, status);
 #endif
             goto do_spi_stop;
     	}
-    	_flash_spi_cs_reset();
 
     	_flash_spi_cs_set();
     	uint8_t page_buf[FLASH_W25_PAGE_SIZE] = {0};
 		status = _flash_read(addr + cur_len, page_buf, write_len);
+    	_flash_spi_cs_reset();
     	if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (read written page after write)", addr + cur_len, write_len, status);
+        	printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (read written page after write)", addr + cur_len, write_len, status);
 #endif
             goto do_spi_stop;
     	}
-    	_flash_spi_cs_reset();
 
-		if (memcmp(page_buf, data + cur_len, write_len)) {
+    	int cmp_res = memcmp(page_buf, data + cur_len, write_len);
+		if (cmp_res) {
 #if FLASH_BEDUG
-        	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error (compare written page with read)", addr + cur_len, write_len);
+        	printTagLog(
+				FLASH_TAG,
+				"flash write addr=%08lX len=%lu error=%d (compare written page with read)",
+				addr + cur_len,
+				write_len,
+				cmp_res
+			);
 			printTagLog(FLASH_TAG, "Needed page:");
 			util_debug_hex_dump(data + cur_len, addr + cur_len, write_len);
 			printTagLog(FLASH_TAG, "Readed page:");
@@ -390,7 +452,7 @@ flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, cons
     /* Write data END */
 
 #if FLASH_BEDUG
-	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu: OK", addr, len);
+	printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu: OK", addr, len);
 #endif
 
 do_spi_stop:
@@ -449,7 +511,7 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 #if FLASH_BEDUG
 			printTagLog(
 				FLASH_TAG,
-				"flash erase data addr=%lu error (unable to read sector: block_idx=%lu sector_idx=%lu len=%lu)",
+				"flash erase data addr=%08lX error (unable to read sector: block_idx=%lu sector_idx=%lu len=%lu)",
 				cur_sector_addr,
 				cur_sector_addr / flash_info.block_size,
 				(cur_sector_addr % flash_info.block_size) / flash_info.sector_size,
@@ -463,10 +525,7 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 
 		/* Check target sector need erase BEGIN */
 		bool need_erase_sector = false;
-		for (uint32_t j = i; j < count; j++) {
-			if (next_sector_i > i && j >= next_sector_i) {
-				break;
-			}
+		for (uint32_t j = i; j < next_sector_i; j++) {
 			uint32_t addr_in_sector = addrs[j] % FLASH_W25_SECTOR_SIZE;
 			for (uint32_t k = 0; k < FLASH_W25_PAGE_SIZE; k++) {
 				if (sector_buf[addr_in_sector + k] != 0xFF) {
@@ -479,6 +538,16 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 			}
 		}
 		if (!need_erase_sector) {
+#if FLASH_BEDUG
+			for (uint32_t j = i; j < next_sector_i; j++) {
+				printTagLog(
+					FLASH_TAG,
+					"flash address=%08X (sector addr=%08lX) already empty",
+					addrs[j],
+					cur_sector_addr
+				);
+			}
+#endif
 			i = next_sector_i;
 			continue;
 		}
@@ -486,12 +555,6 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 
 
 		/* Erase sector BEGIN */
-		for (uint32_t i = 0; i < count; i++) {
-			if (addrs[i] / FLASH_W25_SECTOR_SIZE == cur_sector_idx) {
-				memset(sector_buf + addrs[i] % FLASH_W25_SECTOR_SIZE, 0xFF, FLASH_W25_PAGE_SIZE);
-			}
-		}
-
 		_flash_spi_cs_set();
 		status = _flash_erase_sector(cur_sector_addr);
 		_flash_spi_cs_reset();
@@ -499,7 +562,7 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 #if FLASH_BEDUG
 			printTagLog(
 				FLASH_TAG,
-				"flash erase data addr=%lu error (unable to erase sector: block_addr=%lu sector_addr=%lu len=%lu)",
+				"flash erase data addr=%08lX error (unable to erase sector: block_addr=%08lX sector_addr=%08lX len=%lu)",
 				cur_sector_addr,
 				cur_sector_addr / flash_info.block_size,
 				(cur_sector_addr % flash_info.block_size) / flash_info.sector_size,
@@ -512,7 +575,7 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 		if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 			_flash_spi_cs_reset();
 #if FLASH_BEDUG
-			printTagLog(FLASH_TAG, "flash erase data addr=%lu error (flash is busy)", cur_sector_addr);
+			printTagLog(FLASH_TAG, "flash erase data addr=%08lX error (flash is busy)", cur_sector_addr);
 #endif
 			return FLASH_BUSY;
 		}
@@ -521,31 +584,127 @@ flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_
 
 
 		/* Return old data BEGIN */
-		uint32_t write_len = 0;
-		while (write_len < FLASH_W25_SECTOR_SIZE) {
+		for (unsigned j = 0; j < FLASH_W25_SECTOR_SIZE / FLASH_W25_PAGE_SIZE; j++) {
+			bool need_restore = true;
+			uint32_t tmp_page_addr = cur_sector_addr + j * FLASH_W25_PAGE_SIZE;
+			for (unsigned k = i; k < next_sector_i; k++) {
+				if (addrs[k] == tmp_page_addr) {
+					need_restore = false;
+				}
+			}
+			if (!need_restore) {
+#if FLASH_BEDUG
+				printTagLog(
+					FLASH_TAG,
+					"flash restore data addr=%08lX ignored",
+					tmp_page_addr
+				);
+#endif
+				continue;
+			}
+
+			need_restore = false;
+			for (unsigned k = 0; k < FLASH_W25_PAGE_SIZE; k++) {
+				if (sector_buf[tmp_page_addr % FLASH_W25_SECTOR_SIZE + k] != 0xFF) {
+					need_restore = true;
+					break;
+				}
+			}
+			if (!need_restore) {
+#if FLASH_BEDUG
+				printTagLog(
+					FLASH_TAG,
+					"flash restore data addr=%08lX ignored (page empty)",
+					tmp_page_addr
+				);
+#endif
+				continue;
+			}
+
 #if FLASH_BEDUG
 			printTagLog(
 				FLASH_TAG,
-				"flash restore data addr=%lu",
-				cur_sector_addr + write_len
+				"flash restore data addr=%08lX begin",
+				tmp_page_addr
 			);
 #endif
 			_flash_spi_cs_set();
-			status = _flash_write(cur_sector_addr + write_len, sector_buf + write_len, FLASH_W25_PAGE_SIZE);
+			status = _flash_write(
+				tmp_page_addr,
+				&sector_buf[tmp_page_addr % FLASH_W25_SECTOR_SIZE],
+				FLASH_W25_PAGE_SIZE
+			);
 			_flash_spi_cs_reset();
 			if (status != FLASH_OK) {
 #if FLASH_BEDUG
 				printTagLog(
 					FLASH_TAG,
-					"flash erase data addr=%lu error (unable to write old data page addr=%lu)",
+					"flash erase data addr=%08lX error=%u (unable to write old data page addr=%08lX)",
 					cur_sector_addr,
-					cur_sector_addr + write_len
+					status,
+					tmp_page_addr
 				);
 #endif
 				return status;
 			}
 
-			write_len += FLASH_W25_PAGE_SIZE;
+	    	uint8_t page_buf[FLASH_W25_PAGE_SIZE] = {0};
+	    	_flash_spi_cs_set();
+			status = _flash_read(tmp_page_addr, page_buf, FLASH_W25_PAGE_SIZE);
+	    	_flash_spi_cs_reset();
+	    	if (status != FLASH_OK) {
+	#if FLASH_BEDUG
+	        	printTagLog(
+					FLASH_TAG,
+					"flash erase data addr=%08lX error=%u (unable to read page addr=%08lX)",
+					cur_sector_addr,
+					status,
+					tmp_page_addr
+				);
+	#endif
+				return status;
+	    	}
+
+	    	int cmp_res = memcmp(
+				page_buf,
+				&sector_buf[tmp_page_addr % FLASH_W25_SECTOR_SIZE],
+				FLASH_W25_PAGE_SIZE
+			);
+			if (cmp_res) {
+#if FLASH_BEDUG
+	        	printTagLog(
+					FLASH_TAG,
+					"flash erase data addr=%08lX error=%d (compare written page with read)",
+					tmp_page_addr,
+					status
+				);
+				printTagLog(FLASH_TAG, "Needed page:");
+				util_debug_hex_dump(
+					&sector_buf[tmp_page_addr % FLASH_W25_SECTOR_SIZE],
+					tmp_page_addr,
+					FLASH_W25_PAGE_SIZE
+				);
+				printTagLog(FLASH_TAG, "Readed page:");
+				util_debug_hex_dump(
+					page_buf,
+					tmp_page_addr,
+					FLASH_W25_PAGE_SIZE
+				);
+#endif
+				set_error(EXPECTED_MEMORY_ERROR);
+				status = FLASH_ERROR;
+				return status;
+	    	}
+
+#if FLASH_BEDUG
+			printTagLog(
+				FLASH_TAG,
+				"flash restore data addr=%08lX OK",
+				tmp_page_addr
+			);
+#endif
+
+			reset_error(EXPECTED_MEMORY_ERROR);
 		}
 		/* Return old data END */
 
@@ -559,14 +718,14 @@ flash_status_t _flash_write(const uint32_t addr, const uint8_t* data, const uint
 {
 	if (len > flash_info.page_size) {
 #if FLASH_BEDUG
-		printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error (unacceptable data length)", addr, len);
+		printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error (unacceptable data length)", addr, len);
 #endif
 		return FLASH_ERROR;
 	}
 
     if (addr + len > _flash_get_storage_bytes_size()) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error (unacceptable address)", addr, len);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error (unacceptable address)", addr, len);
 #endif
         return FLASH_OOM;
     }
@@ -574,20 +733,20 @@ flash_status_t _flash_write(const uint32_t addr, const uint8_t* data, const uint
     flash_status_t status = _flash_set_protect_block(FLASH_W25_SR1_UNBLOCK_VALUE);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (unset block protect)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (unset block protect)", addr, len, status);
 #endif
         goto do_block_protect;
     }
     status = _flash_write_enable();
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (write enable)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (write enable)", addr, len, status);
 #endif
         goto do_block_protect;
     }
     if (!util_wait_event(_flash_check_WEL, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (WEL bit wait time exceeded)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (WEL bit wait time exceeded)", addr, len, status);
 #endif
 		status = FLASH_BUSY;
 		goto do_block_protect;
@@ -606,7 +765,7 @@ flash_status_t _flash_write(const uint32_t addr, const uint8_t* data, const uint
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error (FLASH busy)", addr, len);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error (FLASH busy)", addr, len);
 #endif
         return FLASH_ERROR;
     }
@@ -614,7 +773,7 @@ flash_status_t _flash_write(const uint32_t addr, const uint8_t* data, const uint
     status = _flash_send_data(spi_cmd, counter);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (send command)", addr, len, (unsigned int)status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (send command)", addr, len, (unsigned int)status);
 #endif
 		goto do_block_protect;
     }
@@ -622,7 +781,7 @@ flash_status_t _flash_write(const uint32_t addr, const uint8_t* data, const uint
     status = _flash_send_data(data, len);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-    	printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (wait write data timeout)", addr, len, (unsigned int)status);
+    	printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (wait write data timeout)", addr, len, (unsigned int)status);
 #endif
 		goto do_block_protect;
     }
@@ -631,14 +790,14 @@ do_block_protect:
     status = _flash_write_disable();
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (write is not disabled)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (write is not disabled)", addr, len, status);
 #endif
     }
 
     status = _flash_set_protect_block(FLASH_W25_SR1_BLOCK_VALUE);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash write addr=%lu len=%lu error=%u (set block protected)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash write addr=%08lX len=%lu error=%u (set block protected)", addr, len, status);
 #endif
     }
 
@@ -711,7 +870,7 @@ flash_status_t _flash_data_cmp(const uint32_t addr, const uint8_t* data, const u
 		flash_status_t status = _flash_read(addr + cur_len, read_data, needed_len);
 		if (status != FLASH_OK) {
 #if FLASH_BEDUG
-	        printTagLog(FLASH_TAG, "flash compare addr=%lu len=%lu error=%u (read)", addr + cur_len, needed_len, status);
+	        printTagLog(FLASH_TAG, "flash compare addr=%08lX len=%lu error=%u (read)", addr + cur_len, needed_len, status);
 #endif
 	        return status;
 		}
@@ -727,32 +886,11 @@ flash_status_t _flash_data_cmp(const uint32_t addr, const uint8_t* data, const u
 	return FLASH_OK;
 }
 
-flash_status_t flash_w25qxx_erase_data(uint32_t addr, uint32_t len)
-{
-    flash_status_t status = FLASH_OK;
-    if (!flash_info.initialized) {
-        return FLASH_ERROR;
-    }
-
-    _flash_spi_cs_set();
-
-    status = _flash_erase_data(addr, len);
-    if (status != FLASH_OK) {
-#if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "get pages count: initializing error");
-#endif
-    }
-
-    _flash_spi_cs_reset();
-
-    return status;
-}
-
 flash_status_t _flash_read(uint32_t addr, uint8_t* data, uint32_t len)
 {
     if (addr + len > _flash_get_storage_bytes_size()) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: error (unacceptable address)", addr, len);
+        printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: error (unacceptable address)", addr, len);
 #endif
         return FLASH_OOM;
     }
@@ -770,7 +908,7 @@ flash_status_t _flash_read(uint32_t addr, uint8_t* data, uint32_t len)
     flash_status_t status = FLASH_OK;
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: error (FLASH busy)", addr, len);
+        printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: error (FLASH busy)", addr, len);
 #endif
         return FLASH_BUSY;
     }
@@ -778,7 +916,7 @@ flash_status_t _flash_read(uint32_t addr, uint8_t* data, uint32_t len)
     status = _flash_send_data(spi_cmd, counter);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: error=%u (send command)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: error=%u (send command)", addr, len, status);
 #endif
         return status;
     }
@@ -789,113 +927,11 @@ flash_status_t _flash_read(uint32_t addr, uint8_t* data, uint32_t len)
 
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "flash read addr=%lu len=%lu: error=%u (recieve data)", addr, len, status);
+        printTagLog(FLASH_TAG, "flash read addr=%08lX len=%lu: error=%u (recieve data)", addr, len, status);
 #endif
     }
 
     return status;
-}
-
-flash_status_t _flash_erase_data(uint32_t addr, uint32_t len)
-{
-	uint32_t end_sector_idx = ((addr + len) / FLASH_W25_SECTOR_SIZE) + 1;
-
-	for (uint32_t cur_sector_idx = addr / FLASH_W25_SECTOR_SIZE; cur_sector_idx < end_sector_idx; cur_sector_idx++) {
-		uint32_t sector_addr = cur_sector_idx * FLASH_W25_SECTOR_SIZE;
-		uint8_t  sector_buf[FLASH_W25_SECTOR_SIZE] = {0};
-
-		/* Read target sector BEGIN */
-		flash_status_t status = _flash_read(sector_addr, sector_buf, sizeof(sector_buf));
-		if (status != FLASH_OK) {
-#if FLASH_BEDUG
-			printTagLog(
-				FLASH_TAG,
-				"flash erase data addr=%lu len=%lu error (unable to read sector: block_addr=%lu sector_addr=%lu len=%lu)",
-				addr,
-				len,
-				sector_addr / flash_info.block_size,
-				(sector_addr % flash_info.block_size) / flash_info.sector_size,
-				FLASH_W25_SECTOR_SIZE
-			);
-#endif
-			return status;
-		}
-		/* Read target sector END */
-
-
-		/* Check target sector need erase BEGIN */
-		uint32_t erase_len = len;
-		uint32_t addr_in_sector = (addr % FLASH_W25_SECTOR_SIZE);
-		if (addr_in_sector + erase_len > sector_addr + FLASH_W25_SECTOR_SIZE) {
-			erase_len = FLASH_W25_SECTOR_SIZE - addr_in_sector;
-		}
-
-		bool need_erase_sector = false;
-		for (uint32_t i = addr_in_sector; i < FLASH_W25_SECTOR_SIZE; i++) {
-			if (sector_buf[i] != 0xFF) {
-				need_erase_sector = true;
-				break;
-			}
-		}
-		if (!need_erase_sector) {
-			continue;
-		}
-		/* Check target sector need erase END */
-
-
-		/* Erase sector BEGIN */
-		memset(sector_buf + addr_in_sector, 0xFF, erase_len);
-
-		status = _flash_erase_sector(sector_addr);
-		if (status != FLASH_OK) {
-#if FLASH_BEDUG
-			printTagLog(
-				FLASH_TAG,
-				"flash erase data addr=%lu len=%lu error (unable to erase sector: block_addr=%lu sector_addr=%lu len=%lu)",
-				addr,
-				len,
-				sector_addr / flash_info.block_size,
-				(sector_addr % flash_info.block_size) / flash_info.sector_size,
-				FLASH_W25_SECTOR_SIZE
-			);
-#endif
-			return status;
-		}
-		if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
-#if FLASH_BEDUG
-			printTagLog(FLASH_TAG, "flash erase data addr=%lu len=%lu error (flash is busy)", addr, len);
-#endif
-			return FLASH_BUSY;
-		}
-		/* Erase sector END */
-
-
-		/* Return old data BEGIN */
-		uint32_t write_len = 0;
-		while (write_len < FLASH_W25_SECTOR_SIZE) {
-			status = _flash_write(sector_addr + write_len, sector_buf + write_len, FLASH_W25_PAGE_SIZE);
-			if (status != FLASH_OK) {
-#if FLASH_BEDUG
-				printTagLog(
-					FLASH_TAG,
-					"flash erase data addr=%lu len=%lu error (unable to write old data page addr=%lu)",
-					addr,
-					len,
-					sector_addr + write_len
-				);
-#endif
-				return status;
-			}
-
-			write_len += FLASH_W25_PAGE_SIZE;
-		}
-		/* Return old data END */
-
-		addr = sector_addr + FLASH_W25_SECTOR_SIZE;
-		len -= erase_len;
-	}
-
-	return FLASH_OK;
 }
 
 flash_status_t _flash_read_jdec_id(uint32_t* jdec_id)
@@ -1017,19 +1053,19 @@ flash_status_t _flash_write_disable()
 flash_status_t _flash_erase_sector(uint32_t addr)
 {
 #if FLASH_BEDUG
-	printTagLog(FLASH_TAG, "flash erase sector addr=%lu: begin", addr);
+	printTagLog(FLASH_TAG, "flash erase sector addr=%08lX: begin", addr);
 #endif
 
     if (addr % flash_info.sector_size > 0) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error (unacceptable address)", addr);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error (unacceptable address)", addr);
 #endif
         return FLASH_ERROR;
     }
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error (flash is busy)", addr);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error (flash is busy)", addr);
 #endif
         return FLASH_BUSY;
     }
@@ -1047,7 +1083,7 @@ flash_status_t _flash_erase_sector(uint32_t addr)
     flash_status_t status = _flash_set_protect_block(FLASH_W25_SR1_UNBLOCK_VALUE);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (unset block protect)", addr, status);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (unset block protect)", addr, status);
 #endif
         goto do_spi_stop;
     }
@@ -1055,14 +1091,14 @@ flash_status_t _flash_erase_sector(uint32_t addr)
     status = _flash_write_enable();
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (write is not enabled)", addr, status);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (write is not enabled)", addr, status);
 #endif
         goto do_spi_stop;
     }
 
     if (!util_wait_event(_flash_check_WEL, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (WEL bit wait time exceeded)", addr, FLASH_BUSY);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (WEL bit wait time exceeded)", addr, FLASH_BUSY);
 #endif
         status = FLASH_BUSY;
         goto do_spi_stop;
@@ -1070,7 +1106,7 @@ flash_status_t _flash_erase_sector(uint32_t addr)
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (BUSY bit wait time exceeded)", addr, FLASH_BUSY);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (BUSY bit wait time exceeded)", addr, FLASH_BUSY);
 #endif
         status = FLASH_BUSY;
         goto do_spi_stop;
@@ -1079,7 +1115,7 @@ flash_status_t _flash_erase_sector(uint32_t addr)
     status = _flash_send_data(spi_cmd, counter);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (write is not enabled)", addr, status);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (write is not enabled)", addr, status);
 #endif
         goto do_spi_stop;
     }
@@ -1087,7 +1123,7 @@ flash_status_t _flash_erase_sector(uint32_t addr)
     status = _flash_write_disable();
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (write is not disabled)", addr, status);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (write is not disabled)", addr, status);
 #endif
         goto do_spi_stop;
     }
@@ -1108,9 +1144,9 @@ do_block_protect:
 
 #if FLASH_BEDUG
     if (status == FLASH_OK) {
-    	printTagLog(FLASH_TAG, "flash erase sector addr=%lu: OK", addr);
+    	printTagLog(FLASH_TAG, "flash erase sector addr=%08lX: OK", addr);
     } else {
-        printTagLog(FLASH_TAG, "erase sector addr=%lu error=%u (set block protected)", addr, status);
+        printTagLog(FLASH_TAG, "erase sector addr=%08lX error=%u (set block protected)", addr, status);
         status = FLASH_BUSY;
     }
 #endif

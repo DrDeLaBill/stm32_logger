@@ -24,6 +24,8 @@ SettingsStatus SettingsDB::load()
 {
 	uint32_t address1 = 0, address2 = 0;
 	StorageStatus status = STORAGE_OK;
+    settings_t tmpSettings1 = {};
+    settings_t tmpSettings2 = {};
 
 	bool needResaveFirst = false, needResaveSecond = false;
     status = storage->find(FIND_MODE_EQUAL, &address1, PREFIX, 1);
@@ -33,31 +35,47 @@ SettingsStatus SettingsDB::load()
 #endif
         needResaveFirst = true;
     }
+	if (!needResaveFirst) {
+		status = storage->load(address1, reinterpret_cast<uint8_t*>(&tmpSettings1), this->size);
+	}
+	if (!needResaveFirst && status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%08lX", status, address1);
+#endif
+		needResaveFirst = true;
+	}
 
     status = storage->find(FIND_MODE_EQUAL, &address2, PREFIX, 2);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
+        printTagLog(SettingsDB::TAG, "error load settings duplicate: storage find error=%02X", status);
 #endif
         needResaveSecond = true;
     }
-
-    settings_t tmpSettings = {};
-    if (!needResaveFirst) {
-        status = storage->load(address1, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
-    } else if (!needResaveSecond) {
-        status = storage->load(address2, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
-    } else {
+	if (!needResaveSecond) {
+        status = storage->load(address2, reinterpret_cast<uint8_t*>(&tmpSettings2), this->size);
+	}
+	if (!needResaveSecond && status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		printTagLog(SettingsDB::TAG, "error load settings duplicate: storage load error=%02X adderss2=%08lX", status, address2);
+#endif
+		needResaveSecond = true;
+	}
+    if (needResaveSecond && needResaveFirst) {
     	status = STORAGE_NOT_FOUND;
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%lu, adderss2=%lu", status, address1, address2);
+        printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%08lX, adderss2=%08lX", status, address1, address2);
 #endif
         return SETTINGS_ERROR;
     }
 
-    memcpy(this->settings, &tmpSettings, this->size);
+	if (!needResaveFirst) {
+	    memcpy(this->settings, &tmpSettings1, this->size);
+	} else if (!needResaveSecond) {
+	    memcpy(this->settings, &tmpSettings2, this->size);
+	}
 
 #if SETTINGS_BEDUG
     printTagLog(SettingsDB::TAG, "settings loaded");
@@ -119,12 +137,17 @@ SettingsStatus SettingsDB::save()
 
     // Save duplicate settings
 	status = storage->find(FIND_MODE_EQUAL, &address, PREFIX, 2);
-
     if (status == STORAGE_NOT_FOUND) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings duplicate: storage find error, try to find empty (error=%02X)", status);
 #endif
         status = storage->find(FIND_MODE_EMPTY, &address);
+    }
+    if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings duplicate: storage find empty error=%02X", status);
+#endif
+        return SETTINGS_ERROR;
     }
 
 	status = storage->rewrite(address, PREFIX, 2, this->settings, this->size);

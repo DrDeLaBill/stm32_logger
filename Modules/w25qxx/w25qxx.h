@@ -61,7 +61,12 @@ flash_status_t flash_w25qxx_read(const uint32_t addr, uint8_t* data, const uint3
  */
 flash_status_t flash_w25qxx_write(const uint32_t addr, const uint8_t* data, const uint32_t len);
 
-// TODO: docs
+/**
+ *  Erases addresses in the FLASH memory.
+ *  @param addrs[] Array of addresses.
+ *  @param count   Number of the addresses.
+ *  @return Result status.
+ */
 flash_status_t flash_w25qxx_erase_addresses(const uint32_t* addrs, const uint32_t count);
 
 /**

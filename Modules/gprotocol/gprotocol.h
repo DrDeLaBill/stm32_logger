@@ -153,10 +153,10 @@ private:
 public:
 	gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table) {}
 
-	void slave_recieve(pack_t* request)
+	bool slave_recieve(pack_t* request)
 	{
 		if (request->crc != pack_crc(request)) {
-			return;
+			return false;
 		}
 
 #ifdef DEBUG
@@ -186,6 +186,8 @@ public:
     	printTagLog(TAG, "Response:");
     	pack_show(&response);
 #endif
+
+    	return true;
 	}
 
 	void master_send(const bool send, const uint32_t key, const uint8_t index = 0)

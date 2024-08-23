@@ -8,6 +8,7 @@
 #include "soul.h"
 #include "clock.h"
 #include "system.h"
+#include "fsm_gc.h"
 #include "settings.h"
 #include "hal_defs.h"
 
