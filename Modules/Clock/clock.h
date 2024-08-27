@@ -34,6 +34,7 @@ uint8_t  clock_get_minute();
 uint8_t  clock_get_second();
 bool     clock_save_time(const RTC_TimeTypeDef* time);
 bool     clock_save_date(const RTC_DateTypeDef* date);
+bool     clock_save_seconds(const uint32_t seconds);
 bool     clock_get_rtc_time(RTC_TimeTypeDef* time);
 bool     clock_get_rtc_date(RTC_DateTypeDef* date);
 uint32_t clock_datetime_to_seconds(const RTC_DateTypeDef* date, const RTC_TimeTypeDef* time);

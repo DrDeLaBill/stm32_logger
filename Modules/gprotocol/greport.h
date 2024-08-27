@@ -42,7 +42,7 @@ TYPE_PACK(
 
 
 uint16_t pack_crc(const pack_t* report);
-void pack_show(const pack_t* report);
+void pack_show(const char* key, const uint8_t index, const uint64_t data, const bool is_request, const bool is_get);
 
 
 #ifdef __cplusplus

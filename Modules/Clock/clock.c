@@ -138,6 +138,19 @@ bool clock_save_date(const RTC_DateTypeDef* date)
     return status == HAL_OK;
 }
 
+bool clock_save_seconds(const uint32_t seconds)
+{
+	RTC_DateTypeDef date = {0};
+	RTC_TimeTypeDef time = {0};
+	clock_seconds_to_datetime(seconds, &date, &time);
+
+	if (!clock_save_date(&date)) {
+		return false;
+	}
+
+	return clock_save_time(&time);
+}
+
 bool clock_get_rtc_time(RTC_TimeTypeDef* time)
 {
 	return HAL_OK == HAL_RTC_GetTime(&hrtc, time, RTC_FORMAT_BIN);
