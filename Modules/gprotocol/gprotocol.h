@@ -53,7 +53,7 @@ struct gprotocol
 {
 private:
 #if GPROTOCOL_BEDUG
-    static std::unordered_map<uint32_t, std::string> debug_table;
+    static std::unordered_map<uint32_t, std::string> bedug_table;
 #else
     static std::unordered_set<uint32_t> hashes;
 #endif
@@ -76,7 +76,7 @@ public:
         hash += (hash << 15);
 
 #if GPROTOCOL_BEDUG
-        debug_table.insert(
+        bedug_table.insert(
             {hash, std::string(data)}
         );
 #else
@@ -122,12 +122,12 @@ private:
         ) {
 #if GPROTOCOL_BEDUG
         type_t debug_data = 0;
-        auto itk = debug_table.find(key);
-        if (itk != debug_table.end()) {
+        auto itk = bedug_table.find(key);
+        if (itk != bedug_table.end()) {
             debug_data = deserialize(data, sizeof(debug_data));
-            pack_show(itk->second.c_str(), index, debug_data, is_request, is_get);
+            pack_show(key, itk->second.c_str(), index, debug_data, is_request, is_get);
         } else {
-            pack_show("unknown", index, 0, is_request, is_get);
+            pack_show(key, "unknown", index, 0, is_request, is_get);
         }
 #else
         (void)key;
@@ -197,7 +197,24 @@ private:
 
 
 public:
-    gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table) {}
+    void show_table()
+    {
+#if GPROTOCOL_BEDUG
+        printTagLog(GPTL_TAG, "gprotocol table:");
+        for (const auto& [ key, item ] : table) {
+#ifdef _WIN64
+            printPretty("%010u : %s\n", key, bedug_table[key].c_str());
+#else
+            printPretty("%010lu : %s\n", key, bedug_table[key].c_str());
+#endif
+        }
+#endif
+    }
+
+    gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table)
+    {
+        show_table();
+    }
 
     bool slave_recieve(pack_t* request)
     {
@@ -280,9 +297,9 @@ public:
 #endif
             return 0;
         }
-        uint8_t value[sizeof(type_t)] = {};
-        it->second.get(value, index);
-        return static_cast<type_t>(deserialize(value, it->second.item_size()));
+        type_t value = 0;
+        it->second.get((uint8_t*)&value, index);
+        return value;
     }
 
 };

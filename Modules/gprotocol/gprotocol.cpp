@@ -4,7 +4,7 @@
 
 
 #if GPROTOCOL_BEDUG
-std::unordered_map<uint32_t, std::string> gprotocol::debug_table;
+std::unordered_map<uint32_t, std::string> gprotocol::bedug_table;
 #else
 std::unordered_set<uint32_t> gprotocol::hashes;
 #endif

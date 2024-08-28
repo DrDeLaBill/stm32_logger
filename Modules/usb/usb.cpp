@@ -41,11 +41,17 @@ std::unordered_map<uint32_t, gtuple> table = {
 gprotocol protocol(table);
 
 utl::Timer gpTimer(GENERAL_TIMEOUT_MS);
+utl::Timer readyTimer(5 * SECOND_MS);
 
 
 bool usb_connected()
 {
 	return HAL_GPIO_ReadPin(WKUP_GPIO_Port, WKUP_Pin);
+}
+
+bool usb_free()
+{
+	return !readyTimer.wait();
 }
 
 void usb_proccess()
@@ -58,6 +64,10 @@ void usb_proccess()
 	}
 
 	pack_t* request = reinterpret_cast<pack_t*>(UserRxBufferFS);
+
+	if (request->key) {
+		readyTimer.start();
+	}
 
 	if (!request->crc) {
 		return;

@@ -10,6 +10,7 @@ extern "C" {
 
 
 bool usb_connected();
+bool usb_free();
 void usb_proccess();
 
 

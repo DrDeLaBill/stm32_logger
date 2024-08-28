@@ -6,7 +6,7 @@
 #include "hal_defs.h"
 
 
-static const char TAG[] = "GPTL";
+const char GPTL_TAG[] = "GPTL";
 
 
 uint16_t pack_crc(const pack_t* report)
@@ -27,28 +27,62 @@ uint16_t pack_crc(const pack_t* report)
     return crc;
 }
 
-void pack_show(const char* key, const uint8_t index, const uint64_t data, const bool is_request, const bool is_get)
-{
+void pack_show(
+    const uint32_t key,
+    const char* key_str,
+    const uint8_t index,
+    const uint64_t data,
+    const bool is_request,
+    const bool is_get
+) {
 
-	if (is_request && is_get) {
-		printTagLog(
-			TAG,
-			"%s: %s %s[%03u]",
-			(is_request ? "Request " : "Response"),
-			(is_get ? "get" : "set"),
-			key,
-			index
-		);
-	} else {
-		printTagLog(
-			TAG,
-			"%s: %s %s[%03u] => 0x%08lX%08lX",
-			(is_request ? "Request " : "Response"),
-			(is_get ? "get" : "set"),
-			key,
-			index,
-			(uint32_t)(data / 0x100000000),
-			(uint32_t)(data % 0x100000000)
-		);
-	}
+    if (is_request && is_get) {
+#ifdef _WIN64
+        printTagLog(
+            GPTL_TAG,
+            "%s: %010u %s %s[%03u]",
+            (is_request ? "Request " : "Response"),
+            key,
+            (is_get ? "get" : "set"),
+            key_str,
+            index
+        );
+#else
+        printTagLog(
+            GPTL_TAG,
+            "%s: %010lu %s %s[%03u]",
+            (is_request ? "Request " : "Response"),
+            key,
+            (is_get ? "get" : "set"),
+            key_str,
+            index
+        );
+#endif
+    } else {
+#ifdef _WIN64
+        printTagLog(
+            GPTL_TAG,
+            "%s: %010u %s %s[%03u] => 0x%08X%08X",
+            (is_request ? "Request " : "Response"),
+            key,
+            (is_get ? "get" : "set"),
+            key_str,
+            index,
+            (uint32_t)(data / 0x100000000),
+            (uint32_t)(data % 0x100000000)
+        );
+#else
+        printTagLog(
+            GPTL_TAG,
+            "%s: %010lu %s %s[%03u] => 0x%08lX%08lX",
+            (is_request ? "Request " : "Response"),
+            key,
+            (is_get ? "get" : "set"),
+            key_str,
+            index,
+            (uint32_t)(data / 0x100000000),
+            (uint32_t)(data % 0x100000000)
+        );
+#endif
+    }
 }

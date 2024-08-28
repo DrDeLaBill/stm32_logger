@@ -43,27 +43,27 @@ public:
         BEDUG_ASSERT(length, "Length must not be 0");
     }
 
-    unsigned length()
+    unsigned length() const
     {
         return LENGTH;
     }
 
-    unsigned item_size()
+    unsigned item_size() const
     {
         return SIZE;
     }
 
-    unsigned full_size()
+    unsigned full_size() const
     {
         return item_size() * length();
     }
 
-    bool is_tartget(uint8_t* const target)
+    bool is_tartget(uint8_t* const target) const
     {
         return target == reinterpret_cast<void*>(m_source);
     }
 
-    uint8_t idx(const uint8_t index = 0)
+    uint8_t idx(const uint8_t index = 0) const
     {
     	uint8_t tmp_index = index;
     	if (m_at) {
