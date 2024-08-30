@@ -219,6 +219,8 @@ int main(void)
 
     system_post_load();
 
+    usb_init();
+
     printTagLog(MAIN_TAG, "The device has been loaded");
 
 #ifdef DEBUG

@@ -21,6 +21,7 @@
 #define ONEWIRE_CONVERSION_DELAY_MS ((uint32_t)20000)
 
 
+bool _meas_line2_busy();
 void _response_packet_handler(modbus_response_t* packet);
 
 void _meas_idle_s(void);
@@ -126,7 +127,7 @@ void _meas_idle_s(void)
 		return;
 	}
 
-	if (is_status(NEED_ENABLE_SENSORS)) {
+	if (_meas_line2_busy() || app_line2_busy()) {
 		return;
 	}
 
@@ -134,7 +135,7 @@ void _meas_idle_s(void)
 	meas_info.record.mb1_count = settings_modbus1_count();
 	meas_info.record._1w_count = settings_1wire_count();
 
-	set_status(NEED_ENABLE_SENSORS);
+	set_status(NEED_MODBUS1_MEASURE);
 
 	_wait_start_a();
 	fsm_gc_push_event(&meas_fsm, &meas_success_e);
@@ -157,6 +158,9 @@ void _meas_mb1_request_s(void)
 	if (meas_info.sens_addr >= __arr_len(settings.modbus1_status) ||
 		!sensors_count()
 	) {
+		reset_status(NEED_MODBUS1_MEASURE);
+		set_status(NEED_1WIRE_MEASURE);
+
 		_start_delay_a();
 		fsm_gc_push_event(&meas_fsm, &meas_end_e);
 	} else if (settings.modbus1_status[meas_info.sens_addr] != SETTINGS_SENSOR_EMPTY) {
@@ -209,6 +213,8 @@ void _meas_1w_delay_s(void)
 void _meas_1w_request_s(void)
 {
 	if (meas_info.sens_addr >= __arr_len(settings._1wire_address)) {
+		reset_status(NEED_1WIRE_MEASURE);
+
 		_save_start_a();
 		fsm_gc_push_event(&meas_fsm, &meas_end_e);
 	} else if (settings._1wire_address[meas_info.sens_addr]) {
@@ -383,7 +389,8 @@ void _idle_start_a(void)
 {
 	fsm_gc_clear(&meas_fsm);
 
-	reset_status(NEED_ENABLE_SENSORS);
+	reset_status(NEED_MODBUS1_MEASURE);
+	reset_status(NEED_1WIRE_MEASURE);
 	reset_status(NEED_MEASURE);
 }
 
@@ -391,8 +398,14 @@ void _register_error_a(void)
 {
 	fsm_gc_clear(&meas_fsm);
 
-	reset_status(NEED_ENABLE_SENSORS);
+	reset_status(NEED_MODBUS1_MEASURE);
+	reset_status(NEED_1WIRE_MEASURE);
 	reset_status(NEED_MEASURE);
+}
+
+bool _meas_line2_busy()
+{
+	return is_status(NEED_1WIRE_MEASURE) || is_status(NEED_MODBUS1_MEASURE);
 }
 
 void _response_packet_handler(modbus_response_t* packet)

@@ -33,7 +33,6 @@ const char STNGw_TAG[] = "STGw";
 
 static unsigned old_hash = 0;
 static unsigned new_hash = 0;
-static utl::Timer timer(5 * SECOND_MS);
 
 
 FSM_GC_CREATE(stng_fsm)
@@ -127,9 +126,7 @@ void _stng_init_s(void)
 void _stng_idle_s(void)
 {
 	new_hash = util_hash((uint8_t*)&settings, sizeof(settings));
-	if (new_hash == old_hash) {
-		timer.start();
-	} else if (usb_free() && !timer.wait()) {
+	if (new_hash != old_hash && usb_connected() && usb_free()) {
 		old_hash = new_hash;
 		set_status(NEED_SAVE_SETTINGS);
 	}
@@ -194,5 +191,4 @@ void _stng_update_hash_a(void)
 {
 	old_hash = util_hash((uint8_t*)&settings, sizeof(settings));
 	new_hash = old_hash;
-	timer.start();
 }

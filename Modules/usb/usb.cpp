@@ -54,6 +54,13 @@ bool usb_free()
 	return !readyTimer.wait();
 }
 
+void usb_init()
+{
+#ifdef DEBUG
+	protocol.show_table();
+#endif
+}
+
 void usb_proccess()
 {
 	utl::CodeStopwatch stopwatch("USB", GENERAL_TIMEOUT_MS);
@@ -65,13 +72,11 @@ void usb_proccess()
 
 	pack_t* request = reinterpret_cast<pack_t*>(UserRxBufferFS);
 
-	if (request->key) {
-		readyTimer.start();
-	}
-
 	if (!request->crc) {
 		return;
 	}
+
+	readyTimer.start();
 
 	protocol.slave_recieve(request);
 

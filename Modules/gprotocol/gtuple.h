@@ -27,6 +27,13 @@ private:
     uint8_t* const m_source;
     uint8_t (*const m_at) (uint8_t);
 
+    void details(uint8_t* const ptr, const uint8_t index = 0)
+    {
+    	(void)ptr;
+    	(void)index;
+    	printPretty("details: poiter=%p, index=%u\n", (void*)ptr, index);
+    }
+
 public:
     gtuple(
         uint8_t* const source,
@@ -63,7 +70,7 @@ public:
         return target == reinterpret_cast<void*>(m_source);
     }
 
-    uint8_t idx(const uint8_t index = 0) const
+    uint8_t index(const uint8_t index = 0) const
     {
     	uint8_t tmp_index = index;
     	if (m_at) {
@@ -77,9 +84,12 @@ public:
         BEDUG_ASSERT(index <= length(), "Index is out of range");
         BEDUG_ASSERT(src, "Source must not be NULL");
         if (!src || index >= length()) {
+        	if (!src || index > length()) {
+        		details(src, index);
+        	}
             return;
         }
-        memcpy(&m_source[idx(index) * item_size()], src, item_size());
+        memcpy(&m_source[index * item_size()], src, item_size());
     }
 
     void get(uint8_t* const dst, const uint8_t index = 0)
@@ -87,11 +97,13 @@ public:
         BEDUG_ASSERT(index <= length(), "Index is out of range");
         BEDUG_ASSERT(dst, "Destination must not be NULL");
         if (!dst || index >= length()) {
+        	if (!dst || index > length()) {
+        		details(dst, index);
+        	}
             return;
         }
-        uint8_t tmp_index = idx(index);
-        if (tmp_index < length()) {
-            memcpy(dst, &m_source[tmp_index * item_size()], item_size());
+        if (index < length()) {
+            memcpy(dst, &m_source[index * item_size()], item_size());
         } else {
             memcpy(dst, EMPTY_DATA, item_size());
         }

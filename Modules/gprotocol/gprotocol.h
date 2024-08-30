@@ -7,15 +7,7 @@
 #include <string>
 #include <cstring>
 #include <unordered_map>
-
-
-#ifdef DEBUG
-#   define GPROTOCOL_BEDUG  (1)
-#endif
-
-#if !GPROTOCOL_BEDUG
-#   include <unordered_set>
-#endif
+#include <unordered_set>
 
 #include "hal_defs.h"
 
@@ -48,11 +40,16 @@
 #   define GP_KEY_SIZE      (32)
 #endif
 
+#ifdef DEBUG
+#   define GPROTOCOL_BEDUG_GET (0)
+#   define GPROTOCOL_BEDUG_SET (1)
+#endif
+
 
 struct gprotocol
 {
 private:
-#if GPROTOCOL_BEDUG
+#if GPROTOCOL_BEDUG_GET || GPROTOCOL_BEDUG_SET
     static std::unordered_map<uint32_t, std::string> bedug_table;
 #else
     static std::unordered_set<uint32_t> hashes;
@@ -75,7 +72,7 @@ public:
         hash ^= (hash >> 11);
         hash += (hash << 15);
 
-#if GPROTOCOL_BEDUG
+#if GPROTOCOL_BEDUG_GET || GPROTOCOL_BEDUG_SET
         bedug_table.insert(
             {hash, std::string(data)}
         );
@@ -110,7 +107,7 @@ private:
             BEDUG_ASSERT(false, "Table not found error");
             return 0;
         }
-        return it->second.idx(index);
+        return it->second.index(index);
     }
 
     void details(
@@ -119,8 +116,18 @@ private:
         const uint8_t* data,
         const bool is_request,
         const bool is_get
-        ) {
-#if GPROTOCOL_BEDUG
+	) {
+#if !GPROTOCOL_BEDUG_GET
+    	if (is_get) {
+    		return;
+    	}
+#endif
+#if !GPROTOCOL_BEDUG_SET
+    	if (!is_get) {
+    		return;
+    	}
+#endif
+#if GPROTOCOL_BEDUG_GET || GPROTOCOL_BEDUG_SET
         type_t debug_data = 0;
         auto itk = bedug_table.find(key);
         if (itk != bedug_table.end()) {
@@ -199,7 +206,7 @@ private:
 public:
     void show_table()
     {
-#if GPROTOCOL_BEDUG
+#if GPROTOCOL_BEDUG_GET || GPROTOCOL_BEDUG_SET
         printTagLog(GPTL_TAG, "gprotocol table:");
         for (const auto& [ key, item ] : table) {
 #ifdef _WIN64
@@ -219,6 +226,9 @@ public:
     bool slave_recieve(pack_t* request)
     {
         if (request->crc != pack_crc(request)) {
+#if GPROTOCOL_BEDUG_GET || GPROTOCOL_BEDUG_SET
+        	printTagLog(GPTL_TAG, "crc error %u != %u", request->crc, pack_crc(request));
+#endif
             return false;
         }
 
@@ -234,17 +244,13 @@ public:
             set_from_serialized(request->key, request->data, response.index);
         }
 
-#if GPROTOCOL_BEDUG
         details(response.key, request->index, request->data, true, request->key == PACK_GETTER_KEY);
-#endif
 
         get_serialized(response.key, response.data, response.index);
 
         response.crc = pack_crc(&response);
 
-#if GPROTOCOL_BEDUG
         details(response.key, response.index, response.data, false, request->key == PACK_GETTER_KEY);
-#endif
 
         send_report(&response);
 
@@ -266,18 +272,14 @@ public:
 
         request.crc = pack_crc(&request);
 
-#if GPROTOCOL_BEDUG
         details(key, index, request.data, true, !send);
-#endif
 
         send_report(&request);
     }
 
     bool master_recieve(pack_t* response)
     {
-#if GPROTOCOL_BEDUG
         details(response->key, response->index, response->data, false, true);
-#endif
 
         if (response->crc != pack_crc(response)) {
             return false;
@@ -292,9 +294,7 @@ public:
     {
         const auto& it = table.find(key);
         if (it == table.end()) {
-#if GPROTOCOL_BEDUG
             BEDUG_ASSERT(false, "table is out of range");
-#endif
             return 0;
         }
         type_t value = 0;

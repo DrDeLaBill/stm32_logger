@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 
+void usb_init();
 bool usb_connected();
 bool usb_free();
 void usb_proccess();

@@ -41,7 +41,7 @@ void start_alarm_a();
 void check_alarm_a();
 
 
-FSM_GC_CREATE(_fsm)
+FSM_GC_CREATE(stby_fsm)
 
 FSM_GC_CREATE_EVENT(loaded_e,             0)
 FSM_GC_CREATE_EVENT(started_e,            0)
@@ -80,19 +80,19 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef*)
 
 StandbyWatchdog::StandbyWatchdog()
 {
-	fsm_gc_init(&_fsm, fsm_table, __arr_len(fsm_table));
+	fsm_gc_init(&stby_fsm, fsm_table, __arr_len(fsm_table));
 }
 
 void StandbyWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch(TAG, WATCHDOG_TIMEOUT_MS);
 
-	fsm_gc_proccess(&_fsm);
+	fsm_gc_proccess(&stby_fsm);
 }
 
 void StandbyWatchdog::alarm()
 {
-	fsm_gc_push_event(&_fsm, &alarm_e);
+	fsm_gc_push_event(&stby_fsm, &alarm_e);
 }
 
 bool StandbyWatchdog::isAlarmReady()
@@ -302,9 +302,9 @@ uint32_t StandbyWatchdog::sleepTimeSec()
 void _init_s()
 {
 	if (!is_status(LOADING)) {
-		fsm_gc_push_event(&_fsm, &loaded_e);
+		fsm_gc_push_event(&stby_fsm, &loaded_e);
 	} else if (is_status(NEED_STANDBY)) {
-		fsm_gc_push_event(&_fsm, &need_standby_e);
+		fsm_gc_push_event(&stby_fsm, &need_standby_e);
 	}
 }
 
@@ -312,17 +312,17 @@ void _idle_s()
 {
 #if USE_WKUP_RTC_ALARM
 	if (!StandbyWatchdog::isAlarmReady()) {
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 	}
 #endif
 	if (StandbyWatchdog::needEnterStandby()) {
-		fsm_gc_push_event(&_fsm, &need_standby_e);
+		fsm_gc_push_event(&stby_fsm, &need_standby_e);
 	}
 }
 
 void _start_s()
 {
-	fsm_gc_push_event(&_fsm, &started_e);
+	fsm_gc_push_event(&stby_fsm, &started_e);
 }
 
 void check_last_alarm_a()
@@ -352,7 +352,7 @@ void check_last_alarm_a()
 #	if STANDBY_W_BEDUG
 		printTagLog(StandbyWatchdog::TAG, "The device has woken up. Measure has requested.");
 #	endif
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 		return;
 	}
 #endif
@@ -367,7 +367,7 @@ void check_last_alarm_a()
 #if STANDBY_W_BEDUG
 		printTagLog(StandbyWatchdog::TAG, "Unable to get clock alarm");
 #endif
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 		return;
 	}
 
@@ -403,17 +403,17 @@ void check_last_alarm_a()
 
 #if USE_WKUP_RTC_ALARM
 	if (!StandbyWatchdog::isAlarmReady()) {
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 		return;
 	}
 #endif
 
-	fsm_gc_push_event(&_fsm, &need_restart_alarm_e);
+	fsm_gc_push_event(&stby_fsm, &need_restart_alarm_e);
 }
 
 void restart_alarm_a()
 {
-	fsm_gc_clear(&_fsm);
+	fsm_gc_clear(&stby_fsm);
 
 	RTC_AlarmTypeDef sAlarm  = {};
 	HAL_StatusTypeDef status = HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
@@ -421,7 +421,7 @@ void restart_alarm_a()
 #if STANDBY_W_BEDUG
 		printTagLog(StandbyWatchdog::TAG, "Unable to get clock alarm");
 #endif
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 		return;
 	}
 	HAL_PWR_EnableBkUpAccess();
@@ -431,7 +431,7 @@ void restart_alarm_a()
 #if STANDBY_W_BEDUG
 		printTagLog(StandbyWatchdog::TAG, "Unable to restart clock alarm");
 #endif
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 		return;
 	}
 
@@ -446,7 +446,7 @@ void restart_alarm_a()
 
 void start_alarm_a()
 {
-	fsm_gc_clear(&_fsm);
+	fsm_gc_clear(&stby_fsm);
 
 	set_status(NEED_MEASURE);
 
@@ -470,7 +470,7 @@ void start_alarm_a()
 void check_alarm_a()
 {
 	if (!StandbyWatchdog::isAlarmReady()) {
-		fsm_gc_push_event(&_fsm, &need_start_alarm_e);
+		fsm_gc_push_event(&stby_fsm, &need_start_alarm_e);
 	}
 }
 

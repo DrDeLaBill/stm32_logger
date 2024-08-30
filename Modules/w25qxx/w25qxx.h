@@ -13,7 +13,7 @@ extern "C" {
 #include <stdbool.h>
 
 
-#define FLASH_BEDUG               (1)
+#define FLASH_BEDUG               (0)
 
 #define FLASH_TEST                (false)
 #define FLASH_TEST_PAGES_COUNT    ((uint32_t)64)

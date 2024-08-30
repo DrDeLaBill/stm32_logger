@@ -26,12 +26,10 @@ void OneWireWatcher::_idle_s::operator()()
 	if (!onewire_driver_ready()) {
 		return;
 	}
-	if (app_info.need_registrate_1wire) {
+	if (is_status(NEED_1WIRE)) {
 		memset(settings._1wire_address, 0, sizeof(settings._1wire_address));
 		index = 0;
 		timeoutTimer.start();
-		set_status(NEED_ENABLE_SENSORS);
-
 		fsm.push_event(start_e{});
 	}
 }
@@ -100,21 +98,18 @@ void OneWireWatcher::_end_s::operator()()
 void OneWireWatcher::timeout_a::operator ()()
 {
 	app_info.need_registrate_1wire = 0;
-	reset_status(NEED_ENABLE_SENSORS);
+
 	set_status(NEED_LOAD_SETTINGS);
+
 	onewire_driver_clear();
 }
 
 void OneWireWatcher::done_a::operator ()()
 {
 	app_info.need_registrate_1wire = 0;
-	reset_status(NEED_ENABLE_SENSORS);
 }
 
-void OneWireWatcher::enable_a::operator ()()
-{
-	set_status(NEED_ENABLE_SENSORS);
-}
+void OneWireWatcher::enable_a::operator ()() {}
 
 void OneWireWatcher::start_search_a::operator ()()
 {

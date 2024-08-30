@@ -211,37 +211,43 @@ bool settings_1wire_sensor_exists(uint64_t address)
 	return false;
 }
 
+
 uint8_t modbus1_index(uint8_t index)
 {
-    uint8_t counter = __arr_len(settings.modbus1_status);
+    bool found = false;
+    uint8_t res = 0;
     for (uint8_t i = index; i < __arr_len(settings.modbus1_status); i++) {
-        if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY) {
-            counter++;
-        }
-        if (counter == index) {
-            break;
-        }
+        if (settings.modbus1_status[i] != SETTINGS_SENSOR_EMPTY &&
+			i >= index
+		) {
+			found = true;
+			res = i;
+			break;
+		}
     }
-    if (counter < index) {
-    	counter = __arr_len(settings.modbus1_status);
+    if (!found) {
+    	res = __arr_len(settings.modbus1_status);
     }
-    return counter;
+    return res;
 }
+
 
 uint8_t _1wire_index(uint8_t index)
 {
-    uint8_t counter = __arr_len(settings._1wire_address);
+    bool found = false;
+    uint8_t res = 0;
     for (uint8_t i = index; i < __arr_len(settings._1wire_address); i++) {
-        if (settings._1wire_address[i]) {
-            counter++;
-        }
-        if (counter == index) {
-            break;
+        if (settings._1wire_address[i] &&
+            i >= index
+		) {
+			found = true;
+			res = i;
+			break;
         }
     }
-    if (counter < index) {
-    	counter = __arr_len(settings._1wire_address);
+    if (!found) {
+    	res = __arr_len(settings._1wire_address);
     }
-    return counter;
+    return res;
 }
 
